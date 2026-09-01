@@ -23,3 +23,55 @@ h1 em { color: #d0a86b; font-family: Georgia, serif; font-weight: 400; letter-sp
 .card-icon { display: grid; place-items: center; width: 35px; height: 35px; color: #d0a86b; border: 1px solid rgba(208,168,107,.5); font-size: 17px; }.destination-card h2 { margin: 0 0 8px; font-size: 16px; }.destination-card p { color: #9ca5a3; margin: 0; font-size: 12px; line-height: 1.6; }.card-arrow { position: absolute; top: 22px; right: 20px; color: #6f7b79; }
 footer { margin-top: 50px; text-align: center; text-transform: none; letter-spacing: .03em; } footer span { color: #d0a86b; }
 @media (max-width: 760px) { .page-shell { padding: 0 23px 28px; }.topbar { height: 75px; }.access-note { display: none; }.hero { display: block; min-height: 0; }.hero-copy { padding: 60px 0 40px; }.hero-art { height: 290px; }.destinations { grid-template-columns: 1fr; }.destination-card { min-height: 104px; } h1 { font-size: clamp(3.5rem, 16vw, 5rem); } }
+
+/* Shared navigation and game-hub styles */
+.top-links { display: flex; align-items: center; gap: 24px; }
+.top-links a, .back-link { color: #b8bfbb; text-decoration: none; font-size: 12px; }
+.top-links a:hover, .back-link:hover { color: #d0a86b; }
+.external-mark { display: inline-block; margin-left: 4px; color: #d0a86b; }
+.hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.primary-button, .secondary-button { display: inline-flex; align-items: center; text-decoration: none; }
+.primary-button { cursor: pointer; opacity: 1; }
+.primary-button:hover { background: #e4bf82; }
+.secondary-button { border: 1px solid rgba(208,168,107,.55); padding: 14px 18px; color: #e4c58e; font-weight: 700; font-size: 13px; border-radius: 2px; }
+.secondary-button:hover { border-color: #d0a86b; background: rgba(208,168,107,.08); }
+.section-heading { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin: 38px 0 18px; }
+.section-heading h2 { margin: 0; font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -.05em; }
+.section-heading > p { max-width: 320px; color: #9ca5a3; line-height: 1.6; font-size: 13px; margin: 0 0 3px; }
+.game-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 13px; }
+.game-grid-wide { max-width: 900px; }
+.game-card { position: relative; display: block; min-height: 190px; padding: 27px 25px; color: #f5f2eb; text-decoration: none; background: #202629; border: 1px solid rgba(245,242,235,.1); transition: transform .2s, border-color .2s, background .2s; }
+.game-card:hover { transform: translateY(-3px); border-color: rgba(208,168,107,.72); background: #252d30; }
+.game-card-active { background: linear-gradient(135deg, rgba(208,168,107,.18), #202629 58%); border-color: rgba(208,168,107,.4); }
+.game-card-soon { opacity: .68; border-style: dashed; }
+.game-card-kicker { color: #d0a86b; font: 11px "DM Mono", monospace; letter-spacing: .1em; }
+.game-card h3 { margin: 27px 0 9px; font-size: 25px; letter-spacing: -.04em; }
+.game-card p { max-width: 390px; color: #aab4b1; line-height: 1.65; font-size: 13px; margin: 0; }
+.card-arrow { position: absolute; top: 24px; right: 23px; color: #d0a86b; font-size: 19px; }
+.page-intro { padding: 75px 0 46px; max-width: 660px; }
+.page-intro h1 { margin-top: 17px; }
+.page-intro .intro { margin-top: 27px; }
+.game-page-intro { padding-bottom: 31px; }
+.game-page-intro .back-link { display: inline-block; margin-bottom: 45px; }
+.tool-list { max-width: 900px; border-top: 1px solid rgba(245,242,235,.12); }
+.tool-row { display: flex; align-items: center; gap: 17px; min-height: 91px; padding: 15px 5px; color: #f5f2eb; text-decoration: none; border-bottom: 1px solid rgba(245,242,235,.12); }
+.tool-row:hover .tool-copy strong { color: #e4bf82; }
+.tool-icon { display: grid; place-items: center; flex: 0 0 37px; height: 37px; color: #d0a86b; border: 1px solid rgba(208,168,107,.45); }
+.tool-copy { display: grid; gap: 5px; }
+.tool-copy strong { font-size: 16px; }
+.tool-copy small { color: #9ca5a3; font-size: 12px; line-height: 1.5; }
+.tool-arrow { margin-left: auto; padding-right: 9px; color: #d0a86b; font-size: 20px; }
+.future-note { max-width: 900px; margin-top: 58px; padding: 27px 28px; background: rgba(208,168,107,.07); border: 1px solid rgba(208,168,107,.24); }
+.future-note h2 { margin: 8px 0 10px; font-size: 21px; letter-spacing: -.03em; }
+.future-note p:last-child { max-width: 670px; color: #b8bfbb; line-height: 1.7; font-size: 13px; margin: 0; }
+@media (max-width: 760px) {
+  .top-links { gap: 12px; }
+  .top-links a { font-size: 11px; }
+  .hero-actions { align-items: stretch; flex-direction: column; }
+  .primary-button, .secondary-button { justify-content: space-between; }
+  .section-heading { display: block; margin-top: 42px; }
+  .section-heading > p { margin-top: 12px; }
+  .game-grid { grid-template-columns: 1fr; }
+  .page-intro { padding: 56px 0 34px; }
+  .game-page-intro .back-link { margin-bottom: 35px; }
+}
