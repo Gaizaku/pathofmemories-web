@@ -1,0 +1,9 @@
+{
+  "name": "pathofmemories-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview", "typecheck": "tsc --noEmit", "check": "npm run typecheck && npm run build" },
+  "dependencies": { "react": "19.2.8", "react-dom": "19.2.8" },
+  "devDependencies": { "@cloudflare/vite-plugin": "1.54.2", "@types/react": "latest", "@types/react-dom": "latest", "@vitejs/plugin-react": "6.1.1", "@cloudflare/workers-types": "latest", "typescript": "7.0.2", "vite": "8.2.2", "wrangler": "latest" }
+}
