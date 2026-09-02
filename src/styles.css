@@ -75,3 +75,9 @@ footer { margin-top: 50px; text-align: center; text-transform: none; letter-spac
   .page-intro { padding: 56px 0 34px; }
   .game-page-intro .back-link { margin-bottom: 35px; }
 }
+
+.language-toggle { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid rgba(245,242,235,.16); border-radius: 999px; background: rgba(255,255,255,.035); }
+.language-toggle button { border: 0; border-radius: 999px; padding: 5px 8px; color: #8e9895; background: transparent; font: 10px "DM Mono", monospace; cursor: pointer; }
+.language-toggle button.active { color: #171b1e; background: #d0a86b; }
+.language-toggle button:hover:not(.active) { color: #f5f2eb; }
+@media (max-width: 760px) { .language-toggle button { padding: 4px 7px; } }
