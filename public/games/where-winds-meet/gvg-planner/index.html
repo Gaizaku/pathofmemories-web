@@ -30,6 +30,9 @@ svg path.treeTrail{fill:none;stroke:#92ff95;stroke-width:2;stroke-linecap:round;
 .focus-hidden .panel-body{display:none}
 .toggle-focus{font-size:12px;padding:6px 9px;border-radius:999px}
 
+
+.home-link{display:inline-flex;align-items:center;color:var(--muted);text-decoration:none;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;transition:.15s ease}.home-link:hover{color:var(--text);border-color:var(--accent);background:rgba(105,210,255,.08)}
+#editBtn,#exportBtn{display:none!important}
 </style>
 </head>
 <body>
@@ -37,6 +40,7 @@ svg path.treeTrail{fill:none;stroke:#92ff95;stroke-width:2;stroke-linecap:round;
   <div>
     <h1>PATH OF MEMORIES GVG Planner</h1>
     <div class="sub">By Gaizaku</div>
+    <a class="home-link" href="/" aria-label="Back to Path of Memories">← Path of Memories</a>
   </div>
   <div class="actions">
     <button id="playBtn">▶ Play</button>
