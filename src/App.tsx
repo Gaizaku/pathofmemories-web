@@ -219,22 +219,21 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
 
 function GuidesPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All");
   const guides = language === "th" ? [
-    ["Tune", "พื้นฐานการจัด Tune สำหรับ GVG", "เริ่มจากบทบาทและหน้าที่ของทีม แล้วค่อยเลือก Tune ที่เหมาะกับแผน"],
-    ["Mystic Skill", "Mystic Skill ที่ควรรู้ก่อนลงสนาม", "สรุปจังหวะใช้ Skill สำคัญและสิ่งที่ควรสื่อสารกับทีม"],
-    ["EX Skill", "แนวทาง EX Skill แยกตามบทบาท", "รายการตั้งต้นสำหรับ DPS, Tank และ Support เพื่อใช้คุยในกิลด์"],
-    ["Command Skill", "Command Skill และการประสานงาน", "แนวคิดการจับคู่ Skill กับช่วงเวลาของแผนการรบ"]
+    ["Tune", "พื้นฐานการจัด Tune สำหรับ GVG", "เริ่มจากบทบาทและหน้าที่ของทีม แล้วค่อยเลือก Tune ที่เหมาะกับแผน"], ["Mystic Skill", "Mystic Skill ที่ควรรู้ก่อนลงสนาม", "สรุปจังหวะใช้ Skill สำคัญและสิ่งที่ควรสื่อสารกับทีม"], ["EX Skill", "แนวทาง EX Skill แยกตามบทบาท", "รายการตั้งต้นสำหรับ DPS, Tank และ Support เพื่อใช้คุยในกิลด์"], ["Command Skill", "Command Skill และการประสานงาน", "แนวคิดการจับคู่ Skill กับช่วงเวลาของแผนการรบ"]
   ] : [
-    ["Tune", "GVG tune fundamentals", "Start with the team role and job, then choose a tune that fits the plan."],
-    ["Mystic Skill", "Mystic skills to know before battle", "A starter note on timing and the callouts worth sharing with the team."],
-    ["EX Skill", "EX skills by role", "A starting list for DPS, Tank, and Support discussions."],
-    ["Command Skill", "Command skills and coordination", "Ideas for pairing skills with key moments in the battle plan."]
+    ["Tune", "GVG tune fundamentals", "Start with the team role and job, then choose a tune that fits the plan."], ["Mystic Skill", "Mystic skills to know before battle", "A starter note on timing and the callouts worth sharing with the team."], ["EX Skill", "EX skills by role", "A starting list for DPS, Tank, and Support discussions."], ["Command Skill", "Command skills and coordination", "Ideas for pairing skills with key moments in the battle plan."]
   ];
+  const categories = ["All", ...guides.map(([item]) => item)];
+  const visibleGuides = guides.filter(([item, title, detail]) => (category === "All" || item === category) && `${item} ${title} ${detail}`.toLowerCase().includes(query.trim().toLowerCase()));
   return <Shell language={language} onLanguageChange={onLanguageChange}>
     <section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet">← Where Winds Meet</a><p className="eyebrow">WHERE WINDS MEET · GUIDES</p><h1>{t.guidesPageTitle}</h1><p className="intro">{t.guidesPageIntro}</p></section>
-    <div className="guides-toolbar"><input aria-label={t.searchGuides} placeholder={t.searchGuides} /><span>{t.reviewed}</span></div>
-    <section className="guide-grid" aria-label="Guides">{guides.map(([category,title,detail]) => <article className="guide-card" key={category}><span className="guide-category">{category}</span><h2>{title}</h2><p>{detail}</p><span className="guide-soon">V1 · CURATED</span></article>)}</section>
-    <p className="manager-note">✦ เนื้อหาชุดนี้เป็นโครงเริ่มต้น จะเชื่อมข้อมูลที่ตรวจสอบแล้วจาก Google Sheet ในขั้นถัดไป</p>
+    <div className="guides-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label={t.searchGuides} placeholder={t.searchGuides} /><span>{t.reviewed}</span></div>
+    <div className="guide-filters" role="group" aria-label="Guide categories">{categories.map((item) => <button type="button" className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}</div>
+    {visibleGuides.length > 0 ? <section className="guide-grid" aria-label="Guides">{visibleGuides.map(([item,title,detail]) => <a className="guide-card" href={`#${item.toLowerCase().replaceAll(" ", "-")}`} key={item}><span className="guide-category">{item}</span><h2>{title}</h2><p>{detail}</p><span className="guide-soon">V1 · CURATED ↗</span></a>)}</section> : <div className="guide-empty"><strong>{language === "th" ? "ยังไม่พบ Guide" : "No guides found"}</strong><span>{language === "th" ? "ลองเปลี่ยนคำค้นหาหรือเลือกทุกหมวด" : "Try another search or show all categories."}</span></div>}
+    <p className="manager-note">✦ {language === "th" ? "เนื้อหาชุดนี้เป็นโครงเริ่มต้น จะเชื่อมข้อมูลที่ตรวจสอบแล้วจาก Google Sheet ในขั้นถัดไป" : "This is a curated starter set. Verified Google Sheet content will be connected next."}</p>
   </Shell>;
 }
 
