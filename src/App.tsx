@@ -161,7 +161,7 @@ function HomePage({ language, onLanguageChange }: { language: Language; onLangua
           </div>
           <p className="login-hint">{t.noAccount}</p>
         </div>
-        <div className="hero-art" aria-hidden="true"><div className="moon" /><div className="mountain mountain-back" /><div className="mountain mountain-front" /><div className="lantern"><span /></div><div className="spark spark-one" /><div className="spark spark-two" /><div className="spark spark-three" /></div>
+        <div className="hero-art" role="img" aria-label="Path of Memories guild banner" />
       </section>
       <section className="section-heading" aria-labelledby="games-heading">
         <div><p className="eyebrow">{t.playSpaces}</p><h2 id="games-heading">{t.chooseGame}</h2></div>
