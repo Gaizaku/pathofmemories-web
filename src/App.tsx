@@ -33,6 +33,12 @@ const copy = {
     whereMeetHint: "รวมทุกอย่างที่กิลด์ใช้เตรียมตัวสำหรับ GVG ตั้งแต่แผนการรบแบบ Interactive ไปจนถึงการลงทะเบียนประจำสัปดาห์",
     planner: "แผนการรบแบบ Interactive, Timeline และช่วงเวลาสำคัญ",
     registration: "ลงทะเบียน War และเตรียมทีม",
+    guildWarIntro: "ศูนย์รวมการลงทะเบียนและเตรียมทีมสำหรับรอบ War ปัจจุบัน",
+    openRegister: "เปิดหน้าลงทะเบียน",
+    openBuilder: "เปิด Team Builder",
+    managerNote: "ยังไม่ต้อง login เพื่อเริ่มใช้งาน",
+    nextRound: "รอบถัดไป",
+    statusReady: "ระบบพร้อมใช้งาน",
     readyForMore: "พร้อมสำหรับเนื้อหาเพิ่มเติม",
     guidesTitle: "Guides และ Builds จะอยู่ที่นี่ในลำดับถัดไป",
     guidesHint: "ข้อมูล Tune, Mystic Skill, EX Skill, Command Skill และ Battlefield ที่ช่วยกันรวบรวมไว้ สามารถจัดระเบียบเป็น Guides ที่ค้นหาได้ โดยไม่ต้องเปลี่ยนโครงสร้างของเกมนี้",
@@ -64,6 +70,12 @@ const copy = {
     whereMeetHint: "Everything the guild uses for GVG preparation, from the interactive plan to weekly registration.",
     planner: "Interactive battle map, timeline, and key timings",
     registration: "Register for war and prepare teams",
+    guildWarIntro: "One place to register and prepare teams for the current War round.",
+    openRegister: "Open registration",
+    openBuilder: "Open Team Builder",
+    managerNote: "No login is required to get started.",
+    nextRound: "NEXT ROUND",
+    statusReady: "SYSTEM READY",
     readyForMore: "READY FOR MORE",
     guidesTitle: "Guides and builds will live here next.",
     guidesHint: "The shared Tune, Mystic Skill, EX Skill, Command Skill, and battlefield notes can be cleaned up into searchable guides without changing this game structure.",
@@ -167,8 +179,8 @@ function GamesPage({ language, onLanguageChange }: { language: Language; onLangu
 function WhereWindsMeetPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   const tools = [
-    { label: "GVG Planner", detail: t.planner, href: "/games/where-winds-meet/gvg-planner/" },
-    { label: "Guild War Manager", detail: t.registration, href: guildWarUrl, external: true },
+    { label: "GVG Planner", detail: t.planner, href: "/games/where-winds-meet/gvg-planner/", external: false },
+    { label: "Guild War Manager", detail: t.registration, href: "/games/where-winds-meet/guild-war/", external: false },
   ];
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
@@ -181,10 +193,26 @@ function WhereWindsMeetPage({ language, onLanguageChange }: { language: Language
   );
 }
 
+function GuildWarPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+  const t = copy[language];
+  return <Shell language={language} onLanguageChange={onLanguageChange}>
+    <section className="manager-hero">
+      <div><a className="back-link" href="/games/where-winds-meet">← Where Winds Meet</a><p className="eyebrow">WHERE WINDS MEET · GUILD WAR</p><h1>Ready the<br /><em>guild.</em></h1><p className="intro">{t.guildWarIntro}</p></div>
+      <aside className="manager-status"><span className="status-dot" /> <span>{t.statusReady}</span><strong>{t.nextRound}</strong><small>Saturday · 19:30 / 20:15 / 21:15 / 21:50</small></aside>
+    </section>
+    <section className="manager-actions" aria-label="Guild War actions">
+      <a className="manager-action manager-action-primary" href={guildWarUrl} target="_blank" rel="noreferrer"><span>01</span><strong>{t.openRegister}</strong><small>Players, loadouts, role and availability <ExternalMark /></small></a>
+      <div className="manager-action manager-action-muted"><span>02</span><strong>{t.openBuilder}</strong><small>Organizer access will be connected next</small><b>SOON</b></div>
+    </section>
+    <p className="manager-note">✦ {t.managerNote}</p>
+  </Shell>;
+}
+
 export default function App() {
   const [language, setLanguage] = useLanguage();
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   if (path === "/games") return <GamesPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
+  if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   return <HomePage language={language} onLanguageChange={setLanguage} />;
 }
