@@ -81,3 +81,11 @@ footer { margin-top: 50px; text-align: center; text-transform: none; letter-spac
 .language-toggle button.active { color: #171b1e; background: #d0a86b; }
 .language-toggle button:hover:not(.active) { color: #f5f2eb; }
 @media (max-width: 760px) { .language-toggle button { padding: 4px 7px; } }
+
+.manager-hero { display:flex; justify-content:space-between; align-items:end; gap:32px; padding:72px 0 38px; }
+.manager-hero .back-link { display:inline-block; margin-bottom:38px; }
+.manager-hero h1 { margin-top:0; }
+.manager-status { min-width:290px; padding:22px; border:1px solid rgba(208,168,107,.3); background:linear-gradient(145deg,rgba(52,69,76,.55),rgba(32,38,41,.9)); display:grid; gap:10px; color:#b8bfbb; font:11px "DM Mono",monospace; letter-spacing:.06em; }
+.manager-status strong { color:#d0a86b; font-size:12px; margin-top:18px; }.manager-status small { color:#9ca5a3; line-height:1.6; letter-spacing:0; }.status-dot { width:8px; height:8px; border-radius:50%; background:#83c98a; box-shadow:0 0 14px #83c98a; display:inline-block; }
+.manager-actions { max-width:900px; display:grid; grid-template-columns:1fr 1fr; gap:13px; }.manager-action { position:relative; min-height:170px; padding:25px; display:grid; align-content:start; gap:12px; color:#f5f2eb; text-decoration:none; border:1px solid rgba(245,242,235,.13); background:#202629; transition:transform .2s,border-color .2s,background .2s; }.manager-action:hover { transform:translateY(-3px); border-color:rgba(208,168,107,.72); background:#252d30; }.manager-action span { color:#d0a86b; font:11px "DM Mono",monospace; }.manager-action strong { font-size:21px; }.manager-action small { color:#aab4b1; font-size:12px; line-height:1.6; }.manager-action-primary { background:linear-gradient(135deg,rgba(208,168,107,.2),#202629 70%); border-color:rgba(208,168,107,.45); }.manager-action-muted { opacity:.68; border-style:dashed; }.manager-action b { position:absolute; top:25px; right:25px; color:#9ca5a3; font:10px "DM Mono",monospace; }.manager-note { max-width:900px; margin:18px 0 0; color:#9ca5a3; font-size:12px; }
+@media (max-width:760px) { .manager-hero { display:block; padding:52px 0 30px; }.manager-hero .back-link { margin-bottom:32px; }.manager-status { min-width:0; margin-top:30px; }.manager-actions { grid-template-columns:1fr; }.manager-action { min-height:145px; } }
