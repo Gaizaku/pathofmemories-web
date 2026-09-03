@@ -217,24 +217,33 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
   </Shell>;
 }
 
-function GuidesPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
-  const t = copy[language];
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All");
-  const guides = language === "th" ? [
-    ["Tune", "พื้นฐานการจัด Tune สำหรับ GVG", "เริ่มจากบทบาทและหน้าที่ของทีม แล้วค่อยเลือก Tune ที่เหมาะกับแผน"], ["Mystic Skill", "Mystic Skill ที่ควรรู้ก่อนลงสนาม", "สรุปจังหวะใช้ Skill สำคัญและสิ่งที่ควรสื่อสารกับทีม"], ["EX Skill", "แนวทาง EX Skill แยกตามบทบาท", "รายการตั้งต้นสำหรับ DPS, Tank และ Support เพื่อใช้คุยในกิลด์"], ["Command Skill", "Command Skill และการประสานงาน", "แนวคิดการจับคู่ Skill กับช่วงเวลาของแผนการรบ"]
+type Guide = { slug: string; category: string; title: string; detail: string; body: string[] };
+
+function getGuides(language: Language): Guide[] {
+  return language === "th" ? [
+    { slug: "tune-gvg", category: "Tune", title: "พื้นฐานการจัด Tune สำหรับ GVG", detail: "เริ่มจากบทบาทและหน้าที่ของทีม แล้วค่อยเลือก Tune ที่เหมาะกับแผน", body: ["การ Tune สำหรับ GvG ใช้ Tune Arena Attune โดยใช้ดอกไม้สีชมพู", "Tune ส่วนหมวก: Priority คือกรอบสีเขียว ให้จูนจนกว่าจะได้ผลเพิ่มระยะเวลา Tenacity หลังใช้ Serene Breeze", "กรอบเหลืองช่วยลดคูลดาวน์ Serene Breeze ได้ 4 วินาที ส่วนกรอบแดงไม่ใช้"] },
+    { slug: "mystic-skill", category: "Mystic Skill", title: "Mystic Skill ที่ควรรู้ก่อนลงสนาม", detail: "สรุป Skill AOE สำคัญและจังหวะที่ควรสื่อสารกับทีม", body: ["สกิล AOE ทุกคนควรมีเพื่อช่วยทำดาเมจ: Flaming Meteor (สำคัญอันดับ 1), Lion's Roar (อันดับ 2), Bursting Nine และ Flute of the Tides", "แนะนำให้อัป Flaming Meteor ถึงขั้น 6 แบบอัปเกรดเพื่อเพิ่มรัศมีวงสกิล และใช้ในจังหวะเพื่อนดูดหรือตะลุมบอล", "Lion's Roar ช่วยลด Endurance และหากใช้หลัง Leaping Toad จะแพร่พิษไปยังศัตรูอื่นได้"] },
+    { slug: "ex-skill", category: "EX Skill", title: "แนวทาง EX Skill แยกตามบทบาท", detail: "รายการตั้งต้นสำหรับ DPS, Tank และ Support เพื่อใช้คุยในกิลด์", body: ["เลือก EX Skill ให้สอดคล้องกับหน้าที่ในแผน ไม่จำเป็นต้องใช้ชุดเดียวกันทุกคน", "Tank ควรเตรียม Skill ที่ช่วยดึงหรือควบคุมพื้นที่ ส่วน DPS ให้เน้นจังหวะ burst และการตาม call ของทีม", "ชุดนี้เป็นแนวทางเริ่มต้น ควรตรวจสอบกับ patch และแผนล่าสุดก่อนประกาศใช้"] },
+    { slug: "command-skill", category: "Command Skill", title: "Command Skill และการประสานงาน", detail: "แนวคิดการจับคู่ Skill กับช่วงเวลาของแผนการรบ", body: ["Frontline Zeal เพิ่มดาเมจในการตีป้อมและห่าน เหมาะกับการอัปต่อเนื่องเมื่อมีทรัพยากร", "Sprint ใช้เร่งการแบกต้นไม้ และ Relentless Advance ใช้ช่วยคนแบกเมื่อถูก CC หนัก", "ควรประกาศผู้กดและจังหวะใช้ใน Discord เพื่อลดการกดซ้ำและประหยัด Command Point"] }
   ] : [
-    ["Tune", "GVG tune fundamentals", "Start with the team role and job, then choose a tune that fits the plan."], ["Mystic Skill", "Mystic skills to know before battle", "A starter note on timing and the callouts worth sharing with the team."], ["EX Skill", "EX skills by role", "A starting list for DPS, Tank, and Support discussions."], ["Command Skill", "Command skills and coordination", "Ideas for pairing skills with key moments in the battle plan."]
+    { slug: "tune-gvg", category: "Tune", title: "GVG tune fundamentals", detail: "Start with the team role, then choose a tune that fits the plan.", body: ["GVG tune uses Arena Attune with pink flowers.", "For the helmet, prioritize the green frame to extend Tenacity after Serene Breeze.", "The yellow frame can reduce Serene Breeze cooldown by 4 seconds; skip the red frame."] },
+    { slug: "mystic-skill", category: "Mystic Skill", title: "Mystic skills to know before battle", detail: "A starter note on important AOE skills and team callouts.", body: ["Everyone should carry an AOE skill: Flaming Meteor (priority 1), Lion's Roar (priority 2), Bursting Nine, and Flute of the Tides.", "Upgrade Flaming Meteor to tier 6 enhanced for a larger radius and use it during group pulls.", "Lion's Roar reduces Endurance and can spread poison after Leaping Toad."] },
+    { slug: "ex-skill", category: "EX Skill", title: "EX skills by role", detail: "A starting list for DPS, Tank, and Support discussions.", body: ["Choose an EX Skill that matches the job in the plan; not everyone needs the same setup.", "Tanks should prepare control and area tools, while DPS should focus on burst timing and team calls.", "Review this starter note against the current patch before publishing it as final guidance."] },
+    { slug: "command-skill", category: "Command Skill", title: "Command skills and coordination", detail: "Ideas for pairing skills with key moments in the battle plan.", body: ["Frontline Zeal boosts damage against towers and the goose; upgrade it steadily when resources allow.", "Use Sprint to speed tree carrying and Relentless Advance when the carrier is under heavy CC.", "Call out the user and timing in Discord to avoid duplicate casts and wasted Command Points."] }
   ];
-  const categories = ["All", ...guides.map(([item]) => item)];
-  const visibleGuides = guides.filter(([item, title, detail]) => (category === "All" || item === category) && `${item} ${title} ${detail}`.toLowerCase().includes(query.trim().toLowerCase()));
-  return <Shell language={language} onLanguageChange={onLanguageChange}>
-    <section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet">← Where Winds Meet</a><p className="eyebrow">WHERE WINDS MEET · GUIDES</p><h1>{t.guidesPageTitle}</h1><p className="intro">{t.guidesPageIntro}</p></section>
-    <div className="guides-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label={t.searchGuides} placeholder={t.searchGuides} /><span>{t.reviewed}</span></div>
-    <div className="guide-filters" role="group" aria-label="Guide categories">{categories.map((item) => <button type="button" className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}</div>
-    {visibleGuides.length > 0 ? <section className="guide-grid" aria-label="Guides">{visibleGuides.map(([item,title,detail]) => <a className="guide-card" href={`#${item.toLowerCase().replaceAll(" ", "-")}`} key={item}><span className="guide-category">{item}</span><h2>{title}</h2><p>{detail}</p><span className="guide-soon">V1 · CURATED ↗</span></a>)}</section> : <div className="guide-empty"><strong>{language === "th" ? "ยังไม่พบ Guide" : "No guides found"}</strong><span>{language === "th" ? "ลองเปลี่ยนคำค้นหาหรือเลือกทุกหมวด" : "Try another search or show all categories."}</span></div>}
-    <p className="manager-note">✦ {language === "th" ? "เนื้อหาชุดนี้เป็นโครงเริ่มต้น จะเชื่อมข้อมูลที่ตรวจสอบแล้วจาก Google Sheet ในขั้นถัดไป" : "This is a curated starter set. Verified Google Sheet content will be connected next."}</p>
-  </Shell>;
+}
+
+function GuidesPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+  const t = copy[language]; const [query, setQuery] = useState(""); const [category, setCategory] = useState("All"); const guides = getGuides(language);
+  const categories = ["All", ...guides.map((guide) => guide.category)];
+  const visibleGuides = guides.filter((guide) => (category === "All" || guide.category === category) && `${guide.category} ${guide.title} ${guide.detail}`.toLowerCase().includes(query.trim().toLowerCase()));
+  return <Shell language={language} onLanguageChange={onLanguageChange}><section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet">← Where Winds Meet</a><p className="eyebrow">WHERE WINDS MEET · GUIDES</p><h1>{t.guidesPageTitle}</h1><p className="intro">{t.guidesPageIntro}</p></section><div className="guides-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label={t.searchGuides} placeholder={t.searchGuides} /><span>{t.reviewed}</span></div><div className="guide-filters" role="group" aria-label="Guide categories">{categories.map((item) => <button type="button" className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}</div>{visibleGuides.length > 0 ? <section className="guide-grid" aria-label="Guides">{visibleGuides.map((guide) => <a className="guide-card" href={`/games/where-winds-meet/guides/${guide.slug}/`} key={guide.slug}><span className="guide-category">{guide.category}</span><h2>{guide.title}</h2><p>{guide.detail}</p><span className="guide-soon">V1 · READ ↗</span></a>)}</section> : <div className="guide-empty"><strong>{language === "th" ? "ยังไม่พบ Guide" : "No guides found"}</strong><span>{language === "th" ? "ลองเปลี่ยนคำค้นหาหรือเลือกทุกหมวด" : "Try another search or show all categories."}</span></div>}<p className="manager-note">✦ {language === "th" ? "ข้อมูลตั้งต้นจากชีตที่แนบมาและยังควรตรวจสอบกับ patch ล่าสุดก่อนเผยแพร่ถาวร" : "Starter content is based on the supplied sheet and should be checked against the latest patch before final publication."}</p></Shell>;
+}
+
+function GuideDetailPage({ slug, language, onLanguageChange }: { slug: string; language: Language; onLanguageChange: (language: Language) => void }) {
+  const guide = getGuides(language).find((item) => item.slug === slug);
+  if (!guide) return <GuidesPage language={language} onLanguageChange={onLanguageChange} />;
+  return <Shell language={language} onLanguageChange={onLanguageChange}><section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet/guides/">← Guides</a><p className="eyebrow">{guide.category} · WHERE WINDS MEET</p><h1>{guide.title}</h1><p className="intro">{guide.detail}</p></section><article className="guide-detail">{guide.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<div className="guide-detail-note">V1 · CURATED STARTER CONTENT</div></article></Shell>;
 }
 
 export default function App() {
@@ -243,6 +252,7 @@ export default function App() {
   if (path === "/games") return <GamesPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guides") return <GuidesPage language={language} onLanguageChange={setLanguage} />;
+  if (path.startsWith("/games/where-winds-meet/guides/")) return <GuideDetailPage slug={path.split("/").filter(Boolean).pop() || ""} language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   return <HomePage language={language} onLanguageChange={setLanguage} />;
 }
