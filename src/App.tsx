@@ -39,6 +39,10 @@ const copy = {
     managerNote: "ยังไม่ต้อง login เพื่อเริ่มใช้งาน",
     nextRound: "รอบถัดไป",
     statusReady: "ระบบพร้อมใช้งาน",
+    guidesPageTitle: "ความรู้ของกิลด์",
+    guidesPageIntro: "รวมแนวทาง Tune และ Skill ที่คัดไว้สำหรับการเตรียมตัว GVG",
+    searchGuides: "ค้นหา Guide...",
+    reviewed: "ตัวอย่างที่คัดไว้",
     readyForMore: "พร้อมสำหรับเนื้อหาเพิ่มเติม",
     guidesTitle: "Guides และ Builds จะอยู่ที่นี่ในลำดับถัดไป",
     guidesHint: "ข้อมูล Tune, Mystic Skill, EX Skill, Command Skill และ Battlefield ที่ช่วยกันรวบรวมไว้ สามารถจัดระเบียบเป็น Guides ที่ค้นหาได้ โดยไม่ต้องเปลี่ยนโครงสร้างของเกมนี้",
@@ -76,6 +80,10 @@ const copy = {
     managerNote: "No login is required to get started.",
     nextRound: "NEXT ROUND",
     statusReady: "SYSTEM READY",
+    guidesPageTitle: "Guild knowledge",
+    guidesPageIntro: "Curated Tune and Skill notes for GVG preparation.",
+    searchGuides: "Search guides...",
+    reviewed: "CURATED STARTER SET",
     readyForMore: "READY FOR MORE",
     guidesTitle: "Guides and builds will live here next.",
     guidesHint: "The shared Tune, Mystic Skill, EX Skill, Command Skill, and battlefield notes can be cleaned up into searchable guides without changing this game structure.",
@@ -181,6 +189,7 @@ function WhereWindsMeetPage({ language, onLanguageChange }: { language: Language
   const tools = [
     { label: "GVG Planner", detail: t.planner, href: "/games/where-winds-meet/gvg-planner/", external: false },
     { label: "Guild War Manager", detail: t.registration, href: "/games/where-winds-meet/guild-war/", external: false },
+    { label: "Guides", detail: t.guidesPageIntro, href: "/games/where-winds-meet/guides/", external: false },
   ];
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
@@ -208,11 +217,33 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
   </Shell>;
 }
 
+function GuidesPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+  const t = copy[language];
+  const guides = language === "th" ? [
+    ["Tune", "พื้นฐานการจัด Tune สำหรับ GVG", "เริ่มจากบทบาทและหน้าที่ของทีม แล้วค่อยเลือก Tune ที่เหมาะกับแผน"],
+    ["Mystic Skill", "Mystic Skill ที่ควรรู้ก่อนลงสนาม", "สรุปจังหวะใช้ Skill สำคัญและสิ่งที่ควรสื่อสารกับทีม"],
+    ["EX Skill", "แนวทาง EX Skill แยกตามบทบาท", "รายการตั้งต้นสำหรับ DPS, Tank และ Support เพื่อใช้คุยในกิลด์"],
+    ["Command Skill", "Command Skill และการประสานงาน", "แนวคิดการจับคู่ Skill กับช่วงเวลาของแผนการรบ"]
+  ] : [
+    ["Tune", "GVG tune fundamentals", "Start with the team role and job, then choose a tune that fits the plan."],
+    ["Mystic Skill", "Mystic skills to know before battle", "A starter note on timing and the callouts worth sharing with the team."],
+    ["EX Skill", "EX skills by role", "A starting list for DPS, Tank, and Support discussions."],
+    ["Command Skill", "Command skills and coordination", "Ideas for pairing skills with key moments in the battle plan."]
+  ];
+  return <Shell language={language} onLanguageChange={onLanguageChange}>
+    <section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet">← Where Winds Meet</a><p className="eyebrow">WHERE WINDS MEET · GUIDES</p><h1>{t.guidesPageTitle}</h1><p className="intro">{t.guidesPageIntro}</p></section>
+    <div className="guides-toolbar"><input aria-label={t.searchGuides} placeholder={t.searchGuides} /><span>{t.reviewed}</span></div>
+    <section className="guide-grid" aria-label="Guides">{guides.map(([category,title,detail]) => <article className="guide-card" key={category}><span className="guide-category">{category}</span><h2>{title}</h2><p>{detail}</p><span className="guide-soon">V1 · CURATED</span></article>)}</section>
+    <p className="manager-note">✦ เนื้อหาชุดนี้เป็นโครงเริ่มต้น จะเชื่อมข้อมูลที่ตรวจสอบแล้วจาก Google Sheet ในขั้นถัดไป</p>
+  </Shell>;
+}
+
 export default function App() {
   const [language, setLanguage] = useLanguage();
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   if (path === "/games") return <GamesPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
+  if (path === "/games/where-winds-meet/guides") return <GuidesPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   return <HomePage language={language} onLanguageChange={setLanguage} />;
 }
