@@ -48,7 +48,7 @@ const copy = {
     guidesTitle: "Guides และ Builds จะอยู่ที่นี่ในลำดับถัดไป",
     guidesHint: "ข้อมูล Tune, Mystic Skill, EX Skill, Command Skill และ Battlefield ที่ช่วยกันรวบรวมไว้ สามารถจัดระเบียบเป็น Guides ที่ค้นหาได้ โดยไม่ต้องเปลี่ยนโครงสร้างของเกมนี้",
     footer: "สร้างเพื่อกิลด์ Path of Memories",
-    language: "ภาษา",
+    language: "ภาษา", discord: "Discord", share: "แชร์ลิงก์", copied: "คัดลอกแล้ว", discordTitle: "พื้นที่ของกิลด์บน Discord", discordIntro: "รวมทางลัดสำหรับประกาศ นัดหมาย และพูดคุยกับสมาชิก Path of Memories", discordServer: "Discord Server", discordServerHint: "ใส่ invite link ของเซิร์ฟเวอร์เมื่อพร้อม", discordChannels: "ช่องสำคัญ", discordChannelsHint: "เพิ่มลิงก์ channel สำหรับ GVG, Guides หรือประกาศได้ภายหลัง",
   },
   en: {
     games: "Games",
@@ -89,7 +89,7 @@ const copy = {
     guidesTitle: "Guides and builds will live here next.",
     guidesHint: "The shared Tune, Mystic Skill, EX Skill, Command Skill, and battlefield notes can be cleaned up into searchable guides without changing this game structure.",
     footer: "Made for the Path of Memories guild",
-    language: "Language",
+    language: "Language", discord: "Discord", share: "Share link", copied: "Copied", discordTitle: "Our Discord space", discordIntro: "Shortcuts for announcements, sessions, and Path of Memories guild chat.", discordServer: "Discord Server", discordServerHint: "Add the server invite link when ready.", discordChannels: "Important channels", discordChannelsHint: "Add GVG, Guides, or announcement channels later.",
   },
 } as const;
 
@@ -121,6 +121,12 @@ function ExternalMark() {
   return <span className="external-mark" aria-hidden="true">↗</span>;
 }
 
+function ShareButton({ language }: { language: Language }) {
+  const [done, setDone] = useState(false); const label = done ? copy[language].copied : copy[language].share;
+  const share = async () => { try { if (navigator.share) await navigator.share({ title: document.title, url: window.location.href }); else await navigator.clipboard.writeText(window.location.href); setDone(true); window.setTimeout(() => setDone(false), 1600); } catch { /* cancelled */ } };
+  return <button className="share-button" type="button" onClick={share}>↗ {label}</button>;
+}
+
 function Shell({ children, language, onLanguageChange }: { children: ReactNode; language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   return (
@@ -129,6 +135,7 @@ function Shell({ children, language, onLanguageChange }: { children: ReactNode; 
         <a className="brand" href="/" aria-label="Path of Memories home"><span className="brand-mark">P</span><span>Path of Memories</span></a>
         <div className="top-links">
           <a href="/games">{t.games}</a>
+          <a href="/discord">{t.discord}</a>
           <a href={guildWarUrl} target="_blank" rel="noreferrer">{t.guildWar} <ExternalMark /></a>
           <LanguageToggle language={language} onChange={onLanguageChange} />
         </div>
@@ -230,13 +237,19 @@ function GuidesPage({ language, onLanguageChange }: { language: Language; onLang
 function GuideDetailPage({ slug, language, onLanguageChange }: { slug: string; language: Language; onLanguageChange: (language: Language) => void }) {
   const guide = getGuides(language).find((item) => item.slug === slug);
   if (!guide) return <GuidesPage language={language} onLanguageChange={onLanguageChange} />;
-  return <Shell language={language} onLanguageChange={onLanguageChange}><section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet/guides/">← Guides</a><p className="eyebrow">{guide.category} · WHERE WINDS MEET</p><h1>{guide.title}</h1><p className="intro">{guide.detail}</p></section><article className="guide-detail">{guide.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<div className="guide-detail-note">V1 · CURATED STARTER CONTENT</div></article></Shell>;
+  return <Shell language={language} onLanguageChange={onLanguageChange}><section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet/guides/">← Guides</a><p className="eyebrow">{guide.category} · WHERE WINDS MEET</p><h1>{guide.title}</h1><p className="intro">{guide.detail}</p><ShareButton language={language} /></section><article className="guide-detail">{guide.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<div className="guide-detail-note">V1 · CURATED STARTER CONTENT</div></article></Shell>;
+}
+
+function DiscordPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+  const t = copy[language];
+  return <Shell language={language} onLanguageChange={onLanguageChange}><section className="page-intro discord-intro"><a className="back-link" href="/">← Path of Memories</a><p className="eyebrow">PATH OF MEMORIES · DISCORD</p><h1>{t.discordTitle}</h1><p className="intro">{t.discordIntro}</p></section><section className="discord-grid"><div className="discord-card discord-card-primary"><span className="guide-category">{t.discordServer}</span><h2>Path of Memories</h2><p>{t.discordServerHint}</p><span className="discord-placeholder">LINK TO BE ADDED</span></div><div className="discord-card"><span className="guide-category">{t.discordChannels}</span><h2>GVG · Guides · Announcements</h2><p>{t.discordChannelsHint}</p><span className="discord-placeholder">CHANNEL SHORTCUTS</span></div></section></Shell>;
 }
 
 export default function App() {
   const [language, setLanguage] = useLanguage();
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   if (path === "/games") return <GamesPage language={language} onLanguageChange={setLanguage} />;
+  if (path === "/discord") return <DiscordPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guides") return <GuidesPage language={language} onLanguageChange={setLanguage} />;
   if (path.startsWith("/games/where-winds-meet/guides/")) return <GuideDetailPage slug={path.split("/").filter(Boolean).pop() || ""} language={language} onLanguageChange={setLanguage} />;
