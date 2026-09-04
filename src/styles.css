@@ -572,6 +572,21 @@ h1 em {
 .guide-card:hover { transform: translateY(-4px); border-color: rgba(255, 209, 128, 0.48); }
 .guide-index { color: #6f688a; font: 500 10px "DM Mono", monospace; }
 .guide-category { margin-top: 27px; color: var(--amber); font: 500 10px "DM Mono", monospace; letter-spacing: 0.08em; }
+.guide-card-meta { margin-top: 27px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.guide-card-meta .guide-category { margin-top: 0; }
+.guide-status {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  color: #bcb5ce;
+  font: 600 8px "DM Mono", monospace;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.guide-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #65d6a0; box-shadow: 0 0 10px rgba(101, 214, 160, 0.72); }
+.guide-status.needs-review::before { background: var(--amber); box-shadow: 0 0 10px rgba(255, 173, 63, 0.68); }
+.detail-status { margin-top: 20px; }
 .guide-card h2 { margin: 10px 0 8px; font-family: "Marcellus", "Noto Sans Thai", serif; font-size: 21px; font-weight: 400; line-height: 1.35; }
 .guide-card p { margin: 0 0 25px; color: #aaa4bd; font-size: 11px; line-height: 1.65; }
 .guide-read { margin-top: auto; color: var(--gold); font: 500 9px "DM Mono", monospace; letter-spacing: 0.1em; }
@@ -608,7 +623,26 @@ h1 em {
   box-shadow: var(--shadow);
 }
 
-.guide-detail p { max-width: 760px; margin: 0 0 20px; color: #d6d0df; font-size: 15px; line-height: 1.95; }
+.guide-review-note {
+  margin-bottom: 36px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 5px;
+  color: #d8d1e3;
+  border: 1px solid rgba(255, 173, 63, 0.28);
+  border-radius: 13px;
+  background: rgba(255, 173, 63, 0.07);
+}
+.guide-review-note strong { color: var(--gold); font-size: 13px; }
+.guide-review-note span { font-size: 11px; line-height: 1.65; }
+.guide-section { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 20px; padding: 28px 0; border-top: 1px solid rgba(255, 209, 128, 0.12); }
+.guide-section:first-of-type { padding-top: 0; border-top: 0; }
+.guide-section-number { padding-top: 5px; color: var(--amber); font: 500 9px "DM Mono", monospace; letter-spacing: 0.08em; }
+.guide-section h2 { margin: 0 0 15px; color: var(--cream); font-family: "Marcellus", "Noto Sans Thai", serif; font-size: clamp(1.25rem, 2.5vw, 1.6rem); font-weight: 400; }
+.guide-detail p { max-width: 760px; margin: 0 0 16px; color: #d6d0df; font-size: 15px; line-height: 1.9; }
+.guide-detail ul { max-width: 790px; margin: 0; padding: 0; display: grid; gap: 11px; list-style: none; }
+.guide-detail li { position: relative; padding-left: 22px; color: #d6d0df; font-size: 14px; line-height: 1.75; }
+.guide-detail li::before { content: "✦"; position: absolute; left: 0; top: 0.1em; color: var(--amber); font-size: 9px; }
 .guide-detail-note { margin-top: 38px; padding-top: 17px; color: var(--amber); border-top: 1px solid rgba(255, 209, 128, 0.16); font: 500 9px "DM Mono", monospace; letter-spacing: 0.12em; }
 
 .discord-intro { max-width: 790px; }
@@ -716,7 +750,9 @@ h1 em {
   .guide-grid { grid-template-columns: 1fr; }
   .guide-card { min-height: 205px; border-radius: 15px; }
   .guide-detail { border-radius: 17px; }
+  .guide-section { grid-template-columns: 30px minmax(0, 1fr); gap: 12px; }
   .guide-detail p { font-size: 14px; line-height: 1.85; }
+  .guide-detail li { font-size: 13px; line-height: 1.7; }
   .discord-panel { grid-template-columns: 1fr; padding: 23px; text-align: center; }
   .discord-orb { margin: 0 auto; }
   .discord-channels { grid-column: auto; padding: 20px 0 0; }
