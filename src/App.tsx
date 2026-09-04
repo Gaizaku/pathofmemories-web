@@ -10,86 +10,92 @@ const languageKey = "pom-language";
 
 const copy = {
   th: {
-    games: "Games",
-    guildWar: "Guild War",
-    playTogether: "เล่นด้วยกัน.",
-    keepMemories: "เก็บความทรงจำไว้.",
-    intro: "ศูนย์กลางของกิลด์สำหรับวางแผนการรบ ใช้เครื่องมือของเกม และเตรียมตัวให้พร้อมสำหรับการเล่นครั้งถัดไป",
-    explore: "ไปที่ Where Winds Meet",
-    manager: "เปิด Guild War Manager",
-    noAccount: "เครื่องมือของกิลด์ในปัจจุบันยังไม่จำเป็นต้องมีบัญชี",
-    playSpaces: "พื้นที่สำหรับการเล่น",
-    chooseGame: "เลือกเกม",
-    chooseGameHint: "แต่ละเกมจะมี Planner, Guides, Builds และเครื่องมือของกิลด์แยกเป็นของตัวเอง",
-    activeGame: "เกมที่ใช้งานอยู่",
+    language: "ภาษา",
+    discord: "Discord",
+    world: "Where Winds Meet",
+    homeKicker: "แคมป์ของพวกเรา · EST. 2026",
+    playTogether: "คืนนี้ มาเล่นด้วยกัน",
+    keepMemories: "แล้วสร้างความทรงจำใหม่",
+    intro: "บ้านเล็ก ๆ ของชาว Path of Memories สำหรับนัดหมาย วางแผน และแบ่งปันสิ่งที่ค้นพบระหว่างการผจญภัย",
+    explore: "เข้าสู่ Where Winds Meet",
+    noAccount: "เปิดใช้เครื่องมือได้ทันที · ไม่ต้องเข้าสู่ระบบ",
+    playSpaces: "เส้นทางคืนนี้",
+    chooseGame: "ทุกอย่างที่กิลด์ใช้ อยู่ตรงนี้",
+    chooseGameHint: "เลือกสิ่งที่ต้องการแล้วไปต่อได้เลย ไม่ต้องผ่านเมนูหลายชั้น",
+    activeGame: "โลกที่กำลังเล่น",
     gameCard: "วางแผน Guild War เตรียมทีม และแบ่งปันความรู้ร่วมกัน",
-    comingLater: "เพิ่มภายหลัง",
-    morePaths: "เส้นทางใหม่",
-    morePathsHint: "สามารถเพิ่มเกมใหม่ได้โดยไม่ต้องเปลี่ยนโครงสร้างเว็บหลัก",
-    gameHub: "ศูนย์รวมเกม",
-    choosePath: "เลือกเส้นทางของคุณ",
-    choosePathHint: "รวมเครื่องมือและความรู้แยกตามเกม เพื่อให้กิลด์ขยายต่อได้โดยไม่ทำให้หน้าเว็บยุ่งยาก",
-    allGames: "เกมทั้งหมด",
-    gameTools: "เครื่องมือของกิลด์",
-    whereMeetHint: "รวมทุกอย่างที่กิลด์ใช้เตรียมตัวสำหรับ GVG ตั้งแต่แผนการรบแบบ Interactive ไปจนถึงการลงทะเบียนประจำสัปดาห์",
-    planner: "แผนการรบแบบ Interactive, Timeline และช่วงเวลาสำคัญ",
-    registration: "ลงทะเบียน War และเตรียมทีม",
-    guildWarIntro: "ศูนย์รวมการลงทะเบียนและเตรียมทีมสำหรับรอบ War ปัจจุบัน",
-    openRegister: "เปิดหน้าลงทะเบียน",
-    openBuilder: "เปิด Team Builder",
-    managerNote: "ยังไม่ต้อง login เพื่อเริ่มใช้งาน",
+    gameHub: "โลกของกิลด์",
+    choosePath: "เลือกโลกที่จะออกเดินทาง",
+    choosePathHint: "ตอนนี้พวกเราอยู่ใน Where Winds Meet และโครงสร้างนี้พร้อมรองรับเกมอื่นในอนาคต",
+    allGames: "← กลับหน้าหลัก",
+    gameTools: "WHERE WINDS MEET · GUILD CAMP",
+    whereMeetHint: "เครื่องมือที่จำเป็นสำหรับ GVG รวมไว้ในที่เดียว เลือกได้ทันทีว่าจะดูแผน ลงทะเบียน หรืออ่าน Guides",
+    planner: "เปิดแผนที่ Interactive, Timeline และจังหวะสำคัญของสนามรบ",
+    registration: "ลงทะเบียนรอบ War และเตรียมข้อมูลสำหรับจัดทีม",
+    guildWarIntro: "ลงชื่อเข้าร่วมรอบถัดไปและเช็กเวลานัดหมายได้จากจุดเดียว",
+    openRegister: "ไปหน้าลงทะเบียน",
+    openBuilder: "Team Builder",
+    managerNote: "เริ่มใช้งานได้โดยไม่ต้อง Login",
     nextRound: "รอบถัดไป",
-    statusReady: "ระบบพร้อมใช้งาน",
-    guidesPageTitle: "ความรู้ของกิลด์",
-    guidesPageIntro: "รวมแนวทาง Tune และ Skill ที่คัดไว้สำหรับการเตรียมตัว GVG",
-    searchGuides: "ค้นหา Guide...",
-    reviewed: "ตัวอย่างที่คัดไว้",
-    readyForMore: "พร้อมสำหรับเนื้อหาเพิ่มเติม",
-    guidesTitle: "Guides และ Builds จะอยู่ที่นี่ในลำดับถัดไป",
-    guidesHint: "ข้อมูล Tune, Mystic Skill, EX Skill, Command Skill และ Battlefield ที่ช่วยกันรวบรวมไว้ สามารถจัดระเบียบเป็น Guides ที่ค้นหาได้ โดยไม่ต้องเปลี่ยนโครงสร้างของเกมนี้",
-    footer: "สร้างเพื่อกิลด์ Path of Memories",
-    language: "ภาษา", discord: "Discord", share: "แชร์ลิงก์", copied: "คัดลอกแล้ว", discordTitle: "พื้นที่ของกิลด์บน Discord", discordIntro: "รวมทางลัดสำหรับประกาศ นัดหมาย และพูดคุยกับสมาชิก Path of Memories", discordServer: "Discord Server", discordServerHint: "ใส่ invite link ของเซิร์ฟเวอร์เมื่อพร้อม", discordChannels: "ช่องสำคัญ", discordChannelsHint: "เพิ่มลิงก์ channel สำหรับ GVG, Guides หรือประกาศได้ภายหลัง",
+    statusReady: "พร้อมใช้งาน",
+    guidesPageTitle: "บันทึกจากคนในกิลด์",
+    guidesPageIntro: "รวมแนวทาง Tune, Skill และเทคนิคที่ช่วยกันค้นพบสำหรับการเตรียมตัว GVG",
+    searchGuides: "ค้นหา Guides...",
+    reviewed: "เนื้อหาที่จัดไว้แล้ว",
+    footer: "สร้างไว้ให้ชาว Path of Memories",
+    share: "แชร์หน้านี้",
+    copied: "คัดลอกแล้ว",
+    discordTitle: "เจอกันต่อใน Discord",
+    discordIntro: "พื้นที่สำหรับประกาศ นัดหมาย และพูดคุยกันของชาว Path of Memories",
+    discordServer: "เซิร์ฟเวอร์ของกิลด์",
+    discordServerHint: "ทางเข้าหลักสำหรับพบสมาชิกและติดตามประกาศ",
+    discordChannels: "ห้องที่ใช้บ่อย",
+    discordChannelsHint: "GVG · Guides · Announcements",
+    bannerAlt: "สมาชิก Path of Memories รวมตัวกันรอบกองไฟใต้ท้องฟ้ายามค่ำ",
   },
   en: {
-    games: "Games",
-    guildWar: "Guild War",
-    playTogether: "Play together.",
-    keepMemories: "Keep the memories.",
-    intro: "A shared home for our guild to plan battles, explore game tools, and make the next session easier to join.",
-    explore: "Explore Where Winds Meet",
-    manager: "Open Guild War Manager",
-    noAccount: "No account is required for the current guild tools.",
-    playSpaces: "PLAY SPACES",
-    chooseGame: "Choose a game.",
-    chooseGameHint: "Each game can have its own planners, guides, builds, and guild tools.",
-    activeGame: "ACTIVE GAME",
+    language: "Language",
+    discord: "Discord",
+    world: "Where Winds Meet",
+    homeKicker: "OUR GUILD CAMP · EST. 2026",
+    playTogether: "Gather here tonight",
+    keepMemories: "and make a new memory",
+    intro: "A small home for Path of Memories to meet, plan, and share everything we discover along the way.",
+    explore: "Enter Where Winds Meet",
+    noAccount: "Open the guild tools instantly · No login required",
+    playSpaces: "TONIGHT'S PATHS",
+    chooseGame: "Everything the guild needs, in one place",
+    chooseGameHint: "Choose what you need and continue without digging through layers of menus.",
+    activeGame: "CURRENT WORLD",
     gameCard: "Guild War planning, team preparation, and shared knowledge.",
-    comingLater: "COMING LATER",
-    morePaths: "More paths",
-    morePathsHint: "New games can be added without changing the guild hub.",
-    gameHub: "GAME HUB",
-    choosePath: "Choose your path.",
-    choosePathHint: "Tools and knowledge are grouped by game, so the guild can grow without making the home page complicated.",
-    allGames: "← All games",
-    gameTools: "WHERE WINDS MEET · GUILD TOOLS",
-    whereMeetHint: "Everything the guild uses for GVG preparation, from the interactive plan to weekly registration.",
-    planner: "Interactive battle map, timeline, and key timings",
-    registration: "Register for war and prepare teams",
-    guildWarIntro: "One place to register and prepare teams for the current War round.",
+    gameHub: "GUILD WORLDS",
+    choosePath: "Choose a world to explore",
+    choosePathHint: "We are currently playing Where Winds Meet, with room for more games in the future.",
+    allGames: "← Back home",
+    gameTools: "WHERE WINDS MEET · GUILD CAMP",
+    whereMeetHint: "The essential GVG tools live in one place. Open the plan, register for War, or read the guild Guides.",
+    planner: "Open the interactive map, timeline, and key battle timings.",
+    registration: "Register for the next War and prepare the team roster.",
+    guildWarIntro: "Join the next round and check the session times from one place.",
     openRegister: "Open registration",
-    openBuilder: "Open Team Builder",
-    managerNote: "No login is required to get started.",
+    openBuilder: "Team Builder",
+    managerNote: "No login is required to get started",
     nextRound: "NEXT ROUND",
-    statusReady: "SYSTEM READY",
-    guidesPageTitle: "Guild knowledge",
-    guidesPageIntro: "Curated Tune and Skill notes for GVG preparation.",
-    searchGuides: "Search guides...",
-    reviewed: "CURATED STARTER SET",
-    readyForMore: "READY FOR MORE",
-    guidesTitle: "Guides and builds will live here next.",
-    guidesHint: "The shared Tune, Mystic Skill, EX Skill, Command Skill, and battlefield notes can be cleaned up into searchable guides without changing this game structure.",
-    footer: "Made for the Path of Memories guild",
-    language: "Language", discord: "Discord", share: "Share link", copied: "Copied", discordTitle: "Our Discord space", discordIntro: "Shortcuts for announcements, sessions, and Path of Memories guild chat.", discordServer: "Discord Server", discordServerHint: "Add the server invite link when ready.", discordChannels: "Important channels", discordChannelsHint: "Add GVG, Guides, or announcement channels later.",
+    statusReady: "READY",
+    guidesPageTitle: "Notes from the guild",
+    guidesPageIntro: "Tune, Skill, and GVG tips discovered and shared by our members.",
+    searchGuides: "Search Guides...",
+    reviewed: "CURATED NOTES",
+    footer: "Made for Path of Memories",
+    share: "Share this page",
+    copied: "Copied",
+    discordTitle: "Continue in Discord",
+    discordIntro: "The home of Path of Memories announcements, sessions, and guild chat.",
+    discordServer: "GUILD SERVER",
+    discordServerHint: "The main doorway to meet members and follow announcements.",
+    discordChannels: "FREQUENT CHANNELS",
+    discordChannelsHint: "GVG · Guides · Announcements",
+    bannerAlt: "Path of Memories members gathering around a campfire under the night sky",
   },
 } as const;
 
@@ -122,57 +128,82 @@ function ExternalMark() {
 }
 
 function ShareButton({ language }: { language: Language }) {
-  const [done, setDone] = useState(false); const label = done ? copy[language].copied : copy[language].share;
-  const share = async () => { try { if (navigator.share) await navigator.share({ title: document.title, url: window.location.href }); else await navigator.clipboard.writeText(window.location.href); setDone(true); window.setTimeout(() => setDone(false), 1600); } catch { /* cancelled */ } };
-  return <button className="share-button" type="button" onClick={share}>↗ {label}</button>;
+  const [done, setDone] = useState(false);
+  const label = done ? copy[language].copied : copy[language].share;
+  const share = async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: document.title, url: window.location.href });
+      else await navigator.clipboard.writeText(window.location.href);
+      setDone(true);
+      window.setTimeout(() => setDone(false), 1600);
+    } catch {
+      // The visitor cancelled the native share dialog.
+    }
+  };
+  return <button className="share-button" type="button" onClick={share}><span aria-hidden="true">✦</span>{label}</button>;
 }
 
 function Shell({ children, language, onLanguageChange }: { children: ReactNode; language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   return (
-    <main className="page-shell">
-      <nav className="topbar" aria-label="Primary navigation">
-        <a className="brand" href="/" aria-label="Path of Memories home"><span className="brand-mark">P</span><span>Path of Memories</span></a>
-        <div className="top-links">
-          <a href="/games">{t.games}</a>
-          <a href="/discord">{t.discord}</a>
-          <a href={guildWarUrl} target="_blank" rel="noreferrer">{t.guildWar} <ExternalMark /></a>
+    <main className="site-shell">
+      <header className="site-header">
+        <a className="brand" href="/" aria-label="Path of Memories home">
+          <span className="brand-mark" aria-hidden="true">◆</span>
+          <span className="brand-name"><span className="brand-long">Path of Memories</span><span className="brand-short">POM</span></span>
+        </a>
+        <nav className="top-links" aria-label="Primary navigation">
+          <a href="/games/where-winds-meet/"><span className="nav-long">{t.world}</span><span className="nav-short">WWM</span></a>
+          <a href="/discord/">{t.discord}</a>
           <LanguageToggle language={language} onChange={onLanguageChange} />
-        </div>
-      </nav>
-      {children}
-      <footer>{t.footer} · <span>pathofmemories.com</span></footer>
+        </nav>
+      </header>
+      <div className="site-content">{children}</div>
+      <footer className="site-footer"><span aria-hidden="true">✦</span>{t.footer}<span aria-hidden="true">✦</span></footer>
     </main>
   );
 }
 
 function HomePage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
+  const portals = [
+    { number: "01", label: "GVG Planner", detail: t.planner, href: "/games/where-winds-meet/gvg-planner/" },
+    { number: "02", label: "Guild War", detail: t.registration, href: "/games/where-winds-meet/guild-war/" },
+    { number: "03", label: "Guides", detail: t.guidesPageIntro, href: "/games/where-winds-meet/guides/" },
+  ];
+
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
-      <section className="hero" aria-labelledby="welcome-heading">
-        <div className="hero-copy">
-          <p className="eyebrow">PATH OF MEMORIES · EST. 2026</p>
-          <h1 id="welcome-heading">{t.playTogether}<br /><em>{t.keepMemories}</em></h1>
-          <p className="intro">{t.intro}</p>
-          <div className="hero-actions">
-            <a className="primary-button" href="/games/where-winds-meet/">{t.explore} <span aria-hidden="true">→</span></a>
-            <a className="secondary-button" href={guildWarUrl} target="_blank" rel="noreferrer">{t.manager} <ExternalMark /></a>
-          </div>
-          <p className="login-hint">{t.noAccount}</p>
+      <section className="home-hero" aria-labelledby="welcome-heading">
+        <div className="hero-media">
+          <img src="/assets/pathofmemories-banner.jpg" alt={t.bannerAlt} fetchPriority="high" />
         </div>
-        <div className="hero-art" role="img" aria-label="Path of Memories guild banner" />
+        <div className="hero-copy">
+          <div>
+            <p className="eyebrow">{t.homeKicker}</p>
+            <h1 id="welcome-heading">{t.playTogether}<br /><em>{t.keepMemories}</em></h1>
+          </div>
+          <div className="hero-summary">
+            <p className="intro">{t.intro}</p>
+            <a className="primary-button" href="/games/where-winds-meet/">{t.explore}<span aria-hidden="true">→</span></a>
+            <p className="login-hint">{t.noAccount}</p>
+          </div>
+        </div>
       </section>
-      <section className="section-heading" aria-labelledby="games-heading">
-        <div><p className="eyebrow">{t.playSpaces}</p><h2 id="games-heading">{t.chooseGame}</h2></div>
-        <p>{t.chooseGameHint}</p>
-      </section>
-      <section className="game-grid" aria-label="Games">
-        <a className="game-card game-card-active" href="/games/where-winds-meet/">
-          <span className="game-card-kicker">{t.activeGame}</span><h3>Where Winds Meet</h3><p>{t.gameCard}</p><span className="card-arrow" aria-hidden="true">↗</span>
-        </a>
-        <div className="game-card game-card-soon" aria-label={t.morePaths}>
-          <span className="game-card-kicker">{t.comingLater}</span><h3>{t.morePaths}</h3><p>{t.morePathsHint}</p><span className="card-arrow" aria-hidden="true">＋</span>
+
+      <section className="portal-section" aria-labelledby="portal-heading">
+        <div className="section-heading">
+          <div><p className="eyebrow">{t.playSpaces}</p><h2 id="portal-heading">{t.chooseGame}</h2></div>
+          <p>{t.chooseGameHint}</p>
+        </div>
+        <div className="portal-grid">
+          {portals.map((portal) => (
+            <a className="portal-card" href={portal.href} key={portal.label}>
+              <span className="portal-number">{portal.number}</span>
+              <span className="portal-copy"><strong>{portal.label}</strong><small>{portal.detail}</small></span>
+              <span className="portal-arrow" aria-hidden="true">↗</span>
+            </a>
+          ))}
         </div>
       </section>
     </Shell>
@@ -183,11 +214,17 @@ function GamesPage({ language, onLanguageChange }: { language: Language; onLangu
   const t = copy[language];
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
-      <section className="page-intro"><p className="eyebrow">{t.gameHub}</p><h1>{t.choosePath}</h1><p className="intro">{t.choosePathHint}</p></section>
-      <section className="game-grid game-grid-wide" aria-label="Games">
-        <a className="game-card game-card-active" href="/games/where-winds-meet/"><span className="game-card-kicker">{t.activeGame}</span><h3>Where Winds Meet</h3><p>{t.gameCard}</p><span className="card-arrow" aria-hidden="true">↗</span></a>
-        <div className="game-card game-card-soon"><span className="game-card-kicker">{t.comingLater}</span><h3>{t.morePaths}</h3><p>{t.morePathsHint}</p><span className="card-arrow" aria-hidden="true">＋</span></div>
+      <section className="page-intro compact-intro">
+        <p className="eyebrow">{t.gameHub}</p>
+        <h1>{t.choosePath}</h1>
+        <p className="intro">{t.choosePathHint}</p>
       </section>
+      <a className="realm-card" href="/games/where-winds-meet/">
+        <span className="realm-status"><i />{t.activeGame}</span>
+        <strong>Where Winds Meet</strong>
+        <small>{t.gameCard}</small>
+        <span className="realm-arrow" aria-hidden="true">→</span>
+      </a>
     </Shell>
   );
 }
@@ -195,59 +232,156 @@ function GamesPage({ language, onLanguageChange }: { language: Language; onLangu
 function WhereWindsMeetPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   const tools = [
-    { label: "GVG Planner", detail: t.planner, href: "/games/where-winds-meet/gvg-planner/", external: false },
-    { label: "Guild War Manager", detail: t.registration, href: "/games/where-winds-meet/guild-war/", external: false },
-    { label: "Guides", detail: t.guidesPageIntro, href: "/games/where-winds-meet/guides/", external: false },
+    { number: "01", label: "GVG Planner", detail: t.planner, href: "/games/where-winds-meet/gvg-planner/" },
+    { number: "02", label: "Guild War Manager", detail: t.registration, href: "/games/where-winds-meet/guild-war/" },
+    { number: "03", label: "Guides", detail: t.guidesPageIntro, href: "/games/where-winds-meet/guides/" },
   ];
+
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
-      <section className="page-intro game-page-intro"><a className="back-link" href="/games">{t.allGames}</a><p className="eyebrow">{t.gameTools}</p><h1>Where Winds<br /><em>Meet.</em></h1><p className="intro">{t.whereMeetHint}</p></section>
-      <section className="tool-list" aria-label="Where Winds Meet tools">
-        {tools.map((tool) => <a className="tool-row" key={tool.label} href={tool.href} target={tool.external ? "_blank" : undefined} rel={tool.external ? "noreferrer" : undefined}><span className="tool-icon" aria-hidden="true">✦</span><span className="tool-copy"><strong>{tool.label}</strong><small>{tool.detail}</small></span><span className="tool-arrow" aria-hidden="true">{tool.external ? "↗" : "→"}</span></a>)}
+      <section className="page-intro game-page-intro">
+        <a className="back-link" href="/">{t.allGames}</a>
+        <p className="eyebrow">{t.gameTools}</p>
+        <h1>Where Winds <em>Meet</em></h1>
+        <p className="intro">{t.whereMeetHint}</p>
       </section>
-      <section className="future-note"><p className="eyebrow">{t.readyForMore}</p><h2>{t.guidesTitle}</h2><p>{t.guidesHint}</p></section>
+      <section className="portal-grid game-portals" aria-label="Where Winds Meet tools">
+        {tools.map((tool) => (
+          <a className="portal-card" key={tool.label} href={tool.href}>
+            <span className="portal-number">{tool.number}</span>
+            <span className="portal-copy"><strong>{tool.label}</strong><small>{tool.detail}</small></span>
+            <span className="portal-arrow" aria-hidden="true">→</span>
+          </a>
+        ))}
+      </section>
     </Shell>
   );
 }
 
 function GuildWarPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
-  return <Shell language={language} onLanguageChange={onLanguageChange}>
-    <section className="manager-hero">
-      <div><a className="back-link" href="/games/where-winds-meet">← Where Winds Meet</a><p className="eyebrow">WHERE WINDS MEET · GUILD WAR</p><h1>Ready the<br /><em>guild.</em></h1><p className="intro">{t.guildWarIntro}</p></div>
-      <aside className="manager-status"><span className="status-dot" /> <span>{t.statusReady}</span><strong>{t.nextRound}</strong><small>Saturday · 19:30 / 20:15 / 21:15 / 21:50</small></aside>
-    </section>
-    <section className="manager-actions" aria-label="Guild War actions">
-      <a className="manager-action manager-action-primary" href={guildWarUrl} target="_blank" rel="noreferrer"><span>01</span><strong>{t.openRegister}</strong><small>Players, loadouts, role and availability <ExternalMark /></small></a>
-      <div className="manager-action manager-action-muted"><span>02</span><strong>{t.openBuilder}</strong><small>Organizer access will be connected next</small><b>SOON</b></div>
-    </section>
-    <p className="manager-note">✦ {t.managerNote}</p>
-  </Shell>;
+  return (
+    <Shell language={language} onLanguageChange={onLanguageChange}>
+      <section className="manager-hero">
+        <div>
+          <a className="back-link" href="/games/where-winds-meet/">← Where Winds Meet</a>
+          <p className="eyebrow">WHERE WINDS MEET · GUILD WAR</p>
+          <h1>Ready the <em>guild</em></h1>
+          <p className="intro">{t.guildWarIntro}</p>
+        </div>
+        <aside className="manager-status">
+          <span className="status-line"><i className="status-dot" />{t.statusReady}</span>
+          <strong>{t.nextRound}</strong>
+          <small>Saturday · 19:30 / 20:15 / 21:15 / 21:50</small>
+        </aside>
+      </section>
+      <section className="manager-actions" aria-label="Guild War actions">
+        <a className="manager-action manager-action-primary" href={guildWarUrl} target="_blank" rel="noreferrer">
+          <span>01</span><strong>{t.openRegister}</strong><small>Players · Loadouts · Role · Availability</small><ExternalMark />
+        </a>
+        <div className="manager-action manager-action-muted">
+          <span>02</span><strong>{t.openBuilder}</strong><small>{language === "th" ? "กำลังเตรียมพื้นที่สำหรับผู้จัดทีม" : "Organizer workspace is coming next"}</small><b>SOON</b>
+        </div>
+      </section>
+      <p className="manager-note">✦ {t.managerNote}</p>
+    </Shell>
+  );
 }
 
-function getGuides(language: Language) { return whereWindsMeetGuides[language]; }
+function getGuides(language: Language) {
+  return whereWindsMeetGuides[language];
+}
 
 function GuidesPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
-  const t = copy[language]; const [query, setQuery] = useState(""); const [category, setCategory] = useState("All"); const guides = getGuides(language);
-  const categories = ["All", ...guides.map((guide) => guide.category)];
-  const visibleGuides = guides.filter((guide) => (category === "All" || guide.category === category) && `${guide.category} ${guide.title} ${guide.detail}`.toLowerCase().includes(query.trim().toLowerCase()));
-  return <Shell language={language} onLanguageChange={onLanguageChange}><section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet">← Where Winds Meet</a><p className="eyebrow">WHERE WINDS MEET · GUIDES</p><h1>{t.guidesPageTitle}</h1><p className="intro">{t.guidesPageIntro}</p></section><div className="guides-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label={t.searchGuides} placeholder={t.searchGuides} /><span>{t.reviewed}</span></div><div className="guide-filters" role="group" aria-label="Guide categories">{categories.map((item) => <button type="button" className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}</div>{visibleGuides.length > 0 ? <section className="guide-grid" aria-label="Guides">{visibleGuides.map((guide) => <a className="guide-card" href={`/games/where-winds-meet/guides/${guide.slug}/`} key={guide.slug}><span className="guide-category">{guide.category}</span><h2>{guide.title}</h2><p>{guide.detail}</p><span className="guide-soon">V1 · READ ↗</span></a>)}</section> : <div className="guide-empty"><strong>{language === "th" ? "ยังไม่พบ Guide" : "No guides found"}</strong><span>{language === "th" ? "ลองเปลี่ยนคำค้นหาหรือเลือกทุกหมวด" : "Try another search or show all categories."}</span></div>}<p className="manager-note">✦ {language === "th" ? "ข้อมูลตั้งต้นจากชีตที่แนบมาและยังควรตรวจสอบกับ patch ล่าสุดก่อนเผยแพร่ถาวร" : "Starter content is based on the supplied sheet and should be checked against the latest patch before final publication."}</p></Shell>;
+  const t = copy[language];
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All");
+  const guides = getGuides(language);
+  const categories = ["All", ...new Set(guides.map((guide) => guide.category))];
+  const visibleGuides = guides.filter((guide) =>
+    (category === "All" || guide.category === category)
+    && `${guide.category} ${guide.title} ${guide.detail}`.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+
+  return (
+    <Shell language={language} onLanguageChange={onLanguageChange}>
+      <section className="page-intro guides-intro">
+        <a className="back-link" href="/games/where-winds-meet/">← Where Winds Meet</a>
+        <p className="eyebrow">WHERE WINDS MEET · GUIDES</p>
+        <h1>{t.guidesPageTitle}</h1>
+        <p className="intro">{t.guidesPageIntro}</p>
+      </section>
+      <div className="guides-toolbar">
+        <label className="search-field"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label={t.searchGuides} placeholder={t.searchGuides} /></label>
+        <span>{t.reviewed}</span>
+      </div>
+      <div className="guide-filters" role="group" aria-label="Guide categories">
+        {categories.map((item) => <button type="button" className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)}>{item === "All" ? (language === "th" ? "ทั้งหมด" : "All") : item}</button>)}
+      </div>
+      {visibleGuides.length > 0 ? (
+        <section className="guide-grid" aria-label="Guides">
+          {visibleGuides.map((guide, index) => (
+            <a className="guide-card" href={`/games/where-winds-meet/guides/${guide.slug}/`} key={guide.slug}>
+              <span className="guide-index">{String(index + 1).padStart(2, "0")}</span>
+              <span className="guide-category">{guide.category}</span>
+              <h2>{guide.title}</h2>
+              <p>{guide.detail}</p>
+              <span className="guide-read">READ <span aria-hidden="true">→</span></span>
+            </a>
+          ))}
+        </section>
+      ) : (
+        <div className="guide-empty"><strong>{language === "th" ? "ยังไม่พบ Guide" : "No guides found"}</strong><span>{language === "th" ? "ลองเปลี่ยนคำค้นหาหรือเลือกทุกหมวด" : "Try another search or show all categories."}</span></div>
+      )}
+      <p className="manager-note">✦ {language === "th" ? "เนื้อหาชุดแรกกำลังทยอยตรวจสอบและจัดระเบียบจากข้อมูลของกิลด์" : "The starter set is being reviewed and organized from the guild's shared notes."}</p>
+    </Shell>
+  );
 }
 
 function GuideDetailPage({ slug, language, onLanguageChange }: { slug: string; language: Language; onLanguageChange: (language: Language) => void }) {
   const guide = getGuides(language).find((item) => item.slug === slug);
   if (!guide) return <GuidesPage language={language} onLanguageChange={onLanguageChange} />;
-  return <Shell language={language} onLanguageChange={onLanguageChange}><section className="page-intro guides-intro"><a className="back-link" href="/games/where-winds-meet/guides/">← Guides</a><p className="eyebrow">{guide.category} · WHERE WINDS MEET</p><h1>{guide.title}</h1><p className="intro">{guide.detail}</p><ShareButton language={language} /></section><article className="guide-detail">{guide.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<div className="guide-detail-note">V1 · CURATED STARTER CONTENT</div></article></Shell>;
+
+  return (
+    <Shell language={language} onLanguageChange={onLanguageChange}>
+      <section className="page-intro guides-intro guide-detail-intro">
+        <a className="back-link" href="/games/where-winds-meet/guides/">← Guides</a>
+        <p className="eyebrow">{guide.category} · WHERE WINDS MEET</p>
+        <h1>{guide.title}</h1>
+        <p className="intro">{guide.detail}</p>
+        <ShareButton language={language} />
+      </section>
+      <article className="guide-detail">
+        {guide.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+        <div className="guide-detail-note">PATH OF MEMORIES · GUILD NOTES</div>
+      </article>
+    </Shell>
+  );
 }
 
 function DiscordPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
-  return <Shell language={language} onLanguageChange={onLanguageChange}><section className="page-intro discord-intro"><a className="back-link" href="/">← Path of Memories</a><p className="eyebrow">PATH OF MEMORIES · DISCORD</p><h1>{t.discordTitle}</h1><p className="intro">{t.discordIntro}</p></section><section className="discord-grid"><div className="discord-card discord-card-primary"><span className="guide-category">{t.discordServer}</span><h2>Path of Memories</h2><p>{t.discordServerHint}</p><span className="discord-placeholder">LINK TO BE ADDED</span></div><div className="discord-card"><span className="guide-category">{t.discordChannels}</span><h2>GVG · Guides · Announcements</h2><p>{t.discordChannelsHint}</p><span className="discord-placeholder">CHANNEL SHORTCUTS</span></div></section></Shell>;
+  return (
+    <Shell language={language} onLanguageChange={onLanguageChange}>
+      <section className="page-intro discord-intro">
+        <a className="back-link" href="/">← Path of Memories</a>
+        <p className="eyebrow">PATH OF MEMORIES · DISCORD</p>
+        <h1>{t.discordTitle}</h1>
+        <p className="intro">{t.discordIntro}</p>
+      </section>
+      <section className="discord-panel">
+        <div className="discord-orb" aria-hidden="true">✦</div>
+        <div><span className="guide-category">{t.discordServer}</span><h2>Path of Memories</h2><p>{t.discordServerHint}</p></div>
+        <div className="discord-channels"><span>{t.discordChannels}</span><strong>{t.discordChannelsHint}</strong><small>INVITE LINK · COMING SOON</small></div>
+      </section>
+    </Shell>
+  );
 }
 
 export default function App() {
   const [language, setLanguage] = useLanguage();
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
+
   if (path === "/games") return <GamesPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/discord") return <DiscordPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
