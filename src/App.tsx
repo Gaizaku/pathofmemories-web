@@ -292,6 +292,11 @@ function getGuides(language: Language) {
   return whereWindsMeetGuides[language];
 }
 
+function guideStatusLabel(status: "published" | "needs-review", language: Language) {
+  if (status === "published") return language === "th" ? "พร้อมอ่าน" : "Ready";
+  return language === "th" ? "รอตรวจ patch" : "Patch review";
+}
+
 function GuidesPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   const [query, setQuery] = useState("");
@@ -300,7 +305,9 @@ function GuidesPage({ language, onLanguageChange }: { language: Language; onLang
   const categories = ["All", ...new Set(guides.map((guide) => guide.category))];
   const visibleGuides = guides.filter((guide) =>
     (category === "All" || guide.category === category)
-    && `${guide.category} ${guide.title} ${guide.detail}`.toLowerCase().includes(query.trim().toLowerCase()),
+    && `${guide.category} ${guide.title} ${guide.detail} ${guide.searchTerms.join(" ")} ${guide.sections.flatMap((section) => [section.heading, ...(section.paragraphs || []), ...(section.items || [])]).join(" ")}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
   );
 
   return (
@@ -323,7 +330,7 @@ function GuidesPage({ language, onLanguageChange }: { language: Language; onLang
           {visibleGuides.map((guide, index) => (
             <a className="guide-card" href={`/games/where-winds-meet/guides/${guide.slug}/`} key={guide.slug}>
               <span className="guide-index">{String(index + 1).padStart(2, "0")}</span>
-              <span className="guide-category">{guide.category}</span>
+              <span className="guide-card-meta"><span className="guide-category">{guide.category}</span><span className={`guide-status ${guide.status}`}>{guideStatusLabel(guide.status, language)}</span></span>
               <h2>{guide.title}</h2>
               <p>{guide.detail}</p>
               <span className="guide-read">READ <span aria-hidden="true">→</span></span>
@@ -349,11 +356,27 @@ function GuideDetailPage({ slug, language, onLanguageChange }: { slug: string; l
         <p className="eyebrow">{guide.category} · WHERE WINDS MEET</p>
         <h1>{guide.title}</h1>
         <p className="intro">{guide.detail}</p>
+        <span className={`guide-status detail-status ${guide.status}`}>{guideStatusLabel(guide.status, language)}</span>
         <ShareButton language={language} />
       </section>
       <article className="guide-detail">
-        {guide.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-        <div className="guide-detail-note">PATH OF MEMORIES · GUILD NOTES</div>
+        {guide.status === "needs-review" && (
+          <aside className="guide-review-note">
+            <strong>{language === "th" ? "ข้อมูลส่วนนี้กำลังตรวจสอบ" : "This guide is under review"}</strong>
+            <span>{language === "th" ? "ใช้เป็นแนวทางเบื้องต้น และเช็กกับสมาชิกกิลด์ก่อนนำไปจัด build จริง" : "Use it as a starting point and confirm with the guild before finalizing a build."}</span>
+          </aside>
+        )}
+        {guide.sections.map((section, index) => (
+          <section className="guide-section" key={`${section.heading}-${index}`}>
+            <span className="guide-section-number">{String(index + 1).padStart(2, "0")}</span>
+            <div>
+              <h2>{section.heading}</h2>
+              {section.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              {section.items && <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>}
+            </div>
+          </section>
+        ))}
+        <div className="guide-detail-note">PATH OF MEMORIES · GUILD NOTES · SOURCE: SHARED GUIDE SHEET</div>
       </article>
     </Shell>
   );
