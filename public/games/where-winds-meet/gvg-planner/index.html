@@ -2,13 +2,11 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8" />
-<!-- This site is hosted on Netlify. Anyone can build and deploy a site
-     like this one for free: https://netlify.new/?utm_campaign=ai-legible&utm_source=comment&utm_medium=referral&utm_id=8488debf-e0ad-41f0-b6ed-c85e81d13f2d
-     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
-<meta name="hosting-provider" content="Netlify">
-<meta name="netlify-deploy" content="https://netlify.new/?utm_campaign=ai-legible&amp;utm_source=meta&amp;utm_medium=referral&amp;utm_id=8488debf-e0ad-41f0-b6ed-c85e81d13f2d">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PATH OF MEMORIES GVG Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--panel:rgba(12,19,29,.94);--line:rgba(255,255,255,.12);--text:#eef5ff;--muted:#9db0c8;--accent:#69d2ff;--shadow:0 18px 48px rgba(0,0,0,.35)}
 *{box-sizing:border-box}body{margin:0;color:var(--text);background:radial-gradient(circle at top left,rgba(105,210,255,.12),transparent 28%),linear-gradient(145deg,#07101a,#0a1017 50%,#060a10);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -270,22 +268,33 @@ button,select,textarea{color:#f5f2eb;background:rgba(255,255,255,.065);border-co
 
 </style>
 <style>
-/* Final Midnight Campfire overrides */
-body{font-family:Manrope,Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(circle at 8% 0%,rgba(88,57,145,.28),transparent 30%),radial-gradient(circle at 90% 15%,rgba(208,168,107,.12),transparent 25%),linear-gradient(145deg,#0d1421,#171b25 52%,#090d16)}
-header{background:rgba(13,18,28,.92);border-bottom-color:rgba(208,168,107,.3)}
-h1{font-family:Manrope,ui-sans-serif,system-ui,sans-serif;font-weight:800;letter-spacing:-.045em;color:#f7f1e5}
-button,select,textarea{font-family:Manrope,ui-sans-serif,system-ui,sans-serif;border-color:rgba(208,168,107,.28);transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease}
-button:hover,select:hover,textarea:hover{border-color:rgba(208,168,107,.68);background:rgba(208,168,107,.12);transform:translateY(-1px)}
-button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #e4bf82;outline-offset:2px;box-shadow:0 0 0 4px rgba(208,168,107,.14)}
-.actions button:first-child{background:linear-gradient(135deg,#d0a86b,#b8834d);color:#171b1e;border-color:#e4bf82;box-shadow:0 6px 18px rgba(208,168,107,.2)}
-.card{border-color:rgba(208,168,107,.2);box-shadow:0 18px 48px rgba(0,0,0,.42)}
+/* Path of Memories starlit fantasy theme */
+:root{--panel:rgba(17,11,45,.94);--line:rgba(255,209,128,.2);--text:#fff5e7;--muted:#b8b1cc;--accent:#ffad3f;--shadow:0 22px 58px rgba(0,0,0,.46)}
+body{font-family:"Noto Sans Thai",Manrope,Inter,ui-sans-serif,system-ui,sans-serif;background:radial-gradient(circle at 9% 0%,rgba(74,39,171,.48),transparent 32rem),radial-gradient(circle at 94% 14%,rgba(222,48,133,.16),transparent 28rem),linear-gradient(155deg,#050316,#0b0729 54%,#050316);color:var(--text)}
+.site-nav{min-height:54px;padding:9px 18px;background:rgba(7,4,25,.84);border-bottom-color:rgba(255,209,128,.2);box-shadow:0 14px 38px rgba(0,0,0,.28);backdrop-filter:blur(18px) saturate(135%)}
+.site-nav-brand{color:#fff5e7!important;font-family:Marcellus,"Noto Sans Thai",serif;font-weight:400}.site-nav-mark{width:28px;height:28px;color:#ffd788;border-color:rgba(255,215,136,.66);border-radius:9px;background:radial-gradient(circle,rgba(141,92,255,.48),rgba(28,15,70,.86));font:12px Marcellus,serif;box-shadow:0 0 18px rgba(255,173,63,.13)}
+.site-nav a{color:#c9c2d9}.site-nav a:hover{color:#ffd788}.site-nav-links{gap:12px}.site-nav-share{min-height:36px;padding:7px 12px;color:#1a0d2d;background:linear-gradient(135deg,#ffdb93,#ff9f32);border-color:#ffd990;font-family:"Noto Sans Thai",Manrope,sans-serif;font-weight:700;box-shadow:0 8px 22px rgba(255,144,32,.16)}
+header{top:54px;padding:13px 18px;background:rgba(9,6,31,.88);border-bottom-color:rgba(255,209,128,.18);backdrop-filter:blur(18px)}
+h1{font-family:Marcellus,"Noto Sans Thai",serif;font-weight:400;letter-spacing:-.025em;color:#fff5e7}.sub{color:#a9a2bd}
+.card{background:linear-gradient(150deg,rgba(26,16,65,.94),rgba(10,7,31,.96));border-color:rgba(255,209,128,.18);border-radius:18px;box-shadow:var(--shadow)}
+.panel-head,.map-toolbar{background:rgba(255,173,63,.045);border-bottom-color:rgba(255,209,128,.15)}
+.map-wrap{border-radius:18px;border-color:rgba(255,209,128,.18);background:#08061f}.map-legend-overlay{background:rgba(7,4,25,.76);border-color:rgba(255,209,128,.17);backdrop-filter:blur(14px)}
+button,select,textarea{font-family:"Noto Sans Thai",Manrope,ui-sans-serif,system-ui,sans-serif;color:#fff5e7;background:rgba(255,255,255,.055);border-color:rgba(255,209,128,.22);border-radius:12px;transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease}
+button:hover,select:hover,textarea:hover{border-color:rgba(255,209,128,.58);background:rgba(255,173,63,.1);transform:translateY(-1px)}
+button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #ffd788;outline-offset:2px;box-shadow:0 0 0 4px rgba(255,173,63,.12)}
+.actions button:first-child{background:linear-gradient(135deg,#ffdb93,#ff9f32);color:#1a0d2d;border-color:#ffd990;box-shadow:0 8px 24px rgba(255,144,32,.2)}
+.badge{color:#ffd788;border-color:rgba(255,209,128,.28);background:rgba(255,173,63,.06)}
+.time-big{color:#ffb348;text-shadow:0 0 24px rgba(255,151,42,.16)}input[type=range]{accent-color:#ffad3f}
+.event,.route-item,.stat,.callout{background:rgba(255,255,255,.035);border-color:rgba(255,209,128,.15)}.event.current,.route-item.current{border-color:rgba(255,173,63,.62);background:rgba(255,173,63,.11)}
+.select-shell{border-color:rgba(255,209,128,.18)}
+@media(max-width:720px){.site-nav{min-height:50px;padding:7px 10px;align-items:center;flex-direction:row}.site-nav-brand>span:last-child{display:none}.site-nav-links{width:auto;margin-left:auto;align-items:center;flex-wrap:nowrap}.site-nav-links a,.site-nav-share{font-size:10px}header{position:relative;top:auto;padding:11px 12px}}
 @media(prefers-reduced-motion:reduce){button,select,textarea{transition:none}button:hover,select:hover,textarea:hover{transform:none}}
 </style>
 </head>
 <body>
 <nav class="site-nav" aria-label="Path of Memories navigation">
-  <a class="site-nav-brand" href="/"><span class="site-nav-mark">P</span><span>Path of Memories</span></a>
-  <div class="site-nav-links"><a href="/games/where-winds-meet/">Where Winds Meet</a><a href="/games/where-winds-meet/guides/">Guides</a><button class="site-nav-share" type="button" onclick="(navigator.share?navigator.share({title:document.title,url:location.href}):navigator.clipboard.writeText(location.href)).then(()=>this.textContent='✓ Copied').catch(()=>{})">↗ แชร์ Planner</button><a class="site-nav-back" href="/">← กลับเว็บหลัก</a></div>
+  <a class="site-nav-brand" href="/"><span class="site-nav-mark">◆</span><span>Path of Memories</span></a>
+  <div class="site-nav-links"><a href="/games/where-winds-meet/">Game Hub</a><button class="site-nav-share" type="button" onclick="(navigator.share?navigator.share({title:document.title,url:location.href}):navigator.clipboard.writeText(location.href)).then(()=>this.textContent='✓ คัดลอกแล้ว').catch(()=>{})">แชร์ Planner</button></div>
 </nav>
 <header>
   <div>
