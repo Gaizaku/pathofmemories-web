@@ -10,11 +10,19 @@ function dateTime(date, time) {
   return `${date}T${time}:00+07:00`;
 }
 
+export function bangkokWeekStart(date) {
+  const localNoon = new Date(`${date}T12:00:00+07:00`);
+  const daysSinceMonday = (localNoon.getUTCDay() + 6) % 7;
+  localNoon.setUTCDate(localNoon.getUTCDate() - daysSinceMonday);
+  return localNoon.toISOString().slice(0, 10);
+}
+
 export function buildImportPlan(source) {
   const report = inspectImportSnapshot(source);
   const blockedLoadouts = new Set(report.issues.filter((item) => item.entity === "loadout").map((item) => item.id));
   const blockedRegistrations = new Set(report.issues.filter((item) => item.entity === "registration").map((item) => item.id));
   const blockedRoles = new Set(report.issues.filter((item) => item.entity === "registration_role").map((item) => item.id));
+  const registrations = rowsToObjects(source.registrations);
 
   const statements = [{
     sql: "INSERT INTO games (id, name) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name",
@@ -47,11 +55,11 @@ export function buildImportPlan(source) {
     if (!row.event_id || !row.date || !row.time) continue;
     statements.push({
       sql: "INSERT INTO events (game_id, id, starts_at, local_date, week_start, war_type, status, capacity) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(game_id, id) DO UPDATE SET starts_at = excluded.starts_at, local_date = excluded.local_date, week_start = excluded.week_start, war_type = excluded.war_type, status = excluded.status, capacity = excluded.capacity",
-      params: [GAME_ID, row.event_id, dateTime(row.date, row.time), row.date, row.week_start, row.war_type, row.registration_status === "OPEN" ? "open" : "closed", Number(row.max_players)],
+      params: [GAME_ID, row.event_id, dateTime(row.date, row.time), row.date, bangkokWeekStart(row.date), row.war_type, row.registration_status === "OPEN" ? "open" : "closed", Number(row.max_players)],
     });
   }
 
-  for (const row of rowsToObjects(source.registrations)) {
+  for (const row of registrations) {
     if (blockedRegistrations.has(row.registration_id)) continue;
     statements.push({
       sql: "INSERT INTO attendance_choices (game_id, event_id, player_id, status, preferred_role, note, updated_at, updated_by) VALUES (?, ?, ?, 'attending', ?, ?, ?, ?) ON CONFLICT(game_id, event_id, player_id) DO UPDATE SET preferred_role = excluded.preferred_role, note = excluded.note, updated_at = excluded.updated_at, updated_by = excluded.updated_by",
@@ -61,7 +69,7 @@ export function buildImportPlan(source) {
 
   for (const row of rowsToObjects(source.registrationRoles)) {
     if (blockedRoles.has(row.registration_id)) continue;
-    const registration = rowsToObjects(source.registrations).find((item) => item.registration_id === row.registration_id);
+    const registration = registrations.find((item) => item.registration_id === row.registration_id);
     if (!registration || blockedRegistrations.has(registration.registration_id) || blockedLoadouts.has(row.loadout_id)) continue;
     statements.push({
       sql: "INSERT OR IGNORE INTO attendance_loadouts (game_id, event_id, player_id, loadout_id) VALUES (?, ?, ?, ?)",
