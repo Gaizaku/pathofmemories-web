@@ -18,8 +18,9 @@ export async function readApi(request, env, now = new Date()) {
   const url = new URL(request.url);
   const eventMatch = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events$/.exec(url.pathname);
   const playerMatch = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/players$/.exec(url.pathname);
+  const registrationMatch = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/registrations$/.exec(url.pathname);
 
-  if (!eventMatch && !playerMatch) return json({error: "not_found"}, 404);
+  if (!eventMatch && !playerMatch && !registrationMatch) return json({error: "not_found"}, 404);
   if (request.method !== "GET") return new Response(null, {status: 405, headers: {Allow: "GET"}});
   if (url.search) return json({error: "unsupported_query"}, 400);
   if (!env.GUILD_WAR_DB) return json({error: "database_not_configured"}, 503);
@@ -32,6 +33,27 @@ export async function readApi(request, env, now = new Date()) {
         eventMatch[1], week
       );
       return json({gameId: eventMatch[1], weekStart: week, timeZone: "Asia/Bangkok", events});
+    }
+
+    if (registrationMatch) {
+      const [, gameId, eventId] = registrationMatch;
+      const [event] = await query(env.GUILD_WAR_DB,
+        "SELECT id, starts_at, local_date, war_type, status, capacity FROM events WHERE game_id = ? AND id = ?",
+        gameId, eventId
+      );
+      if (!event) return json({error: "event_not_found"}, 404);
+
+      const registrations = await query(env.GUILD_WAR_DB,
+        "SELECT c.player_id, p.character_name, c.preferred_role, c.note, c.updated_at FROM attendance_choices c JOIN players p ON p.game_id = c.game_id AND p.id = c.player_id WHERE c.game_id = ? AND c.event_id = ? AND c.status = 'attending' ORDER BY c.updated_at, c.player_id LIMIT 200",
+        gameId, eventId
+      );
+      const chosenLoadouts = await query(env.GUILD_WAR_DB,
+        "SELECT a.player_id, l.id, l.role, main.name AS main_weapon_name, sub.name AS sub_weapon_name FROM attendance_loadouts a JOIN loadouts l ON l.game_id = a.game_id AND l.id = a.loadout_id AND l.player_id = a.player_id JOIN weapons main ON main.game_id = l.game_id AND main.id = l.main_weapon_id JOIN weapons sub ON sub.game_id = l.game_id AND sub.id = l.sub_weapon_id WHERE a.game_id = ? AND a.event_id = ? ORDER BY a.player_id, l.id LIMIT 500",
+        gameId, eventId
+      );
+      const grouped = new Map(registrations.map((registration) => [registration.player_id, {...registration, loadouts: []}]));
+      for (const loadout of chosenLoadouts) grouped.get(loadout.player_id)?.loadouts.push(loadout);
+      return json({gameId, event, registrations: [...grouped.values()]});
     }
 
     const gameId = playerMatch[1];
