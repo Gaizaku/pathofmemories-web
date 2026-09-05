@@ -12,12 +12,10 @@ function literal(value) {
 
 const sql = [
   "PRAGMA foreign_keys = ON;",
-  "BEGIN TRANSACTION;",
   ...statements.map(({ sql: statement, params }) => {
     let index = 0;
     return statement.replaceAll("?", () => literal(params[index++])) + ";";
   }),
-  "COMMIT;",
   "",
 ].join("\n");
 
