@@ -3,5 +3,12 @@
   "name": "pathofmemories-web",
   "compatibility_date": "2026-09-01",
   "main": "worker/index.ts",
-  "assets": { "not_found_handling": "single-page-application" }
+  "assets": { "not_found_handling": "single-page-application" },
+  "d1_databases": [
+    {
+      "binding": "GUILD_WAR_DB",
+      "database_name": "pathofmemories-guild-war-test",
+      "database_id": "74cc2c58-2045-4143-b46d-cfc5db96da39"
+    }
+  ]
 }
