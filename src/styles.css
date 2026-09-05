@@ -775,3 +775,45 @@ h1 em {
     animation-iteration-count: 1 !important;
   }
 }
+
+
+.war-registration {
+  max-width: 900px;
+  padding: clamp(20px, 4vw, 34px);
+  border: 1px solid rgba(255, 209, 128, 0.2);
+  border-radius: 22px;
+  background: radial-gradient(circle at 90% 0%, rgba(255, 173, 63, 0.14), transparent 38%), linear-gradient(145deg, rgba(29, 17, 70, 0.9), rgba(11, 7, 34, 0.95));
+  box-shadow: var(--shadow);
+}
+.registration-heading { display: flex; align-items: start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.registration-heading h2 { margin: 0; font-family: "Marcellus", "Noto Sans Thai", serif; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 400; }
+.registration-heading > span { padding: 7px 10px; color: var(--gold); border: 1px solid rgba(255, 209, 128, 0.25); border-radius: 999px; font: 500 9px "DM Mono", monospace; white-space: nowrap; }
+.war-registration form { display: grid; gap: 17px; }
+.war-registration label, .war-registration fieldset { display: grid; gap: 8px; color: #cfc8dd; font-size: 12px; }
+.war-registration select, .war-registration textarea {
+  width: 100%; color: var(--cream); border: 1px solid rgba(255, 209, 128, 0.2); border-radius: 12px; background: rgba(7, 4, 25, 0.58); padding: 12px 13px; outline: 0;
+}
+.war-registration select { min-height: 48px; }
+.war-registration textarea { min-height: 78px; resize: vertical; }
+.war-registration fieldset { margin: 0; padding: 0; border: 0; }
+.war-registration legend { padding: 0; color: #cfc8dd; font-size: 12px; }
+.loadout-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.loadout-choice { min-height: 58px; grid-template-columns: 17px 1fr; align-items: center; padding: 10px; border: 1px solid rgba(255, 209, 128, 0.14); border-radius: 12px; background: rgba(255, 255, 255, 0.025); cursor: pointer; }
+.loadout-choice input { accent-color: var(--amber); }
+.loadout-choice span { display: grid; gap: 3px; color: #bcb5ce; font-size: 10px; }
+.loadout-choice b { color: var(--gold); font: 500 9px "DM Mono", monospace; }
+.war-registration button:disabled { opacity: 0.55; cursor: wait; }
+.registration-error, .registration-success { margin: 0; padding: 11px 13px; border-radius: 11px; font-size: 11px; line-height: 1.6; }
+.registration-error { color: #ffc0d7; border: 1px solid rgba(255, 93, 157, 0.3); background: rgba(255, 93, 157, 0.1); }
+.registration-success { color: #b8f1cf; border: 1px solid rgba(101, 214, 160, 0.28); background: rgba(101, 214, 160, 0.08); }
+.war-registration.loading, .war-registration.empty { min-height: 160px; display: grid; place-content: center; gap: 9px; text-align: center; color: var(--muted); }
+.war-registration.loading span { color: var(--gold); font-size: 20px; }
+.war-registration.empty strong { color: var(--cream); }
+
+@media (max-width: 680px) {
+  .war-registration { padding: 19px; border-radius: 17px; }
+  .registration-heading { display: block; }
+  .registration-heading > span { display: inline-flex; margin-top: 12px; }
+  .loadout-list { grid-template-columns: 1fr; }
+  .war-registration .primary-button { width: 100%; }
+}
