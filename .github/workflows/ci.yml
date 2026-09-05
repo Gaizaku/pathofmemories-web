@@ -21,5 +21,5 @@ jobs:
       - run: node --test guild-war-v2/import-plan.test.mjs
       - run: node --test guild-war-v2/import-preview.test.mjs
       - run: node --test guild-war-v2/registration-token.test.mjs
-      - run: node --test guild-war-v2/read-api.test.mjs
       - run: node --test guild-war-v2/organizer-auth.test.mjs
+      - run: node --test guild-war-v2/read-api.test.mjs
