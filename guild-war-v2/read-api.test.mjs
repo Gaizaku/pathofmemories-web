@@ -1,0 +1,24 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {DatabaseSync} from 'node:sqlite';
+import {readFileSync} from 'node:fs';
+import {bangkokWeek,readApi} from './read-api.mjs';
+const db = new DatabaseSync(':memory:');
+db.exec(readFileSync(new URL('./001_registration.sql',import.meta.url),'utf8'));
+db.exec(`INSERT INTO games VALUES ('wwm','Test'),('other','Other');
+INSERT INTO events VALUES ('wwm','one','2026-09-05T12:30:00Z','2026-09-05','2026-08-31','League','open',30);
+INSERT INTO events VALUES ('wwm','old','2026-08-29T12:30:00Z','2026-08-29','2026-08-24','League','closed',30);
+INSERT INTO events VALUES ('other','two','2026-09-05T12:30:00Z','2026-09-05','2026-08-31','League','open',30);`);
+// SQLite adapter validates actual SQL, but is not a remote D1 integration test.
+const env = {GUILD_WAR_DB:{prepare(sql){return {bind(...args){return {async all(){return {success:true,results:db.prepare(sql).all(...args)}}}}}}}};
+const request = (path='/api/v2/games/wwm/war/events',method='GET') => new Request('https://test.invalid'+path,{method});
+const now = new Date('2026-09-05T12:00:00Z');
+test('Bangkok Monday boundary',()=>{assert.equal(bangkokWeek(new Date('2026-09-06T16:59:59Z')),'2026-08-31');assert.equal(bangkokWeek(new Date('2026-09-06T17:00:00Z')),'2026-09-07')});
+test('only requested game and current week returned',async()=>{const r=await readApi(request(),env,now);assert.equal(r.status,200);assert.deepEqual((await r.json()).events.map(e=>e.id),['one'])});
+test('no binding fails closed',async()=>assert.equal((await readApi(request(),{},now)).status,503));
+test('writes rejected',async()=>{for(const method of ['POST','PUT','DELETE','PATCH'])assert.equal((await readApi(request(undefined,method),env,now)).status,405)});
+test('player endpoint not exposed',async()=>assert.equal((await readApi(request('/api/v2/players'),env,now)).status,404));
+test('arbitrary historic query rejected',async()=>assert.equal((await readApi(request('/api/v2/games/wwm/war/events?week=2020-01-01'),env,now)).status,400));
+test('SQL failure does not disclose details',async()=>{const r=await readApi(request(),{GUILD_WAR_DB:{prepare(){throw Error('secret')}}},now);assert.equal(r.status,503);assert.equal((await r.json()).error,'temporarily_unavailable')});
+test('duplicate event slot rejected',()=>assert.throws(()=>db.exec("INSERT INTO events VALUES ('wwm','duplicate','2026-09-05T12:30:00Z','2026-09-05','2026-08-31','League','open',30)")));
+test('orphan attendance rejected',()=>assert.throws(()=>db.exec("INSERT INTO attendance_choices VALUES ('wwm','one','missing','attending',NULL,'',1,'now','test')")));
