@@ -12,7 +12,9 @@ INSERT INTO players VALUES ("wwm","P001","Golf",1,1),("wwm","P002","Inactive",0,
 INSERT INTO loadouts VALUES ("wwm","L001","P001","DPS","W001","W002",1);
 INSERT INTO events VALUES ("wwm","one","2026-09-05T12:30:00Z","2026-09-05","2026-08-31","League","open",30);
 INSERT INTO events VALUES ("wwm","old","2026-08-29T12:30:00Z","2026-08-29","2026-08-24","League","closed",30);
-INSERT INTO events VALUES ("other","two","2026-09-05T12:30:00Z","2026-09-05","2026-08-31","League","open",30);`);
+INSERT INTO events VALUES ("other","two","2026-09-05T12:30:00Z","2026-09-05","2026-08-31","League","open",30);
+INSERT INTO attendance_choices VALUES ("wwm","one","P001","attending","DPS","ready",1,"2026-09-01T00:00:00Z","test");
+INSERT INTO attendance_loadouts VALUES ("wwm","one","P001","L001");`);
 
 const env = {GUILD_WAR_DB: {prepare(sql) {return {bind(...args) {return {async all() {return {success: true, results: db.prepare(sql).all(...args)};}};}};}};
 const request = (path = "/api/v2/games/wwm/war/events", method = "GET") => new Request("https://test.invalid" + path, {method});
@@ -37,10 +39,25 @@ test("returns active players with their owned loadouts", async () => {
   }]);
 });
 
+test("returns a round with registrations and chosen loadouts", async () => {
+  const result = await readApi(request("/api/v2/games/wwm/war/events/one/registrations"), env, now);
+  const body = await result.json();
+  assert.equal(result.status, 200);
+  assert.equal(body.event.id, "one");
+  assert.deepEqual(body.registrations, [{
+    player_id: "P001", character_name: "Golf", preferred_role: "DPS", note: "ready", updated_at: "2026-09-01T00:00:00Z",
+    loadouts: [{player_id: "P001", id: "L001", role: "DPS", main_weapon_name: "Sword", sub_weapon_name: "Spear"}],
+  }]);
+});
+
+test("unknown event returns 404", async () => {
+  assert.equal((await readApi(request("/api/v2/games/wwm/war/events/missing/registrations"), env, now)).status, 404);
+});
+
 test("no binding fails closed", async () => assert.equal((await readApi(request(), {}, now)).status, 503));
 
-test("writes rejected on both read endpoints", async () => {
-  for (const path of ["/api/v2/games/wwm/war/events", "/api/v2/games/wwm/players"]) {
+test("writes rejected on all read endpoints", async () => {
+  for (const path of ["/api/v2/games/wwm/war/events", "/api/v2/games/wwm/players", "/api/v2/games/wwm/war/events/one/registrations"]) {
     assert.equal((await readApi(request(path, "POST"), env, now)).status, 405);
   }
 });
