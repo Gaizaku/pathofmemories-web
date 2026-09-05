@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
+import type {FormEvent} from "react";
 
 type Language = "th" | "en";
 type Event = {id: string; starts_at: string; war_type: string; status: string; capacity: number};
@@ -37,7 +38,7 @@ export function GuildWarRegistration({language}: {language: Language}) {
   const player = useMemo(() => players.find((item) => item.id === playerId), [players, playerId]);
   const toggleLoadout = (id: string) => setLoadoutIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     if (!eventId || !player) return;
     setState("saving");
