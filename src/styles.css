@@ -817,3 +817,25 @@ h1 em {
   .loadout-list { grid-template-columns: 1fr; }
   .war-registration .primary-button { width: 100%; }
 }
+
+
+.team-builder { padding: 58px 0 20px; }
+.team-builder .registration-heading h1 { font-size: clamp(2.5rem, 6vw, 5rem); }
+.team-event-select { max-width: 500px; display: grid; gap: 8px; color: #cfc8dd; font-size: 12px; }
+.team-event-select select { min-height: 48px; color: var(--cream); border: 1px solid rgba(255, 209, 128, 0.2); border-radius: 12px; background: rgba(7, 4, 25, 0.58); padding: 12px 13px; }
+.squad-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(4, minmax(190px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+.squad-column { min-height: 390px; padding: 12px; border: 1px solid rgba(255, 209, 128, 0.15); border-radius: 16px; background: rgba(14, 8, 41, 0.67); }
+.squad-column header { display: flex; align-items: center; justify-content: space-between; padding: 5px 5px 13px; color: var(--gold); border-bottom: 1px solid rgba(255, 209, 128, 0.12); font: 500 10px "DM Mono", monospace; letter-spacing: 0.08em; }
+.squad-column header b { width: 22px; height: 22px; display: grid; place-items: center; color: #26143f; border-radius: 50%; background: var(--gold); font-size: 10px; }
+.squad-column > div { display: grid; gap: 8px; padding-top: 10px; }
+.team-player { padding: 11px; display: grid; gap: 9px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 11px; background: rgba(255, 255, 255, 0.025); }
+.team-player > div { display: grid; gap: 3px; }
+.team-player strong { color: var(--cream); font-size: 12px; }
+.team-player small { color: var(--amber); font: 500 9px "DM Mono", monospace; }
+.team-player select { width: 100%; color: #cfc8dd; border: 1px solid rgba(255, 209, 128, 0.13); border-radius: 8px; background: rgba(7, 4, 25, 0.5); padding: 7px; font-size: 10px; }
+.team-builder-message { min-height: 140px; display: grid; place-content: center; color: var(--muted); text-align: center; }
+
+@media (max-width: 680px) {
+  .team-builder { padding: 46px 5px 10px; }
+  .squad-grid { grid-template-columns: repeat(4, minmax(230px, 1fr)); }
+}
