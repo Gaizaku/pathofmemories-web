@@ -839,3 +839,8 @@ h1 em {
   .team-builder { padding: 46px 5px 10px; }
   .squad-grid { grid-template-columns: repeat(4, minmax(230px, 1fr)); }
 }
+
+.draft-actions { max-width: 900px; margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #9e98b5; font-size: 11px; }
+.draft-actions button { min-height: 34px; padding: 7px 11px; color: var(--gold); border: 1px solid rgba(255, 209, 128, 0.24); border-radius: 999px; background: transparent; font-size: 10px; cursor: pointer; }
+.draft-actions button:hover { border-color: var(--gold); background: rgba(255, 173, 63, 0.08); }
+@media (max-width: 680px) { .draft-actions { align-items: start; flex-direction: column; gap: 9px; } }
