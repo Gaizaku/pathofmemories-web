@@ -7,6 +7,16 @@ type Squad = "Attack 1" | "Attack 2" | "Defense" | "Reserve";
 
 const gameId = "where-winds-meet";
 const squads: Squad[] = ["Attack 1", "Attack 2", "Defense", "Reserve"];
+const draftKey = (eventId: string) => `pom-team-draft:${eventId}`;
+
+function savedAssignments(eventId: string): Record<string, Squad> {
+  try {
+    const value = JSON.parse(localStorage.getItem(draftKey(eventId)) || "{}");
+    return Object.fromEntries(Object.entries(value).filter(([, squad]) => squads.includes(squad as Squad))) as Record<string, Squad>;
+  } catch {
+    return {};
+  }
+}
 
 export function GuildWarTeamBuilder({language}: {language: Language}) {
   const [events, setEvents] = useState<Event[]>([]);
@@ -28,11 +38,24 @@ export function GuildWarTeamBuilder({language}: {language: Language}) {
     if (!eventId) return;
     setState("loading");
     fetch(`/api/v2/games/${gameId}/war/events/${eventId}/registrations`).then((response) => response.json()).then((data) => {
-      setRegistrations(data.registrations || []);
-      setAssignments(Object.fromEntries((data.registrations || []).map((item: Registration) => [item.player_id, "Reserve"])));
+      const roster = data.registrations || [];
+      const previous = savedAssignments(eventId);
+      setRegistrations(roster);
+      setAssignments(Object.fromEntries(roster.map((item: Registration) => [item.player_id, previous[item.player_id] || "Reserve"])));
       setState("ready");
     }).catch(() => setState("error"));
   }, [eventId]);
+
+  useEffect(() => {
+    if (eventId && state === "ready" && registrations.length) {
+      localStorage.setItem(draftKey(eventId), JSON.stringify(assignments));
+    }
+  }, [assignments, eventId, registrations.length, state]);
+
+  function resetDraft() {
+    localStorage.removeItem(draftKey(eventId));
+    setAssignments(Object.fromEntries(registrations.map((item) => [item.player_id, "Reserve"])));
+  }
 
   return <section className="team-builder">
     <div className="registration-heading"><div><p className="eyebrow">ORGANIZER · TEAM BUILDER</p><h1>{language === "th" ? "จัดทีมของคืนนี้" : "Build tonight's teams"}</h1></div><span>{language === "th" ? "DRAFT · ยังไม่ประกาศ" : "DRAFT · NOT PUBLISHED"}</span></div>
@@ -40,7 +63,7 @@ export function GuildWarTeamBuilder({language}: {language: Language}) {
     {state === "loading" && <p className="team-builder-message">✦ {language === "th" ? "กำลังเรียกรายชื่อ…" : "Gathering the roster…"}</p>}
     {state === "error" && <p className="registration-error">{language === "th" ? "ยังโหลดรายชื่อไม่ได้" : "The roster is unavailable."}</p>}
     {state === "ready" && !events.length && <p className="team-builder-message">{language === "th" ? "ยังไม่มีรอบ War ที่เปิดอยู่" : "No War round is currently open."}</p>}
-    {state === "ready" && registrations.length > 0 && <div className="squad-grid">{squads.map((squad) => <section className="squad-column" key={squad}><header><span>{squad}</span><b>{Object.values(assignments).filter((value) => value === squad).length}</b></header><div>{registrations.filter((registration) => assignments[registration.player_id] === squad).map((registration) => <article className="team-player" key={registration.player_id}><div><strong>{registration.character_name}</strong><small>{registration.preferred_role || registration.loadouts[0]?.role || "—"}</small></div><select value={assignments[registration.player_id]} onChange={(event) => setAssignments((current) => ({...current, [registration.player_id]: event.target.value as Squad}))}>{squads.map((target) => <option value={target} key={target}>{target}</option>)}</select></article>)}</div></section>)}</div>}
+    {state === "ready" && registrations.length > 0 && <><div className="draft-actions"><span>{language === "th" ? "บันทึก draft ใน browser เครื่องนี้แล้ว" : "Draft is saved in this browser."}</span><button type="button" onClick={resetDraft}>{language === "th" ? "เริ่มจัดใหม่" : "Reset draft"}</button></div><div className="squad-grid">{squads.map((squad) => <section className="squad-column" key={squad}><header><span>{squad}</span><b>{Object.values(assignments).filter((value) => value === squad).length}</b></header><div>{registrations.filter((registration) => assignments[registration.player_id] === squad).map((registration) => <article className="team-player" key={registration.player_id}><div><strong>{registration.character_name}</strong><small>{registration.preferred_role || registration.loadouts[0]?.role || "—"}</small></div><select value={assignments[registration.player_id]} onChange={(event) => setAssignments((current) => ({...current, [registration.player_id]: event.target.value as Squad}))}>{squads.map((target) => <option value={target} key={target}>{target}</option>)}</select></article>)}</div></section>)}</div></>}
     {state === "ready" && eventId && !registrations.length && <p className="team-builder-message">{language === "th" ? "ยังไม่มีผู้ลงทะเบียนในรอบนี้" : "No registrations for this round yet."}</p>}
     <p className="manager-note">✦ {language === "th" ? "Draft นี้อยู่ใน browser ของคุณเท่านั้น ยังไม่กระทบรายชื่อจริง" : "This draft stays only in your browser and does not change the live roster."}</p>
   </section>;
