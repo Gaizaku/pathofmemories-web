@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { whereWindsMeetGuides } from "./content/where-winds-meet-guides";
+import { GuildWarRegistration } from "./GuildWarRegistration";
 
 type Language = "th" | "en";
 
@@ -272,17 +273,10 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
         <aside className="manager-status">
           <span className="status-line"><i className="status-dot" />{t.statusReady}</span>
           <strong>{t.nextRound}</strong>
-          <small>Saturday · 19:30 / 20:15 / 21:15 / 21:50</small>
+          <small>{language === "th" ? "เลือกตัวเอง แล้วบันทึกได้ในไม่กี่ขั้นตอน" : "Choose yourself and save in a few simple steps."}</small>
         </aside>
       </section>
-      <section className="manager-actions" aria-label="Guild War actions">
-        <a className="manager-action manager-action-primary" href={guildWarUrl} target="_blank" rel="noreferrer">
-          <span>01</span><strong>{t.openRegister}</strong><small>Players · Loadouts · Role · Availability</small><ExternalMark />
-        </a>
-        <div className="manager-action manager-action-muted">
-          <span>02</span><strong>{t.openBuilder}</strong><small>{language === "th" ? "กำลังเตรียมพื้นที่สำหรับผู้จัดทีม" : "Organizer workspace is coming next"}</small><b>SOON</b>
-        </div>
-      </section>
+      <GuildWarRegistration language={language} />
       <p className="manager-note">✦ {t.managerNote}</p>
     </Shell>
   );
