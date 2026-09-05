@@ -13,10 +13,18 @@ function literal(value) {
 const sql = [
   "PRAGMA foreign_keys = ON;",
   "BEGIN TRANSACTION;",
-  ...statements.map(({ sql: statement, params }) => statement.replaceAll("?", () => literal(params.shift())) + ";"),
+  ...statements.map(({ sql: statement, params }) => {
+    let index = 0;
+    return statement.replaceAll("?", () => literal(params[index++])) + ";";
+  }),
   "COMMIT;",
   "",
 ].join("\n");
 
 fs.writeFileSync("guild-war-v2/generated-import.sql", sql);
-console.log(JSON.stringify({ counts: report.counts, issues: report.issues, statements: statements.length }, null, 2));
+fs.writeFileSync("guild-war-v2/generated-import-report.json", JSON.stringify({
+  counts: report.counts,
+  issueCount: report.issues.length,
+  statements: statements.length,
+}, null, 2));
+console.log("Generated validated D1 import SQL.");
