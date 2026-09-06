@@ -24,6 +24,7 @@ export async function registrationApi(request, env) {
   const url = new URL(request.url);
   const match = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/registrations$/.exec(url.pathname);
   if (!match) return null;
+  if (request.method === "GET") return null;
   if (request.method !== "POST") return new Response(null, {status: 405, headers: {Allow: "GET, POST"}});
   if (!env.GUILD_WAR_DB) return json({error: "database_not_configured"}, 503);
 
