@@ -1,0 +1,30 @@
+name: Apply team publication test schema
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/apply-team-publication-test-schema.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: guild-war-test-schema
+  cancel-in-progress: false
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 65842a830fbd3acbf3e761b3aa6097b614b52731
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Validate publication behavior
+        run: node --test guild-war-v2/team-publication-api.test.mjs
+      - name: Add publication table to isolated test database
+        run: npx wrangler d1 execute 74cc2c58-2045-4143-b46d-cfc5db96da39 --remote --file=guild-war-v2/006_team_publications.sql
