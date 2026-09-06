@@ -48,7 +48,7 @@ function callbackUrl(request) {
   return `${url.origin}/api/auth/discord/callback`;
 }
 
-async function activeOrganizer(env, request) {
+export async function activeOrganizer(env, request) {
   const session = readCookie(request.headers.get("Cookie"), SESSION_COOKIE);
   if (!session) return null;
   const [organizer] = await all(env.GUILD_WAR_DB,
