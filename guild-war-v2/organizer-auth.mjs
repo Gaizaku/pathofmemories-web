@@ -5,6 +5,7 @@ const json = (body, status = 200) => Response.json(body, {
   headers: {"Cache-Control": "no-store"},
 });
 
+const STATE_COOKIE = "__Host-pom_oauth_state";
 const SESSION_COOKIE = "pom_organizer_session";
 const STATE_TTL_MS = 10 * 60 * 1000;
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -26,7 +27,7 @@ async function run(db, sql, ...params) {
 }
 
 export function safeReturnPath(value) {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return "/games/where-winds-meet/guild-war/teams";
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || /[\\\u0000-\u0020\u007f]/.test(value)) return "/games/where-winds-meet/guild-war/teams";
   return value;
 }
 
@@ -100,11 +101,15 @@ export async function organizerAuthApi(request, env) {
         env.GUILD_WAR_DB.prepare("INSERT INTO oauth_states (state_hash, return_path, expires_at) VALUES (?, ?, ?)")
           .bind(await sha256(state), returnPath, utcAfter(STATE_TTL_MS)),
       ]);
-      return Response.redirect(discordAuthorizeUrl({
+      return new Response(null, {status: 302, headers: {
+        "Cache-Control": "no-store",
+        "Set-Cookie": `${STATE_COOKIE}=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+        Location: discordAuthorizeUrl({
         clientId: env.DISCORD_CLIENT_ID,
         redirectUri: callbackUrl(request),
         state,
-      }), 302);
+      }),
+      }});
     }
 
     if (url.pathname === "/api/auth/discord/callback") {
@@ -113,12 +118,16 @@ export async function organizerAuthApi(request, env) {
       const state = url.searchParams.get("state");
       if (!code || !state || code.length > 512 || state.length > 128) return json({error: "invalid_callback"}, 400);
 
+      if (readCookie(request.headers.get("Cookie"), STATE_COOKIE) !== state) {
+        return json({error: "invalid_browser_state"}, 400);
+      }
       const stateHash = await sha256(state);
       const now = new Date().toISOString();
       const [savedState] = await all(env.GUILD_WAR_DB,
         "SELECT return_path FROM oauth_states WHERE state_hash = ? AND expires_at > ?", stateHash, now);
       if (!savedState) return json({error: "invalid_or_expired_state"}, 400);
-      await run(env.GUILD_WAR_DB, "DELETE FROM oauth_states WHERE state_hash = ?", stateHash);
+      const consumed = await run(env.GUILD_WAR_DB, "DELETE FROM oauth_states WHERE state_hash = ? AND expires_at > ?", stateHash, now);
+      if (consumed.meta?.changes !== 1) return json({error: "invalid_or_expired_state"}, 400);
 
       const profile = await exchangeDiscordCode(env, request, code);
       const [organizer] = await all(env.GUILD_WAR_DB,
@@ -132,13 +141,15 @@ export async function organizerAuthApi(request, env) {
         env.GUILD_WAR_DB.prepare("INSERT INTO organizer_sessions (session_hash, discord_user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
           .bind(await sha256(session), profile.id, expiresAt, now),
       ]);
+      const headers = new Headers({
+        Location: safeReturnPath(savedState.return_path),
+        "Cache-Control": "no-store",
+      });
+      headers.append("Set-Cookie", sessionCookie(session));
+      headers.append("Set-Cookie", `${STATE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
       return new Response(null, {
         status: 302,
-        headers: {
-          Location: safeReturnPath(savedState.return_path),
-          "Set-Cookie": sessionCookie(session),
-          "Cache-Control": "no-store",
-        },
+        headers,
       });
     }
 
@@ -150,6 +161,7 @@ export async function organizerAuthApi(request, env) {
 
     if (url.pathname === "/api/auth/discord/logout") {
       if (request.method !== "POST") return new Response(null, {status: 405, headers: {Allow: "POST"}});
+      if (request.headers.get("Origin") !== url.origin) return json({error: "invalid_origin"}, 403);
       const session = readCookie(request.headers.get("Cookie"), SESSION_COOKIE);
       if (session) await run(env.GUILD_WAR_DB, "DELETE FROM organizer_sessions WHERE session_hash = ?", await sha256(session));
       return new Response(null, {
