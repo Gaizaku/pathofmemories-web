@@ -883,3 +883,13 @@ h1 em {
 .gw-error{color:#ff7777!important;padding:8px}
 @media(max-width:1050px){.gw-layout{grid-template-columns:190px minmax(0,1fr)}.gw-sides{grid-template-columns:1fr}}
 @media(max-width:650px){.gw-layout{grid-template-columns:1fr}.gw-pool{position:static}.gw-pool-list{max-height:220px}.gw-builder{padding:8px}.gw-builder h1{font-size:22px!important}.gw-squads{gap:4px}.gw-standby .gw-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Tactical assignments share the compact board styling. */
+.gw-tactical{margin-top:12px;padding:10px;border:1px solid #2b303b;background:#171a21;border-radius:9px}
+.gw-towers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+.gw-towers>section{border:1px solid #2b303b;border-radius:7px;padding:7px;background:#11151b}
+.gw-towers header,.gw-tower-player{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gw-tower-player{padding:5px;margin-top:5px;background:#1d222b;border-radius:5px}
+.gw-tower-player span{overflow-wrap:anywhere}
+.gw-player select+select{margin-top:4px}
+@media(max-width:650px){.gw-towers{grid-template-columns:1fr}}
