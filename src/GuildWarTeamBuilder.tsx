@@ -56,7 +56,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     setBoard(previous=>{
       const next={...previous};const source=next[id];
       if(target&&next[target]){
-        if(source)next[target]=source;else delete next[target];
+        if(source)next[target]={...next[target],team:source.team};else delete next[target];
       }
       if(team) next[id]={team,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
       else delete next[id];
