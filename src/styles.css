@@ -893,3 +893,14 @@ h1 em {
 .gw-tower-player span{overflow-wrap:anywhere}
 .gw-player select+select{margin-top:4px}
 @media(max-width:650px){.gw-towers{grid-template-columns:1fr}}
+
+/* Summary stays in the organizer workspace and does not publish a team. */
+.gw-summary-dialog{width:min(1100px,94vw);max-height:88vh;overflow:auto;background:#11151b;color:#f4f6f8;border:1px solid #465060;border-radius:12px;padding:18px}
+.gw-summary-dialog::backdrop{background:rgba(0,0,0,.75)}
+.gw-summary-dialog>header{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;background:#11151b;padding:12px 0;z-index:1}
+.gw-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.gw-summary-grid section{background:#171a21;border:1px solid #2b303b;border-radius:8px;padding:10px;min-width:0}
+.gw-summary-grid h3{font:700 13px system-ui;color:#c8a86b;margin:0 0 7px}
+.gw-summary-grid p{border-top:1px solid #2b303b;padding:7px 0;overflow-wrap:anywhere;color:#f4f6f8}
+.gw-copy-part{margin-top:10px}.gw-copy-part textarea{display:block;box-sizing:border-box;width:100%;min-height:120px;margin-top:6px;background:#171a21;color:#f4f6f8;border:1px solid #465060;border-radius:6px;padding:8px;font:12px/1.5 system-ui}
+@media(max-width:700px){.gw-summary-grid{grid-template-columns:1fr}.gw-summary-dialog>header{position:static}}
