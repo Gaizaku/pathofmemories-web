@@ -1,7 +1,9 @@
 import {useEffect, useState} from "react";
 type Player = {player_id:string; character_name:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type Round = {id:string;starts_at:string;war_type:string};
-type Placement = {team:string; loadout:string};
+type Placement = {team:string; loadout:string; jungle?:string; tower?:string};
+const jungles = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
+const lanes = ["TOP","MID","BOTTOM"];
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
 const title = (s:string) => s.replaceAll("_"," ");
 const base = "/api/v2/games/where-winds-meet";
@@ -42,6 +44,16 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         for(const p of roster) if(old[p.player_id]&&teams.includes(old[p.player_id].team))
           valid[p.player_id]={team:old[p.player_id].team,loadout:p.loadouts.some(l=>l.id===old[p.player_id].loadout)?old[p.player_id].loadout:p.loadouts[0]?.id||""};
       }catch{}
+      const counts:Record<string,number>={};
+      try {
+        const old=JSON.parse(localStorage.getItem("pom-board-v2:"+round)||"{}");
+        for(const id of Object.keys(valid)) {
+          if(valid[id].team==="STANDBY")continue;
+          if(jungles.includes(old[id]?.jungle))valid[id].jungle=old[id].jungle;
+          const lane=old[id]?.tower;
+          if(lanes.includes(lane)&&(counts[lane]||0)<3){valid[id].tower=lane;counts[lane]=(counts[lane]||0)+1;}
+        }
+      }catch{}
       setPlayers(roster);setBoard(valid);setLoadedRound(round);setLoading(false);setSaved(true);
     }).catch(()=>{if(!c.signal.aborted){setLoading(false);setError(th?"โหลดรายชื่อไม่สำเร็จ กด Refresh เพื่อลองใหม่":"Could not load roster. Refresh to retry.");}});
     return ()=>c.abort();
@@ -58,13 +70,22 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       if(target&&next[target]){
         if(source)next[target]={...next[target],team:source.team};else delete next[target];
       }
-      if(team) next[id]={team,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
+      if(team) next[id]={...source,team,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
       else delete next[id];
+      for(const id of Object.keys(next))if(next[id].team==="STANDBY"){next[id]={...next[id],jungle:undefined,tower:undefined};}
       return next;
     });setSelected("");
   }
   function drop(e:React.DragEvent,team:string,target?:string){
     e.preventDefault();e.stopPropagation();move(e.dataTransfer.getData("text/plain"),team,target);
+  }
+
+  function setTower(id:string,lane:string) {
+    if(!organizer||loading||!board[id]||board[id].team==="STANDBY")return;
+    if(lane&&Object.entries(board).filter(([pid,p])=>pid!==id&&p.tower===lane).length>=3){
+      setError(th?"Tower ตำแหน่งนี้ครบ 3 คนแล้ว":"This tower already has 3 players");return;
+    }
+    setBoard(b=>({...b,[id]:{...b[id],tower:lane||undefined}}));setError("");setSelected("");
   }
   function role(p:Player){return p.loadouts.find(l=>l.id===board[p.player_id]?.loadout)?.role||p.preferred_role||p.loadouts[0]?.role||"—";}
   function card(p:Player){
@@ -78,6 +99,11 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(b=>({...b,[p.player_id]:{...b[p.player_id],loadout:e.target.value}}))}>
         {!p.loadouts.length&&<option value="">—</option>}{p.loadouts.map(l=><option key={l.id} value={l.id}>{l.role} · {l.main_weapon_name} + {l.sub_weapon_name}</option>)}
       </select>:<div className="gw-meta">{p.loadouts.map(l=>l.main_weapon_name+" + "+l.sub_weapon_name).join(" / ")}</div>}
+      {place&&place.team!=="STANDBY"&&<select aria-label={"Jungle "+p.character_name} value={place.jungle||""} disabled={!organizer||loading}
+        onChange={e=>setBoard(b=>({...b,[p.player_id]:{...b[p.player_id],jungle:e.target.value||undefined}}))}>
+        <option value="">{th?"ไม่เข้าป่า":"No jungle"}</option>
+        {jungles.map((j,i)=><option key={j} value={j}>{th?["ป่าบนศัตรู","ป่าล่างศัตรู","ป่าบนฝั่งเรา","ป่าล่างฝั่งเรา"][i]:title(j)}</option>)}
+      </select>}
     </article>;
   }
   function squad(team:string){
@@ -108,5 +134,12 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <div className="gw-pool-list">{pool.filter(p=>p.character_name.toLowerCase().includes(search.toLowerCase())).map(card)}</div>
       {selected&&<button onClick={()=>move(selected,"")}>{th?"นำกลับ Unassigned":"Return to Unassigned"}</button>}
     </aside><div className="gw-board"><div className="gw-sides"><section><h2>{th?"ฝั่งบุก":"Attack"}</h2><div className="gw-squads">{teams.slice(0,3).map(squad)}</div></section><section><h2>{th?"ฝั่งกัน":"Defense"}</h2><div className="gw-squads">{teams.slice(3,6).map(squad)}</div></section></div><div className="gw-standby">{squad("STANDBY")}</div></div></div>}
+    {!loading&&<section className="gw-tactical"><h2>Tower Assignment</h2><p>{th?"ลากผู้เล่นจากทีมมาวาง หรือคลิกชื่อแล้วเลือก Tower · ตำแหน่งละไม่เกิน 3 คน":"Drag a team player here, or select a player then a tower · Maximum 3 per tower"}</p>
+      <div className="gw-towers">{lanes.map(lane=><section key={lane} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("text/plain"),lane);}}>
+        <header><strong>{title(lane)}</strong><span>{Object.values(board).filter(p=>p.tower===lane).length}/3</span></header>
+        {players.filter(p=>board[p.player_id]?.tower===lane).map(p=><div className="gw-tower-player" key={p.player_id}><span>{p.character_name}</span><button disabled={!organizer} onClick={()=>setTower(p.player_id,"")} aria-label={"Remove tower "+p.character_name}>×</button></div>)}
+        <button className="gw-drop" disabled={!organizer||!selected||!board[selected]||board[selected].team==="STANDBY"} onClick={()=>setTower(selected,lane)}>{th?"วางผู้เล่นที่เลือก":"Place selected player"}</button>
+      </section>)}</div>
+    </section>}
   </section>;
 }
