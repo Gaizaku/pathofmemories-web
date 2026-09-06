@@ -9,6 +9,9 @@ const title = (s:string) => s.replaceAll("_"," ");
 const base = "/api/v2/games/where-winds-meet";
 export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const th = language === "th";
+  const summaryDialog = useRef<HTMLDialogElement>(null);
+  const [copyMessage,setCopyMessage] = useState("");
+
   const [rounds,setRounds] = useState<Round[]>([]);
   const [round,setRound] = useState("");
   const [players,setPlayers] = useState<Player[]>([]);
@@ -162,11 +165,47 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     const m=players.filter(p=>board[p.player_id]?.team===t);
     return m.length>0&&(m.length>5||!m.some(p=>role(p)==="Tank")||!m.some(p=>role(p)==="Heal"));
   }).length;
+
+  const roundInfo=rounds.find(r=>r.id===round);
+  const roundLabel=roundInfo?new Date(roundInfo.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})+" · "+roundInfo.war_type:round;
+  // Keep copied names literal and prevent pasted names from creating Discord mentions.
+  const literal=(value:string)=>value.replace(/@/g,"@\u200b").replace(/[\r\n]/g," ").replace(/([*_~\x60|>\\])/g,"\\$1");
+  function playerSummary(p:Player,index:number){
+    const placement=board[p.player_id];
+    const loadout=p.loadouts.find(l=>l.id===placement?.loadout);
+    return (index+1)+". "+literal(p.character_name)+" · "+role(p)+
+      (loadout?" · "+literal(loadout.main_weapon_name)+" + "+literal(loadout.sub_weapon_name):"")+
+      (placement?.jungle?" · Jungle: "+title(placement.jungle):"")+
+      (placement?.tower?" · Tower: "+placement.tower:"");
+  }
+  const summaryLines=[
+    (th?"ฉบับร่าง — ยังไม่ประกาศ":"DRAFT — NOT PUBLISHED")+" | "+roundLabel,
+    ...[...teams,"UNASSIGNED"].flatMap(team=>{
+      const members=players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team);
+      return ["",title(team)+" ("+members.length+")",...members.map(playerSummary)];
+    })
+  ];
+  // Split at line boundaries, with a bounded fallback for unusually long player names.
+  const copyParts:string[]=[];
+  for(const line of summaryLines){
+    for(let offset=0;offset<Math.max(1,line.length);offset+=1700){
+      const piece=line.slice(offset,offset+1700);
+      const last=copyParts.length-1;
+      if(last<0||copyParts[last].length+piece.length+1>1800)copyParts.push(piece);
+      else copyParts[last]+="\n"+piece;
+    }
+  }
+  async function copyPart(index:number){
+    try{await navigator.clipboard.writeText(copyParts[index]);setCopyMessage(th?"คัดลอกส่วนที่ "+(index+1)+" แล้ว":"Copied part "+(index+1));}
+    catch{setCopyMessage(th?"คัดลอกอัตโนมัติไม่ได้ เลือกข้อความด้านล่างเพื่อคัดลอกเอง":"Clipboard unavailable. Select the text below to copy.");}
+  }
+
   return <section className="gw-builder"><fieldset disabled={cloudBusy} style={{border:0,padding:0,margin:0,minWidth:0}}>
     <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากวาง · วางทับเพื่อสลับตำแหน่ง · คลิกชื่อแล้วเลือกทีมได้":"Drag & drop · Drop on a player to swap · Or select a player then a team"}</p></div>
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("load")}>{th?"โหลดออนไลน์":"Load online"}</button>
+      <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>{setCopyMessage("");summaryDialog.current?.showModal();}}>Team Summary</button>
       <button onClick={()=>setRefresh(v=>v+1)}>Refresh</button><button disabled={!organizer||loading} onClick={()=>{if(window.confirm(th?"ล้างฉบับร่างรอบนี้?":"Clear this round's draft?"))setBoard({});}}>Reset board</button></div></header>
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     <p role="status" aria-live="polite">{cloudBusy?(th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"):cloudMessage}</p>
@@ -184,5 +223,19 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <button className="gw-drop" disabled={!organizer||!selected||!board[selected]||board[selected].team==="STANDBY"} onClick={()=>setTower(selected,lane)}>{th?"วางผู้เล่นที่เลือก":"Place selected player"}</button>
       </section>)}</div>
     </section>}
-  </fieldset></section>;
+  </fieldset>
+    <dialog ref={summaryDialog} className="gw-summary-dialog">
+      <header><div><h2>Team Summary</h2><p>{roundLabel}</p></div><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></header>
+      <p className="gw-status">{th?"สรุปจากทีมบนหน้าจอขณะนี้ · ฉบับร่าง ยังไม่ประกาศ":"Current board · Draft, not published"}</p>
+      {(pool.length>0||warnings>0)&&<p className="gw-error">{pool.length} Unassigned · {warnings} Squad warnings</p>}
+      <div className="gw-summary-grid">{[...teams,"UNASSIGNED"].map(team=><section key={team}>
+        <h3>{title(team)}</h3>
+        {players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).map((p,i)=><p key={p.player_id}>{playerSummary(p,i)}</p>)}
+      </section>)}</div>
+      <h3>{th?"ข้อความสำหรับ Discord":"Discord text"}</h3>
+      <p>{th?"คัดลอกทีละส่วนแล้วนำไปวางใน Discord ได้":"Copy each part and paste it into Discord."}</p>
+      <p role="status" aria-live="polite">{copyMessage}</p>
+      {copyParts.map((part,i)=><div key={i} className="gw-copy-part"><button onClick={()=>copyPart(i)}>{th?"คัดลอกส่วนที่ ":"Copy part "}{i+1}/{copyParts.length}</button><textarea readOnly aria-label={"Discord text "+(i+1)} value={part} onFocus={e=>e.target.select()}/></div>)}
+    </dialog>
+  </section>;
 }
