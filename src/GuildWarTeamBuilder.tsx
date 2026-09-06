@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 type Player = {player_id:string; character_name:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type Round = {id:string;starts_at:string;war_type:string};
 type Placement = {team:string; loadout:string; jungle?:string; tower?:string};
@@ -21,6 +21,46 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [loadedRound,setLoadedRound] = useState("");
   const [refresh,setRefresh] = useState(0);
   const [saved,setSaved] = useState(false);
+  const [cloudBusy,setCloudBusy] = useState(false);
+  const [cloudMessage,setCloudMessage] = useState("");
+  const [revision,setRevision] = useState(0);
+  const activeRound = useRef(round);
+  activeRound.current = round;
+  useEffect(()=>{setRevision(0);setCloudMessage("");},[round,refresh]);
+  async function cloudDraft(action:"load"|"save") {
+    if(!organizer||cloudBusy||loading||cloudBusy||loadedRound!==round)return;
+    if(action==="load"&&!window.confirm(th?"โหลดฉบับร่างออนไลน์แทนที่ทีมบนหน้าจอนี้?":"Replace this board with the online draft?"))return;
+    const requestedRound=round;
+    setCloudBusy(true);setCloudMessage("");setError("");
+    try {
+      const response=await fetch(base+"/war/events/"+requestedRound+"/draft",action==="save"?{
+        method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision,board})
+      }:{method:"GET"});
+      const data=await response.json();
+      if(activeRound.current!==requestedRound)return;
+      if(!response.ok){
+        if(data.error==="draft_conflict")throw new Error(th?"มีฉบับร่างออนไลน์ใหม่กว่า กดโหลดออนไลน์ก่อนบันทึกอีกครั้ง":"A newer online draft exists. Load it before saving.");
+        if(data.error==="roster_changed")throw new Error(th?"รายชื่อหรือ Loadout เปลี่ยนแล้ว กรุณา Refresh และตรวจทีม":"Roster or loadouts changed. Refresh and review your team.");
+        if(response.status===401)throw new Error(th?"กรุณาเข้าสู่ระบบ Discord อีกครั้ง":"Please sign in with Discord again.");
+        throw new Error(th?"ติดต่อฉบับร่างออนไลน์ไม่สำเร็จ ลองใหม่ได้โดยทีมในเครื่องยังอยู่":"Online draft request failed. Your local board is retained.");
+      }
+      if(action==="load"){
+        if(data.revision===0){setRevision(0);setCloudMessage(th?"ยังไม่มีฉบับร่างออนไลน์ ทีมในเครื่องยังอยู่":"No online draft yet. Local board retained.");return;}
+        const next:Record<string,Placement>={};
+        for(const p of players){
+          const placement=data.board?.[p.player_id];
+          if(placement&&teams.includes(placement.team))next[p.player_id]={
+            ...placement,
+            loadout:p.loadouts.some(l=>l.id===placement.loadout)?placement.loadout:p.loadouts[0]?.id||""
+          };
+        }
+        setBoard(next);
+      }
+      setRevision(data.revision);
+      setCloudMessage(action==="save"?(th?"บันทึกออนไลน์แล้ว · ยังไม่ประกาศ":"Saved online · Not published"):(th?"โหลดฉบับร่างออนไลน์แล้ว":"Online draft loaded"));
+    }catch(err){if(activeRound.current===requestedRound)setError(err instanceof Error?err.message:"Request failed");}
+    finally{setCloudBusy(false);}
+  }
   async function get(url:string,signal:AbortSignal) {
     const response = await fetch(url,{signal});
     if (!response.ok) throw new Error("request_failed");
@@ -122,11 +162,14 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     const m=players.filter(p=>board[p.player_id]?.team===t);
     return m.length>0&&(m.length>5||!m.some(p=>role(p)==="Tank")||!m.some(p=>role(p)==="Heal"));
   }).length;
-  return <section className="gw-builder">
+  return <section className="gw-builder"><fieldset disabled={cloudBusy} style={{border:0,padding:0,margin:0,minWidth:0}}>
     <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากวาง · วางทับเพื่อสลับตำแหน่ง · คลิกชื่อแล้วเลือกทีมได้":"Drag & drop · Drop on a player to swap · Or select a player then a team"}</p></div>
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
+      <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
+      <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("load")}>{th?"โหลดออนไลน์":"Load online"}</button>
       <button onClick={()=>setRefresh(v=>v+1)}>Refresh</button><button disabled={!organizer||loading} onClick={()=>{if(window.confirm(th?"ล้างฉบับร่างรอบนี้?":"Clear this round's draft?"))setBoard({});}}>Reset board</button></div></header>
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
+    <p role="status" aria-live="polite">{cloudBusy?(th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"):cloudMessage}</p>
     {error&&<p role="alert" className="gw-error">{error}</p>}
     <div className="gw-stats">{[[players.length,"Registered"],[players.length-pool.length,"Assigned"],[pool.length,"Unassigned"],[warnings,"Squad warnings"]].map(([n,l])=><div key={l}><b>{n}</b><small>{l}</small></div>)}</div>
     {loading?<p role="status">{th?"กำลังโหลด…":"Loading…"}</p>:<div className="gw-layout"><aside className="gw-pool" onDragOver={e=>e.preventDefault()} onDrop={e=>drop(e,"")}>
@@ -141,5 +184,5 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <button className="gw-drop" disabled={!organizer||!selected||!board[selected]||board[selected].team==="STANDBY"} onClick={()=>setTower(selected,lane)}>{th?"วางผู้เล่นที่เลือก":"Place selected player"}</button>
       </section>)}</div>
     </section>}
-  </section>;
+  </fieldset></section>;
 }
