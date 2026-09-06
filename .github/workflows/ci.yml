@@ -1,13 +1,27 @@
 name: CI
+
 on:
-  push: { branches: [main] }
-  pull_request: { branches: [main] }
+  push:
+  pull_request:
+    branches: [main]
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with:
+          node-version: 24
+          cache: npm
       - run: npm ci
-      - run: npm run check
+      - run: npm run typecheck
+      - run: npm run build
+      - run: node --test guild-war-v2/attendance.test.mjs
+      - run: node --test guild-war-v2/import-plan.test.mjs
+      - run: node --test guild-war-v2/import-preview.test.mjs
+      - run: node --test guild-war-v2/registration-token.test.mjs
+      - run: node --test guild-war-v2/organizer-auth.test.mjs
+      - run: node --test guild-war-v2/read-api.test.mjs
+      - run: node --test guild-war-v2/team-publication-api.test.mjs
+      - run: npx tsc -p tsconfig.app.json --noEmit

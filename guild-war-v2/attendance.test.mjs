@@ -1,0 +1,16 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { resolveAttendance } from './attendance.mjs';
+const base = {event:{status:'open',localDate:'2026-09-05',weekday:6,warType:'League'},player:{active:true},regular:{enabled:true,weekdays:[6,0],warTypes:['League']}};
+test('regular is expected, never silently confirmed',()=>assert.deepEqual(resolveAttendance(base),{status:'expected',source:'regular'}));
+test('explicit absence beats regular',()=>assert.equal(resolveAttendance({...base,choice:{status:'unavailable'}}).status,'unavailable'));
+test('weekly absence beats regular',()=>assert.equal(resolveAttendance({...base,weekAbsent:true}).source,'week'));
+test('explicit round attendance overrides weekly absence',()=>assert.equal(resolveAttendance({...base,weekAbsent:true,choice:{status:'attending'}}).status,'confirmed'));
+test('paused regular is unregistered',()=>assert.equal(resolveAttendance({...base,regular:{...base.regular,enabled:false}}).status,'unregistered'));
+test('expired regular does not apply',()=>assert.equal(resolveAttendance({...base,regular:{...base.regular,endsOn:'2026-09-04'}}).status,'unregistered'));
+test('future regular does not apply',()=>assert.equal(resolveAttendance({...base,regular:{...base.regular,startsOn:'2026-09-06'}}).status,'unregistered'));
+test('other war type does not apply',()=>assert.equal(resolveAttendance({...base,event:{...base.event,warType:'Matching'}}).status,'unregistered'));
+test('inactive player cannot be confirmed',()=>assert.equal(resolveAttendance({...base,player:{active:false},choice:{status:'attending'}}).status,'unavailable'));
+test('cancelled round cannot be confirmed',()=>assert.equal(resolveAttendance({...base,event:{...base.event,status:'cancelled'},choice:{status:'attending'}}).status,'unavailable'));
+test('invalid choice is rejected',()=>assert.throws(()=>resolveAttendance({...base,choice:{status:'oops'}})));
+test('repeat resolution is deterministic and does not mutate input',()=>{const original=structuredClone(base);assert.deepEqual(resolveAttendance(base),resolveAttendance(base));assert.deepEqual(base,original);});

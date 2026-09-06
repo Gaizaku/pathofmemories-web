@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { whereWindsMeetGuides } from "./content/where-winds-meet-guides";
+import { GuildWarRegistration } from "./GuildWarRegistration";
+import { GuildWarPublication } from "./GuildWarPublication";
+import { GuildWarTeamBuilder } from "./GuildWarTeamBuilder";
 
 type Language = "th" | "en";
 
@@ -272,17 +275,10 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
         <aside className="manager-status">
           <span className="status-line"><i className="status-dot" />{t.statusReady}</span>
           <strong>{t.nextRound}</strong>
-          <small>Saturday · 19:30 / 20:15 / 21:15 / 21:50</small>
+          <small>{language === "th" ? "เลือกตัวเอง แล้วบันทึกได้ในไม่กี่ขั้นตอน" : "Choose yourself and save in a few simple steps."}</small>
         </aside>
       </section>
-      <section className="manager-actions" aria-label="Guild War actions">
-        <a className="manager-action manager-action-primary" href={guildWarUrl} target="_blank" rel="noreferrer">
-          <span>01</span><strong>{t.openRegister}</strong><small>Players · Loadouts · Role · Availability</small><ExternalMark />
-        </a>
-        <div className="manager-action manager-action-muted">
-          <span>02</span><strong>{t.openBuilder}</strong><small>{language === "th" ? "กำลังเตรียมพื้นที่สำหรับผู้จัดทีม" : "Organizer workspace is coming next"}</small><b>SOON</b>
-        </div>
-      </section>
+      <GuildWarRegistration language={language} />
       <p className="manager-note">✦ {t.managerNote}</p>
     </Shell>
   );
@@ -405,11 +401,14 @@ export default function App() {
   const [language, setLanguage] = useLanguage();
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
 
+  const publication = /^\/games\/where-winds-meet\/guild-war\/published\/([A-Za-z0-9-]{1,64})\/([a-f0-9-]{36})$/.exec(path);
+  if(publication) return <Shell language={language} onLanguageChange={setLanguage}><GuildWarPublication language={language} eventId={publication[1]} publicationId={publication[2]} /></Shell>;
   if (path === "/games") return <GamesPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/discord") return <DiscordPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guides") return <GuidesPage language={language} onLanguageChange={setLanguage} />;
   if (path.startsWith("/games/where-winds-meet/guides/")) return <GuideDetailPage slug={path.split("/").filter(Boolean).pop() || ""} language={language} onLanguageChange={setLanguage} />;
+  if (path === "/games/where-winds-meet/guild-war/teams") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarTeamBuilder language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   return <HomePage language={language} onLanguageChange={setLanguage} />;
 }
