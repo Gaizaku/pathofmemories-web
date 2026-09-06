@@ -1,3 +1,4 @@
+import {teamPublicationApi} from "../guild-war-v2/team-publication-api.mjs";
 import {teamDraftApi} from "../guild-war-v2/team-draft-api.mjs";
 import { readApi } from "../guild-war-v2/read-api.mjs";
 import { registrationApi } from "../guild-war-v2/registration-api.mjs";
@@ -19,6 +20,9 @@ export default {
 
     const authResponse = await organizerAuthApi(request, env);
     if (authResponse) return authResponse;
+
+    const publicationResponse = await teamPublicationApi(request, env);
+    if (publicationResponse) return publicationResponse;
 
     const draftResponse = await teamDraftApi(request, env);
     if (draftResponse) return draftResponse;

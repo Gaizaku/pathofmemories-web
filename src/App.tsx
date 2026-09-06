@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { whereWindsMeetGuides } from "./content/where-winds-meet-guides";
 import { GuildWarRegistration } from "./GuildWarRegistration";
+import { GuildWarPublication } from "./GuildWarPublication";
 import { GuildWarTeamBuilder } from "./GuildWarTeamBuilder";
 
 type Language = "th" | "en";
@@ -400,6 +401,8 @@ export default function App() {
   const [language, setLanguage] = useLanguage();
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
 
+  const publication = /^\/games\/where-winds-meet\/guild-war\/published\/([A-Za-z0-9-]{1,64})\/([a-f0-9-]{36})$/.exec(path);
+  if(publication) return <Shell language={language} onLanguageChange={setLanguage}><GuildWarPublication language={language} eventId={publication[1]} publicationId={publication[2]} /></Shell>;
   if (path === "/games") return <GamesPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/discord") return <DiscordPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;

@@ -26,10 +26,13 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [saved,setSaved] = useState(false);
   const [cloudBusy,setCloudBusy] = useState(false);
   const [cloudMessage,setCloudMessage] = useState("");
+  const [savedBoard,setSavedBoard] = useState("");
+  const [publishedLink,setPublishedLink] = useState("");
+  const [publishing,setPublishing] = useState(false);
   const [revision,setRevision] = useState(0);
   const activeRound = useRef(round);
   activeRound.current = round;
-  useEffect(()=>{setRevision(0);setCloudMessage("");},[round,refresh]);
+  useEffect(()=>{setRevision(0);setSavedBoard("");setPublishedLink("");setCloudMessage("");},[round,refresh]);
   async function cloudDraft(action:"load"|"save") {
     if(!organizer||cloudBusy||loading||cloudBusy||loadedRound!==round)return;
     if(action==="load"&&!window.confirm(th?"โหลดฉบับร่างออนไลน์แทนที่ทีมบนหน้าจอนี้?":"Replace this board with the online draft?"))return;
@@ -58,12 +61,31 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
           };
         }
         setBoard(next);
+        setSavedBoard(JSON.stringify(next)===JSON.stringify(data.board)?JSON.stringify(next):"");
       }
+      if(action==="save")setSavedBoard(JSON.stringify(board));
       setRevision(data.revision);
       setCloudMessage(action==="save"?(th?"บันทึกออนไลน์แล้ว · ยังไม่ประกาศ":"Saved online · Not published"):(th?"โหลดฉบับร่างออนไลน์แล้ว":"Online draft loaded"));
     }catch(err){if(activeRound.current===requestedRound)setError(err instanceof Error?err.message:"Request failed");}
     finally{setCloudBusy(false);}
   }
+
+  async function publishTeam() {
+    if(publishing||cloudBusy||revision<1||savedBoard!==JSON.stringify(board))return;
+    if(!window.confirm(th?"ประกาศทีมฉบับนี้? ผู้มีลิงก์จะดูรายชื่อ อาวุธ และตำแหน่งได้ โดยไม่ต้องล็อกอิน":"Publish this edition? Anyone with the link can view names, weapons and assignments without signing in."))return;
+    const requestedRound=round;
+    setPublishing(true);setError("");
+    try{
+      const response=await fetch(base+"/war/events/"+round+"/publications",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision})});
+      const result=await response.json();
+      if(!response.ok)throw new Error(response.status===409
+        ?(th?"ทีมเปลี่ยนหรือมีทีมเกิน 5 คน กรุณา Refresh ตรวจทีมและบันทึกออนไลน์อีกครั้ง":"Review your roster, squad capacity and online draft before publishing.")
+        :(th?"ยังประกาศไม่สำเร็จ กรุณาตรวจว่าระบบประกาศพร้อมใช้งาน แล้วลองใหม่":"Publishing is unavailable. Check setup and retry."));
+      if(activeRound.current===requestedRound)setPublishedLink(window.location.origin+"/games/where-winds-meet/guild-war/published/"+requestedRound+"/"+result.id);
+    }catch(e){setError(e instanceof Error?e.message:"Publish failed");}
+    finally{setPublishing(false);}
+  }
+
   async function get(url:string,signal:AbortSignal) {
     const response = await fetch(url,{signal});
     if (!response.ok) throw new Error("request_failed");
@@ -107,7 +129,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     catch{setSaved(false);setError(th?"บันทึกฉบับร่างในเครื่องไม่ได้":"Could not save local draft");}
   },[board,loadedRound,round,organizer]);
   function move(id:string,team:string,target?:string){
-    if(!organizer||loading||!players.some(p=>p.player_id===id)||id===target)return;
+    if(!organizer||cloudBusy||publishing||loading||!players.some(p=>p.player_id===id)||id===target)return;
     setBoard(previous=>{
       const next={...previous};const source=next[id];
       if(target&&next[target]){
@@ -124,7 +146,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }
 
   function setTower(id:string,lane:string) {
-    if(!organizer||loading||!board[id]||board[id].team==="STANDBY")return;
+    if(!organizer||cloudBusy||publishing||loading||!board[id]||board[id].team==="STANDBY")return;
     if(lane&&Object.entries(board).filter(([pid,p])=>pid!==id&&p.tower===lane).length>=3){
       setError(th?"Tower ตำแหน่งนี้ครบ 3 คนแล้ว":"This tower already has 3 players");return;
     }
@@ -134,7 +156,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   function card(p:Player){
     const place=board[p.player_id];
     return <article key={p.player_id} className={"gw-player gw-role-"+role(p)+(selected===p.player_id?" gw-selected":"")}
-      draggable={!!organizer&&!loading} onDragStart={e=>{e.dataTransfer.setData("text/plain",p.player_id);e.dataTransfer.effectAllowed="move";}}
+      draggable={!!organizer&&!loading&&!cloudBusy&&!publishing} onDragStart={e=>{e.dataTransfer.setData("text/plain",p.player_id);e.dataTransfer.effectAllowed="move";}}
       onDragOver={e=>e.preventDefault()} onDrop={e=>drop(e,place?.team||"",p.player_id)}>
       <button className="gw-pick" disabled={!organizer} onClick={()=>setSelected(selected===p.player_id?"":p.player_id)} title={th?"เลือกเพื่อย้ายทีม":"Select to move"}>{p.character_name}</button>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
@@ -200,7 +222,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     catch{setCopyMessage(th?"คัดลอกอัตโนมัติไม่ได้ เลือกข้อความด้านล่างเพื่อคัดลอกเอง":"Clipboard unavailable. Select the text below to copy.");}
   }
 
-  return <section className="gw-builder"><fieldset disabled={cloudBusy} style={{border:0,padding:0,margin:0,minWidth:0}}>
+  return <section className="gw-builder"><fieldset disabled={cloudBusy||publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
     <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากวาง · วางทับเพื่อสลับตำแหน่ง · คลิกชื่อแล้วเลือกทีมได้":"Drag & drop · Drop on a player to swap · Or select a player then a team"}</p></div>
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
@@ -232,6 +254,14 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <h3>{title(team)}</h3>
         {players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).map((p,i)=><p key={p.player_id}>{playerSummary(p,i)}</p>)}
       </section>)}</div>
+      <div>
+        <button disabled={publishing||cloudBusy||loading||!organizer||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={publishTeam}>
+          {publishing?(th?"กำลังประกาศ…":"Publishing…"):(th?"ประกาศทีมและสร้างลิงก์":"Publish teams and create link")}
+        </button>
+        {savedBoard!==JSON.stringify(board)&&<p>{th?"กลับไปบันทึกออนไลน์ก่อนประกาศทีมฉบับนี้":"Save this board online before publishing."}</p>}
+        {publishedLink&&<p role="status">{th?"ประกาศแล้ว: ":"Published: "}<a href={publishedLink} target="_blank" rel="noreferrer">{th?"เปิดทีมที่ประกาศ":"Open published teams"}</a><input readOnly aria-label={th?"ลิงก์ประกาศทีม":"Published team link"} value={publishedLink} onFocus={e=>e.target.select()}/></p>}
+        {error&&<p role="alert">{error}</p>}
+      </div>
       <h3>{th?"ข้อความสำหรับ Discord":"Discord text"}</h3>
       <p>{th?"คัดลอกทีละส่วนแล้วนำไปวางใน Discord ได้":"Copy each part and paste it into Discord."}</p>
       <p role="status" aria-live="polite">{copyMessage}</p>
