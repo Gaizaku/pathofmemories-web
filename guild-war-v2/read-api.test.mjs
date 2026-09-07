@@ -8,7 +8,7 @@ const db = new DatabaseSync(":memory:");
 db.exec(readFileSync(new URL("./001_registration.sql", import.meta.url), "utf8"));
 db.exec(`INSERT INTO games VALUES ('wwm','Test'),('other','Other');
 INSERT INTO weapons VALUES ('wwm','W001','Sword'),('wwm','W002','Spear');
-INSERT INTO players VALUES ('wwm','P001','Golf',1,1),('wwm','P002','Inactive',0,1);
+INSERT INTO players VALUES ('wwm','P001','Golf','กอล์ฟ',1,1),('wwm','P002','Inactive','',0,1);
 INSERT INTO loadouts VALUES ('wwm','L001','P001','DPS','W001','W002',1);
 INSERT INTO events VALUES ('wwm','one','2026-09-05T12:30:00Z','2026-09-05','2026-08-31','League','open',30);
 INSERT INTO events VALUES ('wwm','old','2026-08-29T12:30:00Z','2026-08-29','2026-08-24','League','closed',30);
@@ -48,7 +48,7 @@ test("returns active players with their owned loadouts", async () => {
   const result = await readApi(request("/api/v2/games/wwm/players"), env, now);
   assert.equal(result.status, 200);
   assert.deepEqual((await result.json()).players, [{
-    id: "P001", character_name: "Golf",
+    id: "P001", character_name: "Golf", nickname: "กอล์ฟ",
     loadouts: [{id: "L001", player_id: "P001", role: "DPS", main_weapon_id: "W001", main_weapon_name: "Sword", sub_weapon_id: "W002", sub_weapon_name: "Spear"}],
   }]);
 });
@@ -59,7 +59,7 @@ test("returns a round with registrations and chosen loadouts", async () => {
   assert.equal(result.status, 200);
   assert.equal(body.event.id, "one");
   assert.deepEqual(body.registrations, [{
-    player_id: "P001", character_name: "Golf", preferred_role: "DPS", note: "ready", updated_at: "2026-09-01T00:00:00Z",
+    player_id: "P001", character_name: "Golf", nickname: "กอล์ฟ", preferred_role: "DPS", note: "ready", updated_at: "2026-09-01T00:00:00Z",
     loadouts: [{player_id: "P001", id: "L001", role: "DPS", main_weapon_name: "Sword", sub_weapon_name: "Spear"}],
   }]);
 });
