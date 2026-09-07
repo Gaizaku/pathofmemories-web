@@ -5,13 +5,14 @@ const lanes = ["TOP","MID","BOTTOM"];
 const json=(body,status=200)=>Response.json(body,{status,headers:{"Cache-Control":"no-store"}});
 export function validDraft(value) {
  if(!value||!Number.isSafeInteger(value.revision)||value.revision<0||!value.board||Array.isArray(value.board)||typeof value.board!=="object")return false;
- const entries=Object.entries(value.board),counts={};
+ const entries=Object.entries(value.board),counts={},teamCounts={};
  if(entries.length>200)return false;
  for(const [id,p] of entries){
   if(!/^[A-Za-z0-9-]{1,64}$/.test(id)||!p||!teams.includes(p.team)||typeof p.loadout!=="string"||p.loadout.length>64)return false;
   if(p.jungle!==undefined&&!jungle.includes(p.jungle))return false;
   if(p.tower!==undefined&&!lanes.includes(p.tower))return false;
   if(p.team==="STANDBY"&&(p.jungle||p.tower))return false;
+  if(p.team!=="STANDBY"){teamCounts[p.team]=(teamCounts[p.team]||0)+1;if(teamCounts[p.team]>5)return false;}
   if(p.tower){counts[p.tower]=(counts[p.tower]||0)+1;if(counts[p.tower]>3)return false;}
  }
  return true;
