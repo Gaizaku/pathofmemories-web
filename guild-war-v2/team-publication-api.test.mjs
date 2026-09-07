@@ -14,7 +14,7 @@ async function fixture() {
   async run(){return {meta:sql.prepare(query).run(...args)};}
  };}};}};
  sql.exec(`INSERT INTO games VALUES ('game','Game');
- INSERT INTO players VALUES ('game','player','Hero',1,1);
+ INSERT INTO players VALUES ('game','player','Hero','HeroNick',1,1);
  INSERT INTO events VALUES ('game','event','2026-09-06T12:00:00Z','2026-09-06','2026-08-31','League','open',30);
  INSERT INTO attendance_choices VALUES ('game','event','player','attending','Tank','PRIVATE NOTE',1,'now','PRIVATE ACTOR');
  INSERT INTO organizers VALUES ('organizer','Organizer',1,'now');`);
