@@ -44,7 +44,7 @@ export async function readApi(request, env, now = new Date()) {
       if (!event) return json({error: "event_not_found"}, 404);
 
       const registrations = await query(env.GUILD_WAR_DB,
-        "SELECT c.player_id, p.character_name, c.preferred_role, c.note, c.updated_at FROM attendance_choices c JOIN players p ON p.game_id = c.game_id AND p.id = c.player_id WHERE c.game_id = ? AND c.event_id = ? AND c.status = 'attending' ORDER BY c.updated_at, c.player_id LIMIT 200",
+        "SELECT c.player_id, p.character_name, p.nickname, c.preferred_role, c.note, c.updated_at FROM attendance_choices c JOIN players p ON p.game_id = c.game_id AND p.id = c.player_id WHERE c.game_id = ? AND c.event_id = ? AND c.status = 'attending' ORDER BY c.updated_at, c.player_id LIMIT 200",
         gameId, eventId
       );
       const chosenLoadouts = await query(env.GUILD_WAR_DB,
@@ -58,7 +58,7 @@ export async function readApi(request, env, now = new Date()) {
 
     const gameId = playerMatch[1];
     const players = await query(env.GUILD_WAR_DB,
-      "SELECT id, character_name FROM players WHERE game_id = ? AND active = 1 ORDER BY character_name COLLATE NOCASE, id LIMIT 200",
+      "SELECT id, character_name, nickname FROM players WHERE game_id = ? AND active = 1 ORDER BY character_name COLLATE NOCASE, id LIMIT 200",
       gameId
     );
     const loadouts = await query(env.GUILD_WAR_DB,
