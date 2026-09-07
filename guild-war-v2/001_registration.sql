@@ -46,6 +46,7 @@ CREATE TABLE attendance_loadouts (
 CREATE TABLE regular_rules (
   game_id TEXT NOT NULL, player_id TEXT NOT NULL,
   enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), starts_on TEXT, ends_on TEXT,
+  default_role TEXT, default_loadout_id TEXT, preferred_team TEXT, paused_until TEXT,
   revision INTEGER NOT NULL DEFAULT 1,
   PRIMARY KEY(game_id,player_id),
   FOREIGN KEY(game_id,player_id) REFERENCES players(game_id,id),
@@ -59,6 +60,7 @@ CREATE TABLE regular_slots (
 );
 CREATE TABLE weekly_absences (
   game_id TEXT NOT NULL, player_id TEXT NOT NULL, week_start TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '', updated_at TEXT, updated_by TEXT,
   PRIMARY KEY(game_id,player_id,week_start),
   FOREIGN KEY(game_id,player_id) REFERENCES players(game_id,id)
 );

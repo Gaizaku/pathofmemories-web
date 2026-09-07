@@ -4,6 +4,7 @@ import { whereWindsMeetGuides } from "./content/where-winds-meet-guides";
 import { GuildWarRegistration } from "./GuildWarRegistration";
 import { GuildWarPublication } from "./GuildWarPublication";
 import { GuildWarTeamBuilder } from "./GuildWarTeamBuilder";
+import { GuildWarRegulars } from "./GuildWarRegulars";
 
 type Language = "th" | "en";
 
@@ -408,6 +409,7 @@ export default function App() {
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guides") return <GuidesPage language={language} onLanguageChange={setLanguage} />;
   if (path.startsWith("/games/where-winds-meet/guides/")) return <GuideDetailPage slug={path.split("/").filter(Boolean).pop() || ""} language={language} onLanguageChange={setLanguage} />;
+  if (path === "/games/where-winds-meet/guild-war/regulars") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarRegulars language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war/teams") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarTeamBuilder language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   return <HomePage language={language} onLanguageChange={setLanguage} />;

@@ -62,10 +62,10 @@ test("changed attendance and cancelled rounds cannot be published",async()=>{
  } finally {f.sql.close();}
 });
 
-test("rejects overfull squads and unknown loadouts",()=>{
+test("rejects invalid overfull boards and unknown loadouts",()=>{
  const source={event:{},registrations:Array.from({length:6},(_,i)=>({player_id:"p"+i,character_name:"Hero",loadouts:[]}))};
  const board=Object.fromEntries(source.registrations.map(p=>[p.player_id,{team:"ATTACK_1",loadout:""}]));
- assert.throws(()=>publicationSnapshot(board,source),/squad_full/);
+ assert.throws(()=>publicationSnapshot(board,source),/invalid_board/);
  assert.throws(()=>publicationSnapshot({p0:{team:"ATTACK_1",loadout:"unknown"}},source),/roster_changed/);
 });
 
