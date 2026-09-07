@@ -31,8 +31,8 @@ export function buildImportPlan(source) {
 
   for (const row of rowsToObjects(source.players)) {
     statements.push({
-      sql: "INSERT INTO players (game_id, id, character_name, active) VALUES (?, ?, ?, ?) ON CONFLICT(game_id, id) DO UPDATE SET character_name = excluded.character_name, active = excluded.active",
-      params: [GAME_ID, row.player_id, row.character_name, asFlag(row.active)],
+      sql: "INSERT INTO players (game_id, id, character_name, nickname, active) VALUES (?, ?, ?, ?, ?) ON CONFLICT(game_id, id) DO UPDATE SET character_name = excluded.character_name, nickname = excluded.nickname, active = excluded.active",
+      params: [GAME_ID, row.player_id, row.character_name, row.nickname || "", asFlag(row.active)],
     });
   }
 
