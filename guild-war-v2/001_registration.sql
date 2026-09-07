@@ -3,7 +3,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE games (id TEXT PRIMARY KEY, name TEXT NOT NULL);
 CREATE TABLE players (
   game_id TEXT NOT NULL REFERENCES games(id), id TEXT NOT NULL,
-  character_name TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+  character_name TEXT NOT NULL, nickname TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
   revision INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(game_id,id)
 );
 CREATE TABLE weapons (
