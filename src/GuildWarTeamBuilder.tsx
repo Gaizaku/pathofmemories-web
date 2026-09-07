@@ -1,11 +1,17 @@
 import {useEffect, useRef, useState} from "react";
-type Player = {player_id:string; character_name:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
+type Player = {player_id:string; character_name:string; nickname?:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
+type DropTarget = {team:string; playerId?:string};
 type Round = {id:string;starts_at:string;war_type:string};
 type Placement = {team:string; loadout:string; jungle?:string; tower?:string};
 const jungles = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
 const lanes = ["TOP","MID","BOTTOM"];
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
-const title = (s:string) => s.replaceAll("_"," ");
+const teamNames: Record<string,string> = {
+  ATTACK_1: "ทีมบุก 1", ATTACK_2: "ทีมบุก 2", ATTACK_3: "ทีมบุก 3",
+  DEFENSE_1: "ทีมป้องกัน 1", DEFENSE_2: "ทีมป้องกัน 2", FOREST: "ป่า", STANDBY: "สำรอง",
+  UNASSIGNED: "ยังไม่จัดทีม"
+};
+const title = (s:string, thai=false) => thai ? (teamNames[s] || s) : s.replaceAll("_"," ");
 const base = "/api/v2/games/where-winds-meet";
 export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const th = language === "th";
@@ -19,6 +25,8 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [organizer,setOrganizer] = useState<string>("");
   const [search,setSearch] = useState("");
   const [selected,setSelected] = useState("");
+  const [draggingPlayer,setDraggingPlayer] = useState("");
+  const [dropTarget,setDropTarget] = useState<DropTarget|null>(null);
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(true);
   const [loadedRound,setLoadedRound] = useState("");
@@ -53,12 +61,16 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       if(action==="load"){
         if(data.revision===0){setRevision(0);setCloudMessage(th?"ยังไม่มีฉบับร่างออนไลน์ ทีมในเครื่องยังอยู่":"No online draft yet. Local board retained.");return;}
         const next:Record<string,Placement>={};
+        const loadedCounts:Record<string,number>={};
         for(const p of players){
           const placement=data.board?.[p.player_id];
-          if(placement&&teams.includes(placement.team))next[p.player_id]={
+          if(!placement||!teams.includes(placement.team)) continue;
+          if(placement.team!=="STANDBY"&&(loadedCounts[placement.team]||0)>=5) continue;
+          next[p.player_id]={
             ...placement,
             loadout:p.loadouts.some(l=>l.id===placement.loadout)?placement.loadout:p.loadouts[0]?.id||""
           };
+          if(placement.team!=="STANDBY")loadedCounts[placement.team]=(loadedCounts[placement.team]||0)+1;
         }
         setBoard(next);
         setSavedBoard(JSON.stringify(next)===JSON.stringify(data.board)?JSON.stringify(next):"");
@@ -101,13 +113,19 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   },[refresh]);
   useEffect(()=>{
     if(!round)return;
-    const c=new AbortController();setLoading(true);setError("");setLoadedRound("");setSelected("");
+    const c=new AbortController();setLoading(true);setError("");setLoadedRound("");setSelected("");setDraggingPlayer("");setDropTarget(null);
     get(base+"/war/events/"+round+"/registrations",c.signal).then(d=>{
       const roster:Player[]=d.registrations||[];const valid:Record<string,Placement>={};
+      const teamCounts:Record<string,number>={};
       try {
         const old=JSON.parse(localStorage.getItem("pom-board-v2:"+round)||"{}");
-        for(const p of roster) if(old[p.player_id]&&teams.includes(old[p.player_id].team))
-          valid[p.player_id]={team:old[p.player_id].team,loadout:p.loadouts.some(l=>l.id===old[p.player_id].loadout)?old[p.player_id].loadout:p.loadouts[0]?.id||""};
+        for(const p of roster) {
+          const placement=old[p.player_id];
+          if(!placement||!teams.includes(placement.team)) continue;
+          if(placement.team!=="STANDBY"&&(teamCounts[placement.team]||0)>=5) continue;
+          valid[p.player_id]={team:placement.team,loadout:p.loadouts.some(l=>l.id===placement.loadout)?placement.loadout:p.loadouts[0]?.id||""};
+          if(placement.team!=="STANDBY")teamCounts[placement.team]=(teamCounts[placement.team]||0)+1;
+        }
       }catch{}
       const counts:Record<string,number>={};
       try {
@@ -128,8 +146,17 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     try{localStorage.setItem("pom-board-v2:"+round,JSON.stringify(board));setSaved(true);}
     catch{setSaved(false);setError(th?"บันทึกฉบับร่างในเครื่องไม่ได้":"Could not save local draft");}
   },[board,loadedRound,round,organizer]);
+  function limitedTeam(team:string){return !!team&&team!=="STANDBY";}
+  function teamMemberCount(team:string){return players.filter(p=>board[p.player_id]?.team===team).length;}
+  function destinationIsFull(team:string,id:string,target?:string){
+    return limitedTeam(team)&&!target&&board[id]?.team!==team&&teamMemberCount(team)>=5;
+  }
   function move(id:string,team:string,target?:string){
     if(!organizer||cloudBusy||publishing||loading||!players.some(p=>p.player_id===id)||id===target)return;
+    if(destinationIsFull(team,id,target)){
+      setError(th?"ทีมนี้เต็มแล้ว (สูงสุด 5 คน) · วางทับผู้เล่นเพื่อสลับทีมได้":"This team is full (maximum 5). Drop on a player to swap teams.");
+      return;
+    }
     setBoard(previous=>{
       const next={...previous};const source=next[id];
       if(target&&next[target]){
@@ -137,9 +164,12 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       }
       if(team) next[id]={...source,team,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
       else delete next[id];
-      for(const id of Object.keys(next))if(next[id].team==="STANDBY"){next[id]={...next[id],jungle:undefined,tower:undefined};}
+      for(const playerId of Object.keys(next))if(next[playerId].team==="STANDBY"){
+        next[playerId]={...next[playerId],jungle:undefined,tower:undefined};
+      }
       return next;
-    });setSelected("");
+    });
+    setError("");setSelected("");setDraggingPlayer("");setDropTarget(null);
   }
   function drop(e:React.DragEvent,team:string,target?:string){
     e.preventDefault();e.stopPropagation();move(e.dataTransfer.getData("text/plain"),team,target);
@@ -155,31 +185,42 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   function role(p:Player){return p.loadouts.find(l=>l.id===board[p.player_id]?.loadout)?.role||p.preferred_role||p.loadouts[0]?.role||"—";}
   function card(p:Player){
     const place=board[p.player_id];
-    return <article key={p.player_id} className={"gw-player gw-role-"+role(p)+(selected===p.player_id?" gw-selected":"")}
-      draggable={!!organizer&&!loading&&!cloudBusy&&!publishing} onDragStart={e=>{e.dataTransfer.setData("text/plain",p.player_id);e.dataTransfer.effectAllowed="move";}}
-      onDragOver={e=>e.preventDefault()} onDrop={e=>drop(e,place?.team||"",p.player_id)}>
-      <button className="gw-pick" disabled={!organizer} onClick={()=>setSelected(selected===p.player_id?"":p.player_id)} title={th?"เลือกเพื่อย้ายทีม":"Select to move"}>{p.character_name}</button>
+    const isSwapTarget=dropTarget?.playerId===p.player_id;
+    return <article key={p.player_id} className={"gw-player gw-role-"+role(p)+(selected===p.player_id?" gw-selected":"")+(draggingPlayer===p.player_id?" gw-dragging":"")+(isSwapTarget?" gw-swap-target":"")}
+      draggable={!!organizer&&!loading&&!cloudBusy&&!publishing}
+      onDragStart={e=>{e.dataTransfer.setData("text/plain",p.player_id);e.dataTransfer.effectAllowed="move";setDraggingPlayer(p.player_id);setDropTarget(null);}}
+      onDragEnd={()=>{setDraggingPlayer("");setDropTarget(null);}}
+      onDragOver={e=>{e.preventDefault();e.stopPropagation();if(draggingPlayer&&draggingPlayer!==p.player_id)setDropTarget({team:place?.team||"",playerId:p.player_id});}}
+      onDrop={e=>drop(e,place?.team||"",p.player_id)}>
+      <button className="gw-pick" disabled={!organizer} onClick={()=>setSelected(selected===p.player_id?"":p.player_id)} title={th?"เลือกเพื่อย้ายทีม":"Select to move"}>
+        <span>{p.character_name}</span>{p.nickname&&<small>({p.nickname})</small>}
+      </button>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
       <div className="gw-meta">{role(p)}{p.preferred_role?" · Pref "+p.preferred_role:""}</div>
-      {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(b=>({...b,[p.player_id]:{...b[p.player_id],loadout:e.target.value}}))}>
+      {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
         {!p.loadouts.length&&<option value="">—</option>}{p.loadouts.map(l=><option key={l.id} value={l.id}>{l.role} · {l.main_weapon_name} + {l.sub_weapon_name}</option>)}
       </select>:<div className="gw-meta">{p.loadouts.map(l=>l.main_weapon_name+" + "+l.sub_weapon_name).join(" / ")}</div>}
       {place&&place.team!=="STANDBY"&&<select aria-label={"Jungle "+p.character_name} value={place.jungle||""} disabled={!organizer||loading}
-        onChange={e=>setBoard(b=>({...b,[p.player_id]:{...b[p.player_id],jungle:e.target.value||undefined}}))}>
+        onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],jungle:e.target.value||undefined}}))}>
         <option value="">{th?"ไม่เข้าป่า":"No jungle"}</option>
-        {jungles.map((j,i)=><option key={j} value={j}>{th?["ป่าบนศัตรู","ป่าล่างศัตรู","ป่าบนฝั่งเรา","ป่าล่างฝั่งเรา"][i]:title(j)}</option>)}
+        {jungles.map((j,i)=><option key={j} value={j}>{th?["ป่าบนศัตรู","ป่าล่างศัตรู","ป่าบนฝั่งเรา","ป่าล่างฝั่งเรา"][i]:title(j,th)}</option>)}
       </select>}
     </article>;
   }
   function squad(team:string){
     const members=players.filter(p=>board[p.player_id]?.team===team);
     const tank=members.filter(p=>role(p)==="Tank").length,heal=members.filter(p=>role(p)==="Heal").length;
-    return <section key={team} className={"gw-squad "+(team.startsWith("ATTACK")?"gw-attack":team==="FOREST"?"gw-forest":"gw-defense")}
-      onDragOver={e=>e.preventDefault()} onDrop={e=>drop(e,team)}>
-      <header><strong>{title(team)}</strong><span>{members.length}{team!=="STANDBY"?"/5":""}</span></header>
-      {team!=="STANDBY"&&<div className="gw-meta">Tank {tank}/1 · Heal {heal}/1{members.length>5?" · ⚠ >5":""}</div>}
+    const teamFull=limitedTeam(team)&&members.length>=5;
+    const isTeamDropTarget=dropTarget?.team===team&&!dropTarget.playerId;
+    const isSourceTeam=draggingPlayer&&board[draggingPlayer]?.team===team;
+    return <section key={team} className={"gw-squad "+(team.startsWith("ATTACK")?"gw-attack":team==="FOREST"?"gw-forest":"gw-defense")+(isSourceTeam?" gw-drag-source":"")+(isTeamDropTarget?(teamFull?" gw-drop-blocked":" gw-drop-ready"):"")}
+      onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team});}} onDrop={e=>drop(e,team)}>
+      <header><strong>{title(team,th)}</strong><span>{members.length}{team!=="STANDBY"?"/5":""}</span></header>
+      {team!=="STANDBY"&&<div className="gw-meta">Tank {tank}/1 · Heal {heal}/1{teamFull?" · "+(th?"เต็มแล้ว":"Full"):""}</div>}
       <div className="gw-slots">{members.map(card)}</div>
-      <button className="gw-drop" disabled={!organizer||!selected} onClick={()=>move(selected,team)}>{selected?(th?"วางผู้เล่นที่เลือก":"Place selected player"):(th?"ลากผู้เล่นมาวาง":"Drop players here")}</button>
+      <button className="gw-drop" disabled={!organizer||!selected||destinationIsFull(team,selected)} onClick={()=>move(selected,team)}>
+        {selected?(teamFull?(th?"ทีมเต็ม · วางทับเพื่อสลับ":"Team full · Drop on a player to swap"):(th?"วางผู้เล่นที่เลือก":"Place selected player")):(th?"ลากผู้เล่นมาวาง":"Drop players here")}
+      </button>
     </section>;
   }
   const pool=players.filter(p=>!board[p.player_id]);
@@ -197,14 +238,14 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     const loadout=p.loadouts.find(l=>l.id===placement?.loadout);
     return (index+1)+". "+literal(p.character_name)+" · "+role(p)+
       (loadout?" · "+literal(loadout.main_weapon_name)+" + "+literal(loadout.sub_weapon_name):"")+
-      (placement?.jungle?" · Jungle: "+title(placement.jungle):"")+
+      (placement?.jungle?" · Jungle: "+title(placement.jungle,th):"")+
       (placement?.tower?" · Tower: "+placement.tower:"");
   }
   const summaryLines=[
     (th?"ฉบับร่าง — ยังไม่ประกาศ":"DRAFT — NOT PUBLISHED")+" | "+roundLabel,
     ...[...teams,"UNASSIGNED"].flatMap(team=>{
       const members=players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team);
-      return ["",title(team)+" ("+members.length+")",...members.map(playerSummary)];
+      return ["",title(team,th)+" ("+members.length+")",...members.map(playerSummary)];
     })
   ];
   // Split at line boundaries, with a bounded fallback for unusually long player names.
@@ -223,7 +264,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }
 
   return <section className="gw-builder"><fieldset disabled={cloudBusy||publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
-    <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากวาง · วางทับเพื่อสลับตำแหน่ง · คลิกชื่อแล้วเลือกทีมได้":"Drag & drop · Drop on a player to swap · Or select a player then a team"}</p></div>
+    <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากวาง · วางทับผู้เล่นเพื่อสลับทีม · ทีมละสูงสุด 5 คน":"Drag & drop · Drop on a player to swap · Maximum 5 players per team"}</p></div>
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("load")}>{th?"โหลดออนไลน์":"Load online"}</button>
@@ -233,14 +274,14 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     <p role="status" aria-live="polite">{cloudBusy?(th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"):cloudMessage}</p>
     {error&&<p role="alert" className="gw-error">{error}</p>}
     <div className="gw-stats">{[[players.length,"Registered"],[players.length-pool.length,"Assigned"],[pool.length,"Unassigned"],[warnings,"Squad warnings"]].map(([n,l])=><div key={l}><b>{n}</b><small>{l}</small></div>)}</div>
-    {loading?<p role="status">{th?"กำลังโหลด…":"Loading…"}</p>:<div className="gw-layout"><aside className="gw-pool" onDragOver={e=>e.preventDefault()} onDrop={e=>drop(e,"")}>
+    {loading?<p role="status">{th?"กำลังโหลด…":"Loading…"}</p>:<div className="gw-layout"><aside className={"gw-pool "+(dropTarget?.team===""&&!dropTarget.playerId?" gw-drop-ready":"")} onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team:""});}} onDrop={e=>drop(e,"")}>
       <header><strong>Unassigned</strong><input aria-label="Search players" placeholder={th?"ค้นหาชื่อ…":"Search players…"} value={search} onChange={e=>setSearch(e.target.value)}/></header>
-      <div className="gw-pool-list">{pool.filter(p=>p.character_name.toLowerCase().includes(search.toLowerCase())).map(card)}</div>
+      <div className="gw-pool-list">{pool.filter(p=>(p.character_name+" "+(p.nickname||"")).toLowerCase().includes(search.toLowerCase())).map(card)}</div>
       {selected&&<button onClick={()=>move(selected,"")}>{th?"นำกลับ Unassigned":"Return to Unassigned"}</button>}
     </aside><div className="gw-board"><div className="gw-sides"><section><h2>{th?"ฝั่งบุก":"Attack"}</h2><div className="gw-squads">{teams.slice(0,3).map(squad)}</div></section><section><h2>{th?"ฝั่งกัน":"Defense"}</h2><div className="gw-squads">{teams.slice(3,6).map(squad)}</div></section></div><div className="gw-standby">{squad("STANDBY")}</div></div></div>}
     {!loading&&<section className="gw-tactical"><h2>Tower Assignment</h2><p>{th?"ลากผู้เล่นจากทีมมาวาง หรือคลิกชื่อแล้วเลือก Tower · ตำแหน่งละไม่เกิน 3 คน":"Drag a team player here, or select a player then a tower · Maximum 3 per tower"}</p>
       <div className="gw-towers">{lanes.map(lane=><section key={lane} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("text/plain"),lane);}}>
-        <header><strong>{title(lane)}</strong><span>{Object.values(board).filter(p=>p.tower===lane).length}/3</span></header>
+        <header><strong>{title(lane,th)}</strong><span>{Object.values(board).filter(p=>p.tower===lane).length}/3</span></header>
         {players.filter(p=>board[p.player_id]?.tower===lane).map(p=><div className="gw-tower-player" key={p.player_id}><span>{p.character_name}</span><button disabled={!organizer} onClick={()=>setTower(p.player_id,"")} aria-label={"Remove tower "+p.character_name}>×</button></div>)}
         <button className="gw-drop" disabled={!organizer||!selected||!board[selected]||board[selected].team==="STANDBY"} onClick={()=>setTower(selected,lane)}>{th?"วางผู้เล่นที่เลือก":"Place selected player"}</button>
       </section>)}</div>
@@ -251,7 +292,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <p className="gw-status">{th?"สรุปจากทีมบนหน้าจอขณะนี้ · ฉบับร่าง ยังไม่ประกาศ":"Current board · Draft, not published"}</p>
       {(pool.length>0||warnings>0)&&<p className="gw-error">{pool.length} Unassigned · {warnings} Squad warnings</p>}
       <div className="gw-summary-grid">{[...teams,"UNASSIGNED"].map(team=><section key={team}>
-        <h3>{title(team)}</h3>
+        <h3>{title(team,th)}</h3>
         {players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).map((p,i)=><p key={p.player_id}>{playerSummary(p,i)}</p>)}
       </section>)}</div>
       <div>
