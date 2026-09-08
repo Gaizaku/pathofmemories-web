@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from "react";
-type Player = {player_id:string; character_name:string; nickname?:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
+type Player = {player_id:string; character_name:string; nickname?:string; attendance_status?:string; preferred_team?:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type DropTarget = {team:string; playerId?:string};
 type Round = {id:string;starts_at:string;war_type:string};
 type Placement = {team:string; loadout:string; jungle?:string; tower?:string};
@@ -196,6 +196,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <span>{p.character_name}</span>{p.nickname&&<small>({p.nickname})</small>}
       </button>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
+      <div className="gw-meta">{p.attendance_status==="expected"?(th?"ขาประจำ · รอยืนยัน":"Regular · Unconfirmed"):(th?"ยืนยันแล้ว":"Confirmed")}{p.preferred_team?" · "+title(p.preferred_team,th):""}</div>
       <div className="gw-meta">{role(p)}{p.preferred_role?" · Pref "+p.preferred_role:""}</div>
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
         {!p.loadouts.length&&<option value="">—</option>}{p.loadouts.map(l=><option key={l.id} value={l.id}>{l.role} · {l.main_weapon_name} + {l.sub_weapon_name}</option>)}

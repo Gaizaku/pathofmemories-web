@@ -1,4 +1,5 @@
 import {createClaimToken, hashClaimToken, hasMatchingClaim} from "./registration-token.mjs";
+import {GAME} from './weekend.mjs';
 
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
 
@@ -33,6 +34,7 @@ export async function registrationApi(request, env) {
   if (!payload) return json({error: "invalid_request"}, 400);
 
   const [, gameId, eventId] = match;
+  if(gameId===GAME)return json({error:'use_week_registration'},409);
   const now = new Date().toISOString();
   try {
     const [event] = await all(env.GUILD_WAR_DB,

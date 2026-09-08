@@ -4,6 +4,7 @@ import { readApi } from "../guild-war-v2/read-api.mjs";
 import { registrationApi } from "../guild-war-v2/registration-api.mjs";
 import { organizerAuthApi } from "../guild-war-v2/organizer-auth.mjs";
 import { regularsApi } from "../guild-war-v2/regulars-api.mjs";
+import { memberRegistration } from "../guild-war-v2/member-registration.mjs";
 
 export interface Env {
   GUILD_WAR_DB: D1Database;
@@ -31,6 +32,8 @@ export default {
     const regularsResponse = await regularsApi(request, env);
     if (regularsResponse) return regularsResponse;
 
+    const memberResponse = await memberRegistration(request, env);
+    if (memberResponse) return memberResponse;
     const registrationResponse = await registrationApi(request, env);
     if (registrationResponse) return registrationResponse;
 

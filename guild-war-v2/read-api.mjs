@@ -1,4 +1,4 @@
-// Isolated read-only handler. Not wired into the production Worker.
+import {GAME, ensureWeekend, slotOf, rows} from './weekend.mjs';
 export function bangkokWeek(now = new Date()) {
   const local = new Date(now.getTime() + 7 * 3600000);
   const daysSinceMonday = (local.getUTCDay() + 6) % 7;
@@ -27,6 +27,7 @@ export async function readApi(request, env, now = new Date()) {
 
   try {
     if (eventMatch) {
+      if(eventMatch[1]===GAME)return json({gameId:GAME,timeZone:'Asia/Bangkok',...await ensureWeekend(env.GUILD_WAR_DB,now)});
       const week = bangkokWeek(now);
       const events = await query(env.GUILD_WAR_DB,
         "SELECT id, starts_at, local_date, war_type, status, capacity FROM events WHERE game_id = ? AND week_start = ? ORDER BY starts_at, id LIMIT 64",
@@ -48,11 +49,21 @@ export async function readApi(request, env, now = new Date()) {
         gameId, eventId
       );
       const chosenLoadouts = await query(env.GUILD_WAR_DB,
-        "SELECT a.player_id, l.id, l.role, main.name AS main_weapon_name, sub.name AS sub_weapon_name FROM attendance_loadouts a JOIN loadouts l ON l.game_id = a.game_id AND l.id = a.loadout_id AND l.player_id = a.player_id JOIN weapons main ON main.game_id = l.game_id AND main.id = l.main_weapon_id JOIN weapons sub ON sub.game_id = l.game_id AND sub.id = l.sub_weapon_id WHERE a.game_id = ? AND a.event_id = ? ORDER BY a.player_id, l.id LIMIT 500",
+        "SELECT a.player_id, l.id, l.role, main.name AS main_weapon_name, sub.name AS sub_weapon_name FROM attendance_loadouts a JOIN loadouts l ON l.game_id = a.game_id AND l.id = a.loadout_id AND l.player_id = a.player_id AND l.active = 1 JOIN weapons main ON main.game_id = l.game_id AND main.id = l.main_weapon_id JOIN weapons sub ON sub.game_id = l.game_id AND sub.id = l.sub_weapon_id WHERE a.game_id = ? AND a.event_id = ? ORDER BY a.player_id, l.id LIMIT 500",
         gameId, eventId
       );
       const grouped = new Map(registrations.map((registration) => [registration.player_id, {...registration, loadouts: []}]));
       for (const loadout of chosenLoadouts) grouped.get(loadout.player_id)?.loadouts.push(loadout);
+      if(gameId===GAME) {
+        const preferences=await rows(env.GUILD_WAR_DB,'SELECT player_id,preferred_team FROM member_preferences WHERE game_id=?',gameId);
+        for(const p of preferences)if(grouped.has(p.player_id))grouped.get(p.player_id).preferred_team=p.preferred_team;
+        const defaults=await rows(env.GUILD_WAR_DB,`SELECT p.id,p.character_name,p.nickname,m.* FROM member_preferences m JOIN players p ON p.game_id=m.game_id AND p.id=m.player_id WHERE m.game_id=? AND m.regular=1 AND p.active=1 AND NOT EXISTS (SELECT 1 FROM attendance_choices c WHERE c.game_id=m.game_id AND c.player_id=m.player_id AND c.event_id=?) AND NOT EXISTS (SELECT 1 FROM weekly_absences w JOIN events e ON e.game_id=w.game_id AND e.week_start=w.week_start WHERE e.id=? AND w.game_id=m.game_id AND w.player_id=m.player_id)`,gameId,eventId,eventId);
+        const allLoadouts=await rows(env.GUILD_WAR_DB,'SELECT l.id,l.player_id,l.role,a.name AS main_weapon_name,b.name AS sub_weapon_name FROM loadouts l JOIN weapons a ON a.game_id=l.game_id AND a.id=l.main_weapon_id JOIN weapons b ON b.game_id=l.game_id AND b.id=l.sub_weapon_id WHERE l.game_id=? AND l.active=1',gameId);
+        for(const p of defaults)if(event.status!=='cancelled'&&JSON.parse(p.slots_json).includes(slotOf(event))) {
+          const ids=JSON.parse(p.loadouts_json);
+          grouped.set(p.player_id,{player_id:p.player_id,character_name:p.character_name,nickname:p.nickname,preferred_role:p.preferred_role,note:'',attendance_status:'expected',preferred_team:p.preferred_team,loadouts:allLoadouts.filter(l=>l.player_id===p.player_id&&ids.includes(l.id))});
+        }
+      }
       return json({gameId, event, registrations: [...grouped.values()]});
     }
 
