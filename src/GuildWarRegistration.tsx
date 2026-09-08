@@ -1,95 +1,45 @@
-import {useEffect, useMemo, useState} from "react";
-import type {FormEvent} from "react";
-
-type Language = "th" | "en";
-type Event = {id: string; starts_at: string; war_type: string; status: string; capacity: number};
-type Loadout = {id: string; role: string; main_weapon_name: string; sub_weapon_name: string};
-type Player = {id: string; character_name: string; loadouts: Loadout[]};
-
-const gameId = "where-winds-meet";
-const claimKey = (eventId: string, playerId: string) => `pom-war-claim:${eventId}:${playerId}`;
-
-export function GuildWarRegistration({language}: {language: Language}) {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [eventId, setEventId] = useState("");
-  const [playerId, setPlayerId] = useState("");
-  const [loadoutIds, setLoadoutIds] = useState<string[]>([]);
-  const [note, setNote] = useState("");
-  const [state, setState] = useState<"loading" | "ready" | "saving" | "error" | "saved">("loading");
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    Promise.all([
-      fetch(`/api/v2/games/${gameId}/war/events`).then((response) => response.json()),
-      fetch(`/api/v2/games/${gameId}/players`).then((response) => response.json()),
-    ]).then(([eventData, playerData]) => {
-      const openEvents = (eventData.events || []).filter((event: Event) => event.status === "open");
-      setEvents(openEvents);
-      setEventId(openEvents[0]?.id || "");
-      setPlayers(playerData.players || []);
-      setState("ready");
-    }).catch(() => {
-      setState("error");
-      setMessage(language === "th" ? "ยังเชื่อมข้อมูล War ไม่ได้ ลองใหม่อีกครั้งภายหลัง" : "War data is temporarily unavailable. Please try again.");
-    });
-  }, [language]);
-
-  const player = useMemo(() => players.find((item) => item.id === playerId), [players, playerId]);
-  const toggleLoadout = (id: string) => setLoadoutIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!eventId || !player) return;
-    setState("saving");
-    setMessage("");
-    const response = await fetch(`/api/v2/games/${gameId}/war/events/${eventId}/registrations`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        playerId: player.id,
-        preferredRole: player.loadouts.find((item) => loadoutIds.includes(item.id))?.role || null,
-        loadoutIds,
-        note,
-        claimToken: localStorage.getItem(claimKey(eventId, player.id)),
-      }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      setState("error");
-      setMessage(body.error === "claim_required"
-        ? (language === "th" ? "รายการนี้ถูกลงทะเบียนจากเครื่องอื่นแล้ว ให้ผู้จัดช่วยแก้ไข หรือเข้าสู่ระบบ Discord เมื่อเปิดใช้" : "This registration was made on another device. Ask an organizer for help or use Discord Login when available.")
-        : (language === "th" ? "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง" : "Could not save your registration. Please try again."));
-      return;
-    }
-    if (body.claimToken) localStorage.setItem(claimKey(eventId, player.id), body.claimToken);
-    setState("saved");
-    setMessage(language === "th" ? "ลงทะเบียนเรียบร้อยแล้ว คุณแก้ไขได้จาก browser เครื่องนี้" : "Registered. You can edit this entry from this browser.");
-  }
-
-  if (state === "loading") return <section className="war-registration loading"><span>✦</span>{language === "th" ? "กำลังเปิดสมุดลงทะเบียน…" : "Opening the registration book…"}</section>;
-  if (!events.length) return <section className="war-registration empty"><strong>{language === "th" ? "ยังไม่มีรอบ War ที่เปิดอยู่" : "No War round is currently open"}</strong><span>{language === "th" ? "กลับมาตรวจอีกครั้งเมื่อผู้จัดเปิดรอบใหม่" : "Check back when an organizer opens the next round."}</span></section>;
-
-  return <section className="war-registration">
-    <div className="registration-heading"><div><p className="eyebrow">GUILD WAR · REGISTER</p><h2>{language === "th" ? "ลงชื่อให้ทีมรู้" : "Let the team know"}</h2></div><span>{language === "th" ? "ไม่ต้อง Login" : "No login needed"}</span></div>
-    <form onSubmit={submit}>
-      <label> {language === "th" ? "เลือกรอบ War" : "Choose a War round"}
-        <select value={eventId} onChange={(event) => {setEventId(event.target.value); setLoadoutIds([]);}}>
-          {events.map((item) => <option value={item.id} key={item.id}>{new Date(item.starts_at).toLocaleString(language === "th" ? "th-TH" : "en-GB", {dateStyle: "medium", timeStyle: "short"})} · {item.war_type}</option>)}
-        </select>
-      </label>
-      <label>{language === "th" ? "ชื่อตัวละคร" : "Character name"}
-        <select value={playerId} onChange={(event) => {setPlayerId(event.target.value); setLoadoutIds([]);}}>
-          <option value="">{language === "th" ? "เลือกชื่อตัวเอง" : "Choose your name"}</option>
-          {players.map((item) => <option value={item.id} key={item.id}>{item.character_name}</option>)}
-        </select>
-      </label>
-      {player && <fieldset><legend>{language === "th" ? "Build ที่พร้อมเล่น" : "Available build"}</legend>
-        <div className="loadout-list">{player.loadouts.map((item) => <label className="loadout-choice" key={item.id}><input type="checkbox" checked={loadoutIds.includes(item.id)} onChange={() => toggleLoadout(item.id)} /><span><b>{item.role}</b>{item.main_weapon_name} + {item.sub_weapon_name}</span></label>)}</div>
-      </fieldset>}
-      <label>{language === "th" ? "หมายเหตุ (ถ้ามี)" : "Note (optional)"}<textarea value={note} maxLength={500} onChange={(event) => setNote(event.target.value)} /></label>
-      {message && <p className={state === "error" ? "registration-error" : "registration-success"}>{message}</p>}
-      <button className="primary-button" disabled={!player || state === "saving"}>{state === "saving" ? (language === "th" ? "กำลังบันทึก…" : "Saving…") : (language === "th" ? "ลงทะเบียน" : "Register")}</button>
-    </form>
+import {useEffect,useRef,useState} from 'react';
+import './GuildWarRegistration.css';
+type Player={id:string;character_name:string;nickname?:string;loadouts:Loadout[]};
+type Loadout={id:string;role:string;main_weapon_name:string;sub_weapon_name:string};
+type Round={id:string;starts_at:string;local_date:string;war_type:string;status:string;round_number:number;ends_at:string};
+type Weapon={id:string;name:string};
+const base='/api/v2/games/where-winds-meet';
+const teamNames=[['','ทีมไหนก็ได้','Any team'],['ATTACK_1','ทีมบุก 1','Attack 1'],['ATTACK_2','ทีมบุก 2','Attack 2'],['ATTACK_3','ทีมบุก 3','Attack 3'],['DEFENSE_1','ทีมป้องกัน 1','Defense 1'],['DEFENSE_2','ทีมป้องกัน 2','Defense 2'],['FOREST','ป่า','Forest'],['STANDBY','สำรอง','Standby']];
+const key=(id:string)=>'pom-member:'+id;
+async function json(url:string,body?:unknown){const r=await fetch(url,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.error||'request_failed');return d;}
+function credentials(playerId:string){const claims:Record<string,string>={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||'';if(k.startsWith('pom-war-claim:')&&k.endsWith(':'+playerId))claims[k.slice(14,-playerId.length-1)]=localStorage.getItem(k)||'';}return {playerId,token:localStorage.getItem(key(playerId)),claims};}
+export function GuildWarRegistration({language}:{language:'th'|'en'}) {
+  const th=language==='th',t=(a:string,b:string)=>th?a:b;
+  const [players,setPlayers]=useState<Player[]>([]),[events,setEvents]=useState<Round[]>([]),[weekStart,setWeek]=useState('');
+  const [playerId,setPlayer]=useState(''),[search,setSearch]=useState(''),[selected,setSelected]=useState<string[]>([]),[loadoutIds,setLoadouts]=useState<string[]>([]);
+  const [role,setRole]=useState(''),[team,setTeam]=useState(''),[note,setNote]=useState(''),[regular,setRegular]=useState(false),[revision,setRevision]=useState(0);
+  const [busy,setBusy]=useState(true),[loadingProfile,setLoadingProfile]=useState(false),[ready,setReady]=useState(false),[message,setMessage]=useState(''),[failed,setFailed]=useState(false);
+  const [newPlayer,setNewPlayer]=useState(false),[name,setName]=useState(''),[nickname,setNickname]=useState('');
+  const [newBuild,setNewBuild]=useState(false),[weapons,setWeapons]=useState<Weapon[]>([]),[buildRole,setBuildRole]=useState('DPS'),[main,setMain]=useState(''),[sub,setSub]=useState('');
+  const generation=useRef(0),player=players.find(p=>p.id===playerId);
+  const error=(e:unknown)=>{setFailed(true);const code=e instanceof Error?e.message:'';setMessage(code==='claim_required'?t('รายการนี้ถูกแก้ไขจากอีกเครื่อง กรุณาใช้เครื่องเดิมหรือติดต่อผู้จัด','Use the original device or contact an organizer to edit this member.'):code==='conflict'?t('ข้อมูลเปลี่ยนแล้ว กรุณาเลือกตัวละครใหม่เพื่อโหลดข้อมูลล่าสุด','Data changed. Select the character again to reload.'):code==='name_exists'?t('มีชื่อตัวละครนี้แล้ว กรุณาเลือกจากรายชื่อ','This character already exists. Select it from the list.'):t('บันทึกหรือโหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่','Could not load or save. Please retry.'));};
+  async function initialize(){setBusy(true);try{const [rounds,data]=await Promise.all([json(base+'/member-registration'),json(base+'/players')]);setEvents(rounds.events);setWeek(rounds.weekStart);setPlayers(data.players);setMessage('');setFailed(false);}catch(e){error(e);}finally{setBusy(false);}}
+  useEffect(()=>{void initialize();},[]);
+  useEffect(()=>{const version=++generation.current;setReady(false);setSelected([]);setLoadouts([]);setRole('');setTeam('');setNote('');setRegular(false);setMessage('');setNewBuild(false);if(!playerId)return;setLoadingProfile(true);
+    json(base+'/member-registration/lookup',credentials(playerId)).then(d=>{if(version!==generation.current)return;setRevision(d.revision);setSelected(d.selected);setLoadouts(d.loadoutIds);setRole(d.preferredRole);setTeam(d.preferredTeam);setRegular(d.regular);setNote(d.note);setWeapons(d.weapons);setReady(true);setFailed(false);}).catch(e=>{if(version===generation.current)error(e);}).finally(()=>{if(version===generation.current)setLoadingProfile(false);});
+  },[playerId]);
+  async function save(){if(!ready)return;setBusy(true);setMessage('');try{const d=await json(base+'/member-registration/save',{...credentials(playerId),weekStart,selected,loadoutIds,preferredRole:role,preferredTeam:team,note,regular,revision});localStorage.setItem(key(playerId),d.token);setRevision(d.revision);setFailed(false);setMessage(regular?t('บันทึกแล้ว และจำรอบเหล่านี้เป็นขาประจำให้ทุกสัปดาห์','Saved. These rounds are remembered for every week.'):t('บันทึกรอบสัปดาห์นี้แล้ว','This week’s registration is saved.'));}catch(e){error(e);}finally{setBusy(false);}}
+  async function addPlayer(){setBusy(true);try{const d=await json(base+'/member-registration/player',{characterName:name,nickname});localStorage.setItem(key(d.playerId),d.token);const p=await json(base+'/players');setPlayers(p.players);setSearch('');setPlayer(d.playerId);setNewPlayer(false);setName('');setNickname('');}catch(e){error(e);}finally{setBusy(false);}}
+  async function addBuild(){setBusy(true);try{const claim=await json(base+'/member-registration/claim',credentials(playerId));localStorage.setItem(key(playerId),claim.token);setRevision(claim.revision);const d=await json(base+'/member-registration/loadout',{...credentials(playerId),role:buildRole,mainWeapon:main,subWeapon:sub});const p=await json(base+'/players');setPlayers(p.players);setLoadouts(ids=>[...ids,d.id]);setRole(buildRole);setNewBuild(false);}catch(e){error(e);}finally{setBusy(false);}}
+  const available=(e:Round)=>e.status==='open'&&new Date(e.starts_at)>new Date();
+  return <section className="legacy-register"><header><small>PATHOFMEMORIES</small><h1>Guild War Registration</h1><p>{t('เลือกตัวละคร รอบเวลา และ Role ที่พร้อมเล่น','Choose your character, War rounds and available roles')}</p></header>
+    <fieldset disabled={busy} className="registration-body">
+      <section className="registration-panel"><h2>{t('1. ตัวละครของคุณ','1. Your character')}</h2><input aria-label={t('ค้นหาตัวละคร','Search characters')} placeholder={t('ค้นหาชื่อตัวละคร / ชื่อเล่น…','Search character / nickname…')} value={search} onChange={e=>setSearch(e.target.value)}/><select aria-label={t('เลือกตัวละคร','Choose character')} value={playerId} onChange={e=>setPlayer(e.target.value)}><option value="">{t('-- เลือกตัวละคร --','-- Choose character --')}</option>{players.filter(p=>p.id===playerId||(p.character_name+' '+p.nickname).toLowerCase().includes(search.toLowerCase())).map(p=><option key={p.id} value={p.id}>{p.character_name}{p.nickname?' ('+p.nickname+')':''}</option>)}</select><hr/><button type="button" onClick={()=>setNewPlayer(!newPlayer)}>+ {t('สมัคร Player ใหม่','New player')}</button>{newPlayer&&<div className="registration-inline"><label>{t('ชื่อตัวละคร','Character name')}<input value={name} maxLength={64} onChange={e=>setName(e.target.value)}/></label><label>{t('ชื่อเล่น','Nickname')}<input value={nickname} maxLength={64} onChange={e=>setNickname(e.target.value)}/></label><button type="button" disabled={!name.trim()} onClick={()=>void addPlayer()}>{t('เพิ่มตัวละคร','Create character')}</button></div>}</section>
+      <fieldset disabled={!ready||loadingProfile} className="registration-body">
+        <section className="registration-panel"><h2>{t('2. รอบ War ที่มาได้','2. Available War rounds')}</h2>{[...new Set(events.map(e=>e.local_date))].map(date=><div key={date} className="registration-day"><h3>{new Date(date+'T12:00:00+07:00').toLocaleDateString(th?'th-TH':'en-GB',{timeZone:'Asia/Bangkok',weekday:'long',day:'numeric',month:'short',year:'numeric'})}</h3>{events.filter(e=>e.local_date===date).map(e=><label className="registration-round" key={e.id}><input type="checkbox" disabled={!available(e)} checked={selected.includes(e.id)} onChange={()=>setSelected(ids=>ids.includes(e.id)?ids.filter(id=>id!==e.id):[...ids,e.id])}/><span>{t('รอบ ','Round ')}{e.round_number} · {new Date(e.starts_at).toLocaleTimeString('en-GB',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit'})}{e.ends_at?'–'+e.ends_at:''} <small>{e.war_type==='Matching'?'Rank':e.war_type}</small>{!available(e)&&<em>{t('ปิดรับลงทะเบียน','Closed')}</em>}</span></label>)}</div>)}{!events.length&&<p>{t('ยังไม่มีรอบที่เปิด','No rounds available')}</p>}<button type="button" className={'regular-button '+(regular?'selected':'')} aria-pressed={regular} onClick={()=>setRegular(!regular)}>★ {t('ขาประจำ','Regular attendee')} {regular?'✓':''}</button><p className="registration-hint">{t('เปิดขาประจำเพื่อจำรอบที่ติ๊กไว้ทุกสัปดาห์ แล้วกดบันทึกด้านล่าง','Enable to remember these rounds every week, then save below.')}</p></section>
+        <section className="registration-panel"><h2>{t('3. Role ที่พร้อมเล่น','3. Available roles')}</h2><p className="registration-hint">{t('เลือกได้หลาย Role และเลือก Role ที่อยากเล่นอีกครั้งด้านล่าง','Choose available builds and a preferred role below.')}</p>{player?.loadouts.map(l=><label className="registration-build" key={l.id}><input type="checkbox" checked={loadoutIds.includes(l.id)} onChange={()=>{setLoadouts(ids=>ids.includes(l.id)?ids.filter(id=>id!==l.id):[...ids,l.id]);setRole('');}}/><span><b>{l.role}</b> · {l.main_weapon_name} + {l.sub_weapon_name}</span></label>)}<label>{t('Role ที่อยากเล่น','Preferred role')}<select value={role} onChange={e=>setRole(e.target.value)}><option value="">{t('-- เลือก Role --','-- Choose role --')}</option>{[...new Set(player?.loadouts.filter(l=>loadoutIds.includes(l.id)).map(l=>l.role))].map(r=><option key={r}>{r}</option>)}</select></label><hr/><button type="button" onClick={()=>setNewBuild(!newBuild)}>+ {t('เพิ่ม Loadout ใหม่','New loadout')}</button>{newBuild&&<div className="registration-inline"><label>Role<select value={buildRole} onChange={e=>setBuildRole(e.target.value)}>{['DPS','Tank','Heal'].map(r=><option key={r}>{r}</option>)}</select></label>{(['main','sub'] as const).map(kind=><label key={kind}>{kind==='main'?'Main Weapon':'Sub Weapon'}<select value={kind==='main'?main:sub} onChange={e=>kind==='main'?setMain(e.target.value):setSub(e.target.value)}><option value="">—</option>{weapons.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select></label>)}<button disabled={!main||!sub||main===sub} type="button" onClick={()=>void addBuild()}>{t('บันทึก Loadout','Save loadout')}</button></div>}</section>
+        <section className="registration-panel"><h2>{t('4. ทีมที่อยากเล่น','4. Preferred team')}</h2><select aria-label={t('ทีมที่อยากเล่น','Preferred team')} value={team} onChange={e=>setTeam(e.target.value)}>{teamNames.map(([id,thai,en])=><option key={id} value={id}>{th?thai:en}</option>)}</select><label>{t('หมายเหตุถึงคนจัดทีม','Note for the organizer')}<textarea value={note} maxLength={500} onChange={e=>setNote(e.target.value)} placeholder={t('เช่น อาจมาช้า อยากอยู่ทีมเดียวกัน…','For example: may arrive late…')}/></label></section>
+        <button className="registration-save" type="button" onClick={()=>void save()}>{t('บันทึกการลงทะเบียน','Save registration')}</button><p className="registration-hint">{t('รอบที่ไม่ติ๊กจะถือว่าไม่มาในสัปดาห์นี้ หากถอนทุกรอบให้เอาติ๊กออกทั้งหมดแล้วบันทึก','Unchecked rounds mean unavailable this week. Uncheck all rounds and save to withdraw for the week.')}</p>
+      </fieldset>
+    </fieldset>
+    {busy||loadingProfile?<p role="status">{t('กำลังโหลดหรือบันทึก…','Loading or saving…')}</p>:null}
+    {message&&<p role={failed?'alert':'status'} className={failed?'registration-error':'registration-success'}>{message}</p>}
+    {failed&&!events.length&&<button type="button" onClick={()=>void initialize()}>{t('ลองใหม่','Retry')}</button>}
   </section>;
 }

@@ -1,4 +1,5 @@
 import {activeOrganizer} from "./organizer-auth.mjs";
+import {readApi} from './read-api.mjs';
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
 const jungle = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
 const lanes = ["TOP","MID","BOTTOM"];
@@ -36,8 +37,10 @@ export async function teamDraftApi(request,env){
   if(raw.length>100000)return json({error:"too_large"},413);
   let data;try{data=JSON.parse(raw);}catch{return json({error:"invalid_draft"},400);}
   if(!validDraft(data))return json({error:"invalid_draft"},400);
-  const owned=await db.prepare("SELECT c.player_id,l.id AS loadout_id FROM attendance_choices c LEFT JOIN attendance_loadouts a ON a.game_id=c.game_id AND a.event_id=c.event_id AND a.player_id=c.player_id LEFT JOIN loadouts l ON l.game_id=a.game_id AND l.id=a.loadout_id AND l.player_id=c.player_id AND l.active=1 WHERE c.game_id=? AND c.event_id=? AND c.status='attending'").bind(game,event).all();
-  for(const [id,p] of Object.entries(data.board))if(!owned.results.some(r=>r.player_id===id&&(p.loadout===""?r.loadout_id===null:r.loadout_id===p.loadout)))return json({error:"roster_changed"},409);
+  const rosterResponse=await readApi(new Request(url.origin+'/api/v2/games/'+game+'/war/events/'+event+'/registrations'),env);
+  if(!rosterResponse.ok)return json({error:'temporarily_unavailable'},503);
+  const roster=(await rosterResponse.json()).registrations;
+  for(const [id,p] of Object.entries(data.board))if(!roster.some(r=>r.player_id===id&&(p.loadout===''?r.loadouts.length===0:r.loadouts.some(l=>l.id===p.loadout))))return json({error:'roster_changed'},409);
   const now=new Date().toISOString(),board=JSON.stringify(data.board);
   // Compare and swap prevents a stale browser from overwriting a newer draft.
   const result=data.revision===0

@@ -25,4 +25,5 @@ jobs:
       - run: node --test guild-war-v2/read-api.test.mjs
       - run: node --test guild-war-v2/team-publication-api.test.mjs
       - run: node --test guild-war-v2/team-draft-api.test.mjs
+      - run: node --test guild-war-v2/member-registration.test.mjs
       - run: npx tsc -p tsconfig.app.json --noEmit

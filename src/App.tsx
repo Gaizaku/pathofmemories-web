@@ -4,7 +4,6 @@ import { whereWindsMeetGuides } from "./content/where-winds-meet-guides";
 import { GuildWarRegistration } from "./GuildWarRegistration";
 import { GuildWarPublication } from "./GuildWarPublication";
 import { GuildWarTeamBuilder } from "./GuildWarTeamBuilder";
-import { GuildWarRegulars } from "./GuildWarRegulars";
 
 type Language = "th" | "en";
 
@@ -266,19 +265,6 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
   const t = copy[language];
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
-      <section className="manager-hero">
-        <div>
-          <a className="back-link" href="/games/where-winds-meet/">← Where Winds Meet</a>
-          <p className="eyebrow">WHERE WINDS MEET · GUILD WAR</p>
-          <h1>Ready the <em>guild</em></h1>
-          <p className="intro">{t.guildWarIntro}</p>
-        </div>
-        <aside className="manager-status">
-          <span className="status-line"><i className="status-dot" />{t.statusReady}</span>
-          <strong>{t.nextRound}</strong>
-          <small>{language === "th" ? "เลือกตัวเอง แล้วบันทึกได้ในไม่กี่ขั้นตอน" : "Choose yourself and save in a few simple steps."}</small>
-        </aside>
-      </section>
       <GuildWarRegistration language={language} />
       <p className="manager-note">✦ {t.managerNote}</p>
     </Shell>
@@ -409,7 +395,7 @@ export default function App() {
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guides") return <GuidesPage language={language} onLanguageChange={setLanguage} />;
   if (path.startsWith("/games/where-winds-meet/guides/")) return <GuideDetailPage slug={path.split("/").filter(Boolean).pop() || ""} language={language} onLanguageChange={setLanguage} />;
-  if (path === "/games/where-winds-meet/guild-war/regulars") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarRegulars language={language} /></Shell>;
+  if (path === "/games/where-winds-meet/guild-war/regulars") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war/teams") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarTeamBuilder language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   return <HomePage language={language} onLanguageChange={setLanguage} />;
