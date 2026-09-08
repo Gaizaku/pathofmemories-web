@@ -31,8 +31,9 @@ test('saves a whole week, remembers exact slots, rejects stale writes, and withd
  const save=await f.post('save',body);assert.equal(save.status,200);const claim=await save.json();
  assert.equal(f.sql.prepare("SELECT count(*) AS n FROM attendance_choices WHERE status='attending'").get().n,selected.length);
  assert.equal((await f.post('save',body)).status,409);
- const loaded=await (await f.post('lookup',{playerId:'p1',token:claim.token})).json();assert.deepEqual(loaded.selected,selected);
- const update=await f.post('save',{...body,token:claim.token,revision:1,selected:[],regular:false});assert.equal(update.status,200);
+ const loaded=await (await f.post('lookup',{playerId:'p1',token:claim.token})).json();assert.deepEqual(loaded.selected,selected);assert.deepEqual(loaded.regularSlots,selected);
+ const update=await f.post('save',{...body,token:claim.token,revision:1,selected:[],regular:true,regularSlots:selected});assert.equal(update.status,200);
+ const temporary=await (await f.post('lookup',{playerId:'p1',token:claim.token})).json();assert.deepEqual(temporary.selected,[]);assert.deepEqual(temporary.regularSlots,selected);
  assert.equal((await f.post('save',{...body,token:claim.token,revision:1})).status,409);
  assert.equal(f.sql.prepare("SELECT count(*) AS n FROM attendance_choices WHERE status='attending'").get().n,0);
  const e=events.find(e=>selected.includes(e.id));f.sql.prepare('DELETE FROM attendance_choices').run();f.sql.prepare('UPDATE member_preferences SET regular=1,slots_json=?').run(JSON.stringify([slotOf(e)]));
