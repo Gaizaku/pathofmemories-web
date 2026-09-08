@@ -60,15 +60,17 @@ export async function memberRegistration(request,env,clock=new Date()) {
       const defaults=profile?.regular?JSON.parse(profile.slots_json):[];
       const selected=events.filter(e=>{const choice=choices.find(c=>c.event_id===e.id);return choice?choice.status==='attending':defaults.includes(e.slot);}).map(e=>e.id);
       const legacy=profile?[]:await rows(db,'SELECT DISTINCT a.loadout_id FROM attendance_loadouts a JOIN events e ON e.game_id=a.game_id AND e.id=a.event_id WHERE a.game_id=? AND a.player_id=? AND e.week_start=?',GAME,data.playerId,weekStart);
-      return json({revision:profile?.revision||0,regular:!!profile?.regular,selected,loadoutIds:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id)).filter(id=>owned.some(l=>l.id===id)),preferredRole:profile?.preferred_role||choices[0]?.preferred_role||'',preferredTeam:profile?.preferred_team||'',note:choices[0]?.note||'',weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
+      const regularSlots=events.filter(e=>defaults.includes(e.slot)).map(e=>e.id);
+      return json({revision:profile?.revision||0,regular:!!profile?.regular,regularSlots,selected,loadoutIds:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id)).filter(id=>owned.some(l=>l.id===id)),preferredRole:profile?.preferred_role||choices[0]?.preferred_role||'',preferredTeam:profile?.preferred_team||'',note:choices[0]?.note||'',weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
     }
     if(action!=='/save')return json({error:'not_found'},404);
     const {selected,loadoutIds,preferredRole='',preferredTeam='',note='',regular,revision}=data;
-    if(!Array.isArray(selected)||selected.length>8||new Set(selected).size!==selected.length||!selected.every(x=>events.some(e=>e.id===x))||!Array.isArray(loadoutIds)||loadoutIds.length>8||new Set(loadoutIds).size!==loadoutIds.length||!loadoutIds.every(x=>owned.some(l=>l.id===x))||!teams.includes(preferredTeam)||typeof regular!=='boolean'||!Number.isSafeInteger(revision)||revision<0||typeof note!=='string'||note.length>500||typeof preferredRole!=='string'||(preferredRole&&!owned.some(l=>l.role===preferredRole&&loadoutIds.includes(l.id))))return json({error:'invalid_request'},400);
+    const regularSlots=Array.isArray(data.regularSlots)?data.regularSlots:selected;
+    if(!Array.isArray(selected)||selected.length>8||new Set(selected).size!==selected.length||!selected.every(x=>events.some(e=>e.id===x))||!Array.isArray(regularSlots)||regularSlots.length>8||new Set(regularSlots).size!==regularSlots.length||!regularSlots.every(x=>events.some(e=>e.id===x))||!Array.isArray(loadoutIds)||loadoutIds.length>8||new Set(loadoutIds).size!==loadoutIds.length||!loadoutIds.every(x=>owned.some(l=>l.id===x))||!teams.includes(preferredTeam)||typeof regular!=='boolean'||!Number.isSafeInteger(revision)||revision<0||typeof note!=='string'||note.length>500||typeof preferredRole!=='string'||(preferredRole&&!owned.some(l=>l.role===preferredRole&&loadoutIds.includes(l.id))))return json({error:'invalid_request'},400);
     if(data.weekStart!==weekStart)return json({error:'week_changed'},409);
     const open=events.filter(e=>e.status==='open'&&new Date(e.starts_at)>clock);
     if(!open.length)return json({error:'registration_closed'},409);
-    const slots=events.filter(e=>selected.includes(e.id)).map(slotOf);
+    const slots=events.filter(e=>regularSlots.includes(e.id)).map(slotOf);
     if(!validSlots(slots))return json({error:'invalid_slots'},400);
     const operation=crypto.randomUUID(),now=new Date().toISOString(),token=profile?data.token:createClaimToken();
     // Every write is guarded by the successful revision change inside one D1 batch.
