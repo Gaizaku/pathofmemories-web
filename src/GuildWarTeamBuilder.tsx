@@ -271,10 +271,25 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       (placement?.jungle?" · Jungle: "+title(placement.jungle,th):"")+
       (placement?.tower?" · Tower: "+placement.tower:"");
   }
+  function jungleLabel(jungle?:string){
+    const labels=th?["ศัตรูบน","ศัตรูล่าง","เราบน","เราล่าง"]:["Enemy top","Enemy bottom","Ally top","Ally bottom"];
+    return jungle?labels[jungles.indexOf(jungle)]||jungle:"";
+  }
+  function summaryPlayer(p:Player,index:number){
+    const placement=board[p.player_id];
+    const loadout=p.loadouts.find(l=>l.id===placement?.loadout);
+    return <div className="gw-summary-player" key={p.player_id}>
+      <span className="gw-summary-number">{index+1}</span>
+      <span className="gw-summary-name"><b>{p.character_name}</b>{p.nickname&&<small>{p.nickname}</small>}</span>
+      <strong className={"gw-summary-role gw-role-"+role(p)}>{role(p)}</strong>
+      <span className="gw-summary-weapons">{loadout?loadout.main_weapon_name+" + "+loadout.sub_weapon_name:"—"}</span>
+      {placement?.jungle&&<span className={"gw-summary-jungle gw-jungle-"+placement.jungle.toLowerCase()}>{jungleLabel(placement.jungle)}</span>}
+    </div>;
+  }
   const summaryLines=[
     (th?"ฉบับร่าง — ยังไม่ประกาศ":"DRAFT — NOT PUBLISHED")+" | "+roundLabel,
-    ...[...teams,"UNASSIGNED"].flatMap(team=>{
-      const members=team==="UNASSIGNED"?players.filter(p=>!board[p.player_id]):ordered(team);
+    ...teams.flatMap(team=>{
+      const members=ordered(team);
       return ["",title(team,th)+" ("+members.length+")",...members.map(playerSummary)];
     })
   ];
@@ -319,11 +334,13 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     <dialog ref={summaryDialog} className="gw-summary-dialog">
       <header><div><h2>{th?"สรุปทีม":"Team Summary"}</h2><p>{roundLabel}</p></div><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></header>
       <p className="gw-status">{th?"ฉบับร่าง · ยังไม่ประกาศ":"Draft · Not published"}</p>
-      {(pool.length>0||warnings>0)&&<p className="gw-error">{pool.length} {th?"ยังไม่จัด · เตือนทีม":"Unassigned · warnings"} {warnings}</p>}
-      <div className="gw-summary-grid">{[...teams,"UNASSIGNED"].map(team=>{const members=team==="UNASSIGNED"?players.filter(p=>!board[p.player_id]):ordered(team);return (<section key={team} className={"gw-summary-team "+teamClass(team)}>
+      {warnings>0&&<p className="gw-error">{warnings} {th?"ทีมต้องตรวจสอบ":"team warnings"}</p>}
+      <div className="gw-summary-grid">{teams.filter(team=>team!=="STANDBY").map(team=>{const members=ordered(team);return (<section key={team} className={"gw-summary-team "+teamClass(team)}>
         <header><h3>{title(team,th)}</h3><span>{members.length}{team!=="STANDBY"&&team!=="UNASSIGNED"?"/5":""}</span></header>
-        {members.map((p,i)=><p key={p.player_id}>{playerSummary(p,i)}</p>)}
+        <div className="gw-summary-members">{members.map(summaryPlayer)}</div>
       </section>);})}</div>
+      <section className="gw-summary-towers"><header><h3>TOWER</h3><p>{th?"สมาชิกที่เลือกขึ้นป้อม":"Players assigned to a tower"}</p></header><div>{lanes.map(lane=>{const members=players.filter(p=>board[p.player_id]?.tower===lane).sort((a,b)=>positionOf(a.player_id,board[a.player_id].team,board)-positionOf(b.player_id,board[b.player_id].team,board));return <section key={lane}><h4>{th?({TOP:"บน",MID:"กลาง",BOTTOM:"ล่าง"}[lane]||lane):lane}</h4>{members.length?members.map(player=><p key={player.player_id}><b>{player.character_name}</b>{player.nickname&&<small>{player.nickname}</small>}</p>):<p className="gw-summary-empty">—</p>}</section>;})}</div></section>
+      <section className="gw-summary-standby gw-team-standby"><header><h3>{th?"สำรอง":"Standby"}</h3><span>{ordered("STANDBY").length}</span></header><div>{ordered("STANDBY").map(player=><p key={player.player_id}>{player.character_name}</p>)}</div></section>
       <div>
         <button disabled={publishing||cloudBusy||loading||!organizer||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={publishTeam}>
           {publishing?(th?"กำลังประกาศ…":"Publishing…"):(th?"ประกาศทีมและสร้างลิงก์":"Publish teams and create link")}
