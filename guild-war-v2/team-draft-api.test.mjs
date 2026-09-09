@@ -23,3 +23,9 @@ test("accepts a saved team position and rejects an invalid one", () => {
   assert.equal(validDraft(draft([["a", {team: "ATTACK_1", loadout: "La", position: -1}]])), false);
   assert.equal(validDraft(draft([["a", {team: "ATTACK_1", loadout: "La", position: 1.5}]])), false);
 });
+
+test("accepts a tower order only for an assigned tower", () => {
+  assert.equal(validDraft(draft([["a", {team: "ATTACK_1", loadout: "La", tower: "MID", towerPosition: 0}]])), true);
+  assert.equal(validDraft(draft([["a", {team: "ATTACK_1", loadout: "La", towerPosition: 0}]])), false);
+  assert.equal(validDraft(draft([["a", {team: "ATTACK_1", loadout: "La", tower: "MID", towerPosition: 3}]])), false);
+});

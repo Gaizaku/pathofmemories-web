@@ -13,6 +13,8 @@ export function validDraft(value) {
   if(p.jungle!==undefined&&!jungle.includes(p.jungle))return false;
   if(p.tower!==undefined&&!lanes.includes(p.tower))return false;
   if(p.position!==undefined&&(!Number.isSafeInteger(p.position)||p.position<0||p.position>200))return false;
+  if(p.towerPosition!==undefined&&(!Number.isSafeInteger(p.towerPosition)||p.towerPosition<0||p.towerPosition>2))return false;
+  if(!p.tower&&p.towerPosition!==undefined)return false;
   if(p.team==="STANDBY"&&(p.jungle||p.tower))return false;
   if(p.team!=="STANDBY"){teamCounts[p.team]=(teamCounts[p.team]||0)+1;if(teamCounts[p.team]>5)return false;}
   if(p.tower){counts[p.tower]=(counts[p.tower]||0)+1;if(counts[p.tower]>3)return false;}

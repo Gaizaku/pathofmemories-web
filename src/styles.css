@@ -874,7 +874,7 @@ h1 em {
 .gw-player{position:relative;background:#1d222b;border:1px solid #343b47;border-left:3px solid #67b8ff;border-radius:6px;margin:5px;padding:6px;min-width:0;cursor:grab}
 .gw-player.gw-role-Tank{border-left-color:#e7c65c}.gw-player.gw-role-Heal{border-left-color:#69d598}
 .gw-builder .gw-pick{background:none;border:0;padding:0 12px 2px 0;font-weight:750;text-align:left;width:100%;overflow-wrap:anywhere;font-size:12px}
-.gw-pick>span{display:block}.gw-pick small{display:block;color:#c8a86b;font-size:10px;font-weight:650;margin-top:1px}
+.gw-pick>span{display:block}.gw-pick small{display:inline;color:#c8a86b;font-size:10px;font-weight:650}
 .gw-player .gw-meta{padding:0 0 4px}.gw-player select{width:100%;font-size:10px;padding:4px}
 .gw-dragging{opacity:.42;transform:scale(.98);cursor:grabbing}
 .gw-swap-target{border-color:#ffd875!important;box-shadow:0 0 0 2px rgba(255,216,117,.35),0 0 18px rgba(255,216,117,.22)}
@@ -898,7 +898,7 @@ h1 em {
 .gw-tower-player{padding:5px;margin-top:5px;background:#1d222b;border-radius:5px}
 .gw-tower-player span{overflow-wrap:anywhere}
 .gw-player select+select{margin-top:4px}
-.gw-player .gw-tower-select{border-color:#7084a0;background:#202936;color:#e7edf8}
+.gw-center-button{margin-left:auto!important;padding:3px 6px!important;color:#c8a86b!important;font-size:9px!important}.gw-tower-player .gw-tower-center{margin-left:auto}
 @media(max-width:650px){.gw-towers{grid-template-columns:1fr}}
 
 /* Summary stays in the organizer workspace and does not publish a team. */
