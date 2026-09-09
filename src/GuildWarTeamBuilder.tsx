@@ -210,6 +210,11 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <option value="">{th?"ไม่เข้าป่า":"No jungle"}</option>
         {jungles.map((j,i)=><option key={j} value={j}>{th?["ศัตรูบน","ศัตรูล่าง","เราบน","เราล่าง"][i]:title(j,th)}</option>)}
       </select>}
+      {place&&place.team!=="STANDBY"&&<select className="gw-tower-select" aria-label={(th?"ป้อม ":"Tower ")+p.character_name} value={place.tower||""} disabled={!organizer||loading}
+        onChange={e=>setTower(p.player_id,e.target.value)}>
+        <option value="">{th?"ป้อม: ไม่เลือก":"Tower: none"}</option>
+        {lanes.map(lane=><option key={lane} value={lane}>{th?"ป้อม: "+({TOP:"บน",MID:"กลาง",BOTTOM:"ล่าง"}[lane]||lane):"Tower: "+lane}</option>)}
+      </select>}
     </article>;
   }
   function squad(team:string){
