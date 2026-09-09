@@ -2,7 +2,7 @@ import {useEffect,useState} from "react";
 import "./GuildWarPublication.css";
 type Publication={publishedAt:string;event:{startsAt:string;warType:string};unassignedCount:number;members:{name:string;team:string;role:string;mainWeapon:string;subWeapon:string;jungle:string;tower:string}[]};
 const teams=["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
-const teamNames:Record<string,[string,string]>={ATTACK_1:['ทีมบุก 1','Attack 1'],ATTACK_2:['ทีมบุก 2','Attack 2'],ATTACK_3:['ทีมบุก 3','Attack 3'],DEFENSE_1:['ทีมป้องกัน 1','Defense 1'],DEFENSE_2:['ทีมป้องกัน 2','Defense 2'],FOREST:['ป่า','Forest'],STANDBY:['สำรอง','Standby']};
+const teamNames:Record<string,[string,string]>={ATTACK_1:['ทีมบุก 1','Attack 1'],ATTACK_2:['ทีมบุก 2','Attack 2'],ATTACK_3:['ทีมบุก 3','Attack 3'],DEFENSE_1:['ทีมกัน 1','Defense 1'],DEFENSE_2:['ทีมกัน 2','Defense 2'],FOREST:['ป่า','Forest'],STANDBY:['สำรอง','Standby']};
 const teamClass=(team:string)=>'gw-team-'+team.toLowerCase();
 export function GuildWarPublication({language,eventId,publicationId}:{language:"th"|"en";eventId:string;publicationId:string}){
  const th=language==="th";

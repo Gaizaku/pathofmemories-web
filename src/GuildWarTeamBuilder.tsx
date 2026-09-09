@@ -8,7 +8,7 @@ const lanes = ["TOP","MID","BOTTOM"];
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
 const teamNames: Record<string,string> = {
   ATTACK_1: "ทีมบุก 1", ATTACK_2: "ทีมบุก 2", ATTACK_3: "ทีมบุก 3",
-  DEFENSE_1: "ทีมป้องกัน 1", DEFENSE_2: "ทีมป้องกัน 2", FOREST: "ป่า", STANDBY: "สำรอง",
+  DEFENSE_1: "ทีมกัน 1", DEFENSE_2: "ทีมกัน 2", FOREST: "ป่า", STANDBY: "สำรอง",
   UNASSIGNED: "ยังไม่จัดทีม"
 };
 const title = (s:string, thai=false) => thai ? (teamNames[s] || s) : s.replaceAll("_"," ");
@@ -197,15 +197,15 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <span>{p.character_name}</span>{p.nickname&&<small>({p.nickname})</small>}
       </button>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
-      <div className="gw-meta">{p.attendance_status==="expected"?(th?"ขาประจำ · รอยืนยัน":"Regular · Unconfirmed"):(th?"ยืนยันแล้ว":"Confirmed")}{p.preferred_team?" · "+title(p.preferred_team,th):""}</div>
-      <div className="gw-meta">{role(p)}{p.preferred_role?" · Pref "+p.preferred_role:""}</div>
+      <div className="gw-meta">{p.attendance_status==="expected"?(th?"ขาประจำ":"Regular"):(th?"ยืนยัน":"Confirmed")}</div>
+      <div className="gw-meta">{role(p)}</div>
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
         {!p.loadouts.length&&<option value="">—</option>}{p.loadouts.map(l=><option key={l.id} value={l.id}>{l.role} · {l.main_weapon_name} + {l.sub_weapon_name}</option>)}
       </select>:<div className="gw-meta">{p.loadouts.map(l=>l.main_weapon_name+" + "+l.sub_weapon_name).join(" / ")}</div>}
-      {place&&place.team!=="STANDBY"&&<select aria-label={"Jungle "+p.character_name} value={place.jungle||""} disabled={!organizer||loading}
+      {place&&place.team!=="STANDBY"&&<select className={"gw-jungle-select "+(place.jungle?"gw-jungle-"+place.jungle.toLowerCase():"")} aria-label={"Jungle "+p.character_name} value={place.jungle||""} disabled={!organizer||loading}
         onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],jungle:e.target.value||undefined}}))}>
         <option value="">{th?"ไม่เข้าป่า":"No jungle"}</option>
-        {jungles.map((j,i)=><option key={j} value={j}>{th?["ป่าบนศัตรู","ป่าล่างศัตรู","ป่าบนฝั่งเรา","ป่าล่างฝั่งเรา"][i]:title(j,th)}</option>)}
+        {jungles.map((j,i)=><option key={j} value={j}>{th?["ศัตรูบน","ศัตรูล่าง","เราบน","เราล่าง"][i]:title(j,th)}</option>)}
       </select>}
     </article>;
   }
@@ -218,7 +218,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     return <section key={team} className={"gw-squad "+teamClass(team)+(team.startsWith("ATTACK")?" gw-attack":team==="FOREST"?" gw-forest":" gw-defense")+(isSourceTeam?" gw-drag-source":"")+(isTeamDropTarget?(teamFull?" gw-drop-blocked":" gw-drop-ready"):"")}
       onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team});}} onDrop={e=>drop(e,team)}>
       <header><strong>{title(team,th)}</strong><span>{members.length}{team!=="STANDBY"?"/5":""}</span></header>
-      {team!=="STANDBY"&&<div className="gw-meta">Tank {tank}/1 · Heal {heal}/1{teamFull?" · "+(th?"เต็มแล้ว":"Full"):""}</div>}
+      {team!=="STANDBY"&&<div className="gw-meta">Tank {tank} · Heal {heal}{teamFull?" · "+(th?"เต็ม":"Full"):""}</div>}
       <div className="gw-slots">{members.map(card)}</div>
       <button className="gw-drop" disabled={!organizer||!selected||destinationIsFull(team,selected)} onClick={()=>move(selected,team)}>
         {selected?(teamFull?(th?"ทีมเต็ม · วางทับเพื่อสลับ":"Team full · Drop on a player to swap"):(th?"วางผู้เล่นที่เลือก":"Place selected player")):(th?"ลากผู้เล่นมาวาง":"Drop players here")}
@@ -266,7 +266,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }
 
   return <section className="gw-builder"><fieldset disabled={cloudBusy||publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
-    <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากวาง · วางทับผู้เล่นเพื่อสลับทีม · ทีมละสูงสุด 5 คน":"Drag & drop · Drop on a player to swap · Maximum 5 players per team"}</p></div>
+    <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากวางเพื่อย้าย · ทีมละ 5 คน":"Drag to move · 5 players per team"}</p></div>
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/regulars">{th?"ขาประจำ":"Regulars"}</a>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
@@ -278,7 +278,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     {error&&<p role="alert" className="gw-error">{error}</p>}
     <div className="gw-stats">{[[players.length,"Registered"],[players.length-pool.length,"Assigned"],[pool.length,"Unassigned"],[warnings,"Squad warnings"]].map(([n,l])=><div key={l}><b>{n}</b><small>{l}</small></div>)}</div>
     {loading?<p role="status">{th?"กำลังโหลด…":"Loading…"}</p>:<div className="gw-layout"><aside className={"gw-pool "+(dropTarget?.team===""&&!dropTarget.playerId?" gw-drop-ready":"")} onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team:""});}} onDrop={e=>drop(e,"")}>
-      <header><strong>Unassigned</strong><input aria-label="Search players" placeholder={th?"ค้นหาชื่อ…":"Search players…"} value={search} onChange={e=>setSearch(e.target.value)}/></header>
+      <header><strong>{th?"ยังไม่จัดทีม":"Unassigned"}</strong><input aria-label="Search players" placeholder={th?"ค้นหาชื่อ…":"Search players…"} value={search} onChange={e=>setSearch(e.target.value)}/></header>
       <div className="gw-pool-list">{pool.filter(p=>(p.character_name+" "+(p.nickname||"")).toLowerCase().includes(search.toLowerCase())).map(card)}</div>
       {selected&&<button onClick={()=>move(selected,"")}>{th?"นำกลับ Unassigned":"Return to Unassigned"}</button>}
     </aside><div className="gw-board"><div className="gw-sides"><section><h2>{th?"ฝั่งบุก":"Attack"}</h2><div className="gw-squads">{teams.slice(0,3).map(squad)}</div></section><section><h2>{th?"ฝั่งกัน":"Defense"}</h2><div className="gw-squads">{teams.slice(3,6).map(squad)}</div></section></div><div className="gw-standby">{squad("STANDBY")}</div></div></div>}
@@ -291,9 +291,9 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     </section>}
   </fieldset>
     <dialog ref={summaryDialog} className="gw-summary-dialog">
-      <header><div><h2>Team Summary</h2><p>{roundLabel}</p></div><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></header>
-      <p className="gw-status">{th?"สรุปจากทีมบนหน้าจอขณะนี้ · ฉบับร่าง ยังไม่ประกาศ":"Current board · Draft, not published"}</p>
-      {(pool.length>0||warnings>0)&&<p className="gw-error">{pool.length} Unassigned · {warnings} Squad warnings</p>}
+      <header><div><h2>{th?"สรุปทีม":"Team Summary"}</h2><p>{roundLabel}</p></div><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></header>
+      <p className="gw-status">{th?"ฉบับร่าง · ยังไม่ประกาศ":"Draft · Not published"}</p>
+      {(pool.length>0||warnings>0)&&<p className="gw-error">{pool.length} {th?"ยังไม่จัด · เตือนทีม":"Unassigned · warnings"} {warnings}</p>}
       <div className="gw-summary-grid">{[...teams,"UNASSIGNED"].map(team=><section key={team} className={"gw-summary-team "+teamClass(team)}>
         <header><h3>{title(team,th)}</h3><span>{players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).length}{team!=="STANDBY"&&team!=="UNASSIGNED"?"/5":""}</span></header>
         {players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).map((p,i)=><p key={p.player_id}>{playerSummary(p,i)}</p>)}
