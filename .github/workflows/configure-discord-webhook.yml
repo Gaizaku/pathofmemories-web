@@ -1,0 +1,33 @@
+name: Configure Discord Guild War webhook
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type CONFIGURE_DISCORD_WEBHOOK to send the GitHub secret to Cloudflare
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Require exact confirmation and a webhook URL
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          test "$CONFIRM" = "CONFIGURE_DISCORD_WEBHOOK"
+          test -n "$DISCORD_WEBHOOK_URL"
+      - name: Set Discord webhook secret on Cloudflare Worker
+        run: printf "%s" "$DISCORD_WEBHOOK_URL" | npx wrangler secret put DISCORD_WEBHOOK_URL

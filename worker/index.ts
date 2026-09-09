@@ -10,6 +10,8 @@ export interface Env {
   GUILD_WAR_DB: D1Database;
   DISCORD_CLIENT_ID: string;
   DISCORD_CLIENT_SECRET: string;
+  DISCORD_WEBHOOK_URL?: string;
+  PUBLIC_ORIGIN?: string;
 }
 
 export default {
