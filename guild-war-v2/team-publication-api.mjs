@@ -23,7 +23,11 @@ async function sendDiscordWebhook(env,snapshot,publicationUrl) {
 export function publicationSnapshot(board, source) {
   if (!validDraft({revision: 0, board}) || !Object.keys(board).length) throw new Error("invalid_board");
   const counts = {};
-  const members = Object.entries(board).map(([id, placement]) => {
+  const teamOrder = new Map(discordTeams.map(([team], index) => [team,index]));
+  const members = Object.entries(board).sort(([,a],[,b]) =>
+    (teamOrder.get(a.team) ?? 99) - (teamOrder.get(b.team) ?? 99) ||
+    (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER)
+  ).map(([id, placement]) => {
     const player = source.registrations.find(p => p.player_id === id);
     const loadout = player?.loadouts.find(l => l.id === placement.loadout);
     if (!player || (placement.loadout ? !loadout : player.loadouts.length)) throw new Error("roster_changed");
