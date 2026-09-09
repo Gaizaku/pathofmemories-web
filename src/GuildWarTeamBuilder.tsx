@@ -12,6 +12,7 @@ const teamNames: Record<string,string> = {
   UNASSIGNED: "ยังไม่จัดทีม"
 };
 const title = (s:string, thai=false) => thai ? (teamNames[s] || s) : s.replaceAll("_"," ");
+const teamClass = (s:string) => "gw-team-"+s.toLowerCase();
 const base = "/api/v2/games/where-winds-meet";
 export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const th = language === "th";
@@ -214,7 +215,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     const teamFull=limitedTeam(team)&&members.length>=5;
     const isTeamDropTarget=dropTarget?.team===team&&!dropTarget.playerId;
     const isSourceTeam=draggingPlayer&&board[draggingPlayer]?.team===team;
-    return <section key={team} className={"gw-squad "+(team.startsWith("ATTACK")?"gw-attack":team==="FOREST"?"gw-forest":"gw-defense")+(isSourceTeam?" gw-drag-source":"")+(isTeamDropTarget?(teamFull?" gw-drop-blocked":" gw-drop-ready"):"")}
+    return <section key={team} className={"gw-squad "+teamClass(team)+(team.startsWith("ATTACK")?" gw-attack":team==="FOREST"?" gw-forest":" gw-defense")+(isSourceTeam?" gw-drag-source":"")+(isTeamDropTarget?(teamFull?" gw-drop-blocked":" gw-drop-ready"):"")}
       onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team});}} onDrop={e=>drop(e,team)}>
       <header><strong>{title(team,th)}</strong><span>{members.length}{team!=="STANDBY"?"/5":""}</span></header>
       {team!=="STANDBY"&&<div className="gw-meta">Tank {tank}/1 · Heal {heal}/1{teamFull?" · "+(th?"เต็มแล้ว":"Full"):""}</div>}
@@ -293,8 +294,8 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <header><div><h2>Team Summary</h2><p>{roundLabel}</p></div><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></header>
       <p className="gw-status">{th?"สรุปจากทีมบนหน้าจอขณะนี้ · ฉบับร่าง ยังไม่ประกาศ":"Current board · Draft, not published"}</p>
       {(pool.length>0||warnings>0)&&<p className="gw-error">{pool.length} Unassigned · {warnings} Squad warnings</p>}
-      <div className="gw-summary-grid">{[...teams,"UNASSIGNED"].map(team=><section key={team}>
-        <h3>{title(team,th)}</h3>
+      <div className="gw-summary-grid">{[...teams,"UNASSIGNED"].map(team=><section key={team} className={"gw-summary-team "+teamClass(team)}>
+        <header><h3>{title(team,th)}</h3><span>{players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).length}{team!=="STANDBY"&&team!=="UNASSIGNED"?"/5":""}</span></header>
         {players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).map((p,i)=><p key={p.player_id}>{playerSummary(p,i)}</p>)}
       </section>)}</div>
       <div>
