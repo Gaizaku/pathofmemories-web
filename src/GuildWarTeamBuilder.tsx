@@ -190,13 +190,18 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   function card(p:Player){
     const place=board[p.player_id];
     const isSwapTarget=dropTarget?.playerId===p.player_id;
-    return <article key={p.player_id} className={"gw-player gw-role-"+role(p)+(selected===p.player_id?" gw-selected":"")+(draggingPlayer===p.player_id?" gw-dragging":"")+(isSwapTarget?" gw-swap-target":"")}
+    const selectedPlace=selected?board[selected]:undefined;
+    const isClickSwap=!!selected&&selected!==p.player_id&&selectedPlace?.team!==place?.team;
+    return <article key={p.player_id} className={"gw-player gw-role-"+role(p)+(selected===p.player_id?" gw-selected":"")+(draggingPlayer===p.player_id?" gw-dragging":"")+(isSwapTarget?" gw-swap-target":"")+(isClickSwap?" gw-swap-choice":"")}
       draggable={!!organizer&&!loading&&!cloudBusy&&!publishing}
       onDragStart={e=>{e.dataTransfer.setData("text/plain",p.player_id);e.dataTransfer.effectAllowed="move";setDraggingPlayer(p.player_id);setDropTarget(null);}}
       onDragEnd={()=>{setDraggingPlayer("");setDropTarget(null);}}
       onDragOver={e=>{e.preventDefault();e.stopPropagation();if(draggingPlayer&&draggingPlayer!==p.player_id)setDropTarget({team:place?.team||"",playerId:p.player_id});}}
       onDrop={e=>drop(e,place?.team||"",p.player_id)}>
-      <button className="gw-pick" disabled={!organizer} onClick={()=>setSelected(selected===p.player_id?"":p.player_id)} title={th?"เลือกเพื่อย้ายทีม":"Select to move"}>
+      <button className="gw-pick" disabled={!organizer} onClick={()=>{
+        if(isClickSwap){move(selected,place?.team||"",p.player_id);return;}
+        setSelected(selected===p.player_id?"":p.player_id);
+      }} title={isClickSwap?(th?"คลิกเพื่อสลับทีม":"Click to swap teams"):(th?"เลือกเพื่อย้ายทีม":"Select to move")}>
         <span>{p.character_name}</span>{p.nickname&&<small>({p.nickname})</small>}
       </button>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
@@ -274,7 +279,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }
 
   return <section className="gw-builder"><fieldset disabled={cloudBusy||publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
-    <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากวางเพื่อย้าย · ทีมละ 5 คน":"Drag to move · 5 players per team"}</p></div>
+    <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"เลือก 2 คนเพื่อสลับ · ทีมละ 5 คน":"Select 2 players to swap · 5 per team"}</p></div>
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/regulars">{th?"ขาประจำ":"Regulars"}</a>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
