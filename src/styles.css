@@ -899,6 +899,7 @@ h1 em {
 .gw-tower-player{padding:5px;margin-top:5px;background:#1d222b;border-radius:5px}
 .gw-tower-player span{overflow-wrap:anywhere}
 .gw-player select+select{margin-top:4px}
+.gw-player .gw-tower-select{border-color:#7084a0;background:#202936;color:#e7edf8}
 @media(max-width:650px){.gw-towers{grid-template-columns:1fr}}
 
 /* Summary stays in the organizer workspace and does not publish a team. */
