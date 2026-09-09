@@ -1,8 +1,8 @@
 import {useEffect, useRef, useState} from "react";
-type Player = {player_id:string; character_name:string; nickname?:string; attendance_status?:string; preferred_team?:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
+type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type DropTarget = {team:string; playerId?:string};
 type Round = {id:string;starts_at:string;war_type:string};
-type Placement = {team:string; loadout:string; jungle?:string; tower?:string; position?:number};
+type Placement = {team:string; loadout:string; jungle?:string; tower?:string; position?:number; towerPosition?:number};
 const jungles = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
 const lanes = ["TOP","MID","BOTTOM"];
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
@@ -136,7 +136,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
           if(valid[id].team==="STANDBY")continue;
           if(jungles.includes(old[id]?.jungle))valid[id].jungle=old[id].jungle;
           const lane=old[id]?.tower;
-          if(lanes.includes(lane)&&(counts[lane]||0)<3){valid[id].tower=lane;counts[lane]=(counts[lane]||0)+1;}
+          if(lanes.includes(lane)&&(counts[lane]||0)<3){valid[id].tower=lane;valid[id].towerPosition=Number.isSafeInteger(old[id]?.towerPosition)?old[id].towerPosition:counts[lane]||0;counts[lane]=(counts[lane]||0)+1;}
         }
       }catch{}
       setPlayers(roster);setBoard(valid);setLoadedRound(round);setLoading(false);setSaved(true);
@@ -188,7 +188,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         delete next[id];
       }
       for(const playerId of Object.keys(next))if(next[playerId].team==="STANDBY"){
-        next[playerId]={...next[playerId],jungle:undefined,tower:undefined};
+        next[playerId]={...next[playerId],jungle:undefined,tower:undefined,towerPosition:undefined};
       }
       return next;
     });
@@ -199,12 +199,28 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     move(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,team,target);
   }
 
-  function setTower(id:string,lane:string) {
+  function towerMembers(lane:string,current:Record<string,Placement>=board){
+    return players.filter(player=>current[player.player_id]?.tower===lane).sort((a,b)=>{
+      const aPosition=current[a.player_id].towerPosition??Number.MAX_SAFE_INTEGER;
+      const bPosition=current[b.player_id].towerPosition??Number.MAX_SAFE_INTEGER;
+      return aPosition-bPosition||positionOf(a.player_id,current[a.player_id].team,current)-positionOf(b.player_id,current[b.player_id].team,current);
+    });
+  }
+  function setTower(id:string,lane:string,center=false) {
     if(!organizer||cloudBusy||publishing||loading||!board[id]||board[id].team==="STANDBY")return;
     if(lane&&Object.entries(board).filter(([pid,p])=>pid!==id&&p.tower===lane).length>=3){
       setError(th?"Tower ตำแหน่งนี้ครบ 3 คนแล้ว":"This tower already has 3 players");return;
     }
-    setBoard(b=>({...b,[id]:{...b[id],tower:lane||undefined}}));setError("");
+    setBoard(current=>{
+      const next={...current};
+      if(!lane){next[id]={...next[id],tower:undefined,towerPosition:undefined};return next;}
+      const others=towerMembers(lane,current).filter(player=>player.player_id!==id);
+      if(center){
+        next[id]={...next[id],tower:lane,towerPosition:0};
+        others.forEach((player,index)=>{next[player.player_id]={...next[player.player_id],towerPosition:index+1};});
+      }else next[id]={...next[id],tower:lane,towerPosition:current[id].tower===lane?current[id].towerPosition??0:others.length};
+      return next;
+    });setError("");
   }
   function role(p:Player){return p.loadouts.find(l=>l.id===board[p.player_id]?.loadout)?.role||p.preferred_role||p.loadouts[0]?.role||"—";}
   function card(p:Player){
@@ -218,11 +234,10 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       onDragOver={e=>{e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="move";if(draggingPlayer&&draggingPlayer!==p.player_id)setDropTarget({team:place?.team||"",playerId:p.player_id});}}
       onDrop={e=>drop(e,place?.team||"",p.player_id)}>
       <div className="gw-pick" title={th?"ลากการ์ดนี้ไปทับผู้เล่นอีกคนเพื่อสลับ":"Drag this card onto another player to swap"}>
-        <span>{p.character_name}</span>{p.nickname&&<small>({p.nickname})</small>}
+        <span>{p.character_name}{p.nickname&&<small> ({p.nickname})</small>}</span>
       </div>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
-      <div className="gw-meta">{p.attendance_status==="expected"?(th?"ขาประจำ":"Regular"):(th?"ยืนยัน":"Confirmed")}</div>
-      <div className="gw-meta">{role(p)}</div>
+      <div className="gw-meta">{th?"อยากเล่น: ":"Preferred: "}{p.preferred_role||"—"}</div>
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
         {!p.loadouts.length&&<option value="">—</option>}{p.loadouts.map(l=><option key={l.id} value={l.id}>{l.role} · {l.main_weapon_name} + {l.sub_weapon_name}</option>)}
       </select>:<div className="gw-meta">{p.loadouts.map(l=>l.main_weapon_name+" + "+l.sub_weapon_name).join(" / ")}</div>}
@@ -230,11 +245,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],jungle:e.target.value||undefined}}))}>
         <option value="">{th?"ไม่เข้าป่า":"No jungle"}</option>
         {jungles.map((j,i)=><option key={j} value={j}>{th?["ศัตรูบน","ศัตรูล่าง","เราบน","เราล่าง"][i]:title(j,th)}</option>)}
-      </select>}
-      {place&&place.team!=="STANDBY"&&<select className="gw-tower-select" aria-label={(th?"ป้อม ":"Tower ")+p.character_name} value={place.tower||""} disabled={!organizer||loading}
-        onChange={e=>setTower(p.player_id,e.target.value)}>
-        <option value="">{th?"ป้อม: ไม่เลือก":"Tower: none"}</option>
-        {lanes.map(lane=><option key={lane} value={lane}>{th?"ป้อม: "+({TOP:"บน",MID:"กลาง",BOTTOM:"ล่าง"}[lane]||lane):"Tower: "+lane}</option>)}
       </select>}
     </article>;
   }
@@ -291,10 +301,10 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <header><strong>{th?"ยังไม่จัดทีม":"Unassigned"}</strong><input aria-label="Search players" placeholder={th?"ค้นหาชื่อ…":"Search players…"} value={search} onChange={e=>setSearch(e.target.value)}/></header>
       <div className="gw-pool-list">{pool.filter(p=>(p.character_name+" "+(p.nickname||"")).toLowerCase().includes(search.toLowerCase())).map(card)}</div>
     </aside><div className="gw-board"><div className="gw-sides"><section><h2>{th?"ฝั่งบุก":"Attack"}</h2><div className="gw-squads">{teams.slice(0,3).map(squad)}</div></section><section><h2>{th?"ฝั่งกัน":"Defense"}</h2><div className="gw-squads">{teams.slice(3,6).map(squad)}</div></section></div><div className="gw-standby">{squad("STANDBY")}</div></div></div>}
-    {!loading&&<section className="gw-tactical"><h2>Tower Assignment</h2><p>{th?"เลือกป้อมจากในการ์ดผู้เล่น · ตำแหน่งละไม่เกิน 3 คน":"Choose a tower from the player card · Maximum 3 per tower"}</p>
-      <div className="gw-towers">{lanes.map(lane=><section key={lane} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("text/plain"),lane);}}>
+    {!loading&&<section className="gw-tactical"><h2>Tower Assignment</h2><p>{th?"ลากผู้เล่นจากทีมมาวาง · ลากทับรายชื่อหรือกดปุ่มเพื่อเลือกกลางป้อม":"Drag players from a team here · Drop on a name or use the button to set the tower center"}</p>
+      <div className="gw-towers">{lanes.map(lane=><section key={lane} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,lane);}}>
         <header><strong>{title(lane,th)}</strong><span>{Object.values(board).filter(p=>p.tower===lane).length}/3</span></header>
-        {players.filter(p=>board[p.player_id]?.tower===lane).map(p=><div className="gw-tower-player" key={p.player_id}><span>{p.character_name}</span><button disabled={!organizer} onClick={()=>setTower(p.player_id,"")} aria-label={"Remove tower "+p.character_name}>×</button></div>)}
+        {towerMembers(lane).map((player,index)=><div className="gw-tower-player" key={player.player_id} onDragOver={e=>{e.preventDefault();e.stopPropagation();}} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,lane,true);}}><span>{player.character_name}</span>{index===0?<b className="gw-tower-center">{th?"กลางป้อม":"Center"}</b>:<button className="gw-center-button" disabled={!organizer} onClick={()=>setTower(player.player_id,lane,true)}>{th?"ตั้งกลาง":"Set center"}</button>}<button disabled={!organizer} onClick={()=>setTower(player.player_id,"")} aria-label={"Remove tower "+player.character_name}>×</button></div>)}
       </section>)}</div>
     </section>}
   </fieldset>
@@ -306,7 +316,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <header><h3>{title(team,th)}</h3><span>{members.length}{team!=="STANDBY"&&team!=="UNASSIGNED"?"/5":""}</span></header>
         <div className="gw-summary-members">{members.map(summaryPlayer)}</div>
       </section>);})}</div>
-      <section className="gw-summary-towers"><header><h3>TOWER</h3><p>{th?"คนแรกของแต่ละป้อมคือ กลางป้อม":"The first player in each tower is the tower center"}</p></header><div>{lanes.map(lane=>{const members=players.filter(p=>board[p.player_id]?.tower===lane).sort((a,b)=>positionOf(a.player_id,board[a.player_id].team,board)-positionOf(b.player_id,board[b.player_id].team,board));return <section key={lane}><h4>{th?"ป้อม"+({TOP:"บน",MID:"กลาง",BOTTOM:"ล่าง"}[lane]||lane):"Tower "+lane}</h4>{members.length?members.map((player,index)=><p key={player.player_id}><b>{player.character_name}</b>{index===0&&<span className="gw-tower-center">{th?"กลางป้อม":"Tower center"}</span>}</p>):<p className="gw-summary-empty">—</p>}</section>;})}</div></section>
+      <section className="gw-summary-towers"><header><h3>TOWER</h3><p>{th?"คนแรกของแต่ละป้อมคือ กลางป้อม":"The first player in each tower is the tower center"}</p></header><div>{lanes.map(lane=>{const members=towerMembers(lane);return <section key={lane}><h4>{th?"ป้อม"+({TOP:"บน",MID:"กลาง",BOTTOM:"ล่าง"}[lane]||lane):"Tower "+lane}</h4>{members.length?members.map((player,index)=><p key={player.player_id}><b>{player.character_name}</b>{index===0&&<span className="gw-tower-center">{th?"กลางป้อม":"Tower center"}</span>}</p>):<p className="gw-summary-empty">—</p>}</section>;})}</div></section>
       <section className="gw-summary-standby gw-team-standby"><header><h3>{th?"สำรอง":"Standby"}</h3><span>{ordered("STANDBY").length}</span></header><div>{ordered("STANDBY").map(player=><p key={player.player_id}>{player.character_name}</p>)}</div></section>
       {savedBoard!==JSON.stringify(board)&&<p className="gw-summary-notice">{th?"บันทึกออนไลน์ก่อนจึงจะประกาศทีมได้":"Save online before publishing this team."}</p>}
       {publishedLink&&<p className="gw-summary-notice" role="status">{th?"ประกาศแล้ว: ":"Published: "}<a href={publishedLink} target="_blank" rel="noreferrer">{th?"เปิดทีมที่ประกาศ":"Open published teams"}</a></p>}
