@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from "react";
 type Player = {player_id:string; character_name:string; nickname?:string; attendance_status?:string; preferred_team?:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type DropTarget = {team:string; playerId?:string};
 type Round = {id:string;starts_at:string;war_type:string};
-type Placement = {team:string; loadout:string; jungle?:string; tower?:string};
+type Placement = {team:string; loadout:string; jungle?:string; tower?:string; position?:number};
 const jungles = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
 const lanes = ["TOP","MID","BOTTOM"];
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
@@ -154,6 +154,20 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   function destinationIsFull(team:string,id:string,target?:string){
     return limitedTeam(team)&&!target&&board[id]?.team!==team&&teamMemberCount(team)>=5;
   }
+  function ordered(team:string,current:Record<string,Placement>=board){
+    return players.filter(p=>current[p.player_id]?.team===team).sort((a,b)=>{
+      const aPosition=current[a.player_id].position??Number.MAX_SAFE_INTEGER;
+      const bPosition=current[b.player_id].position??Number.MAX_SAFE_INTEGER;
+      return aPosition-bPosition||a.character_name.localeCompare(b.character_name);
+    });
+  }
+  function positionOf(id:string,team:string,current:Record<string,Placement>){
+    const saved=current[id]?.position;
+    return Number.isSafeInteger(saved)&&saved!==undefined&&saved>=0?saved:ordered(team,current).findIndex(player=>player.player_id===id);
+  }
+  function nextPosition(team:string,current:Record<string,Placement>){
+    return ordered(team,current).reduce((highest,player)=>Math.max(highest,positionOf(player.player_id,team,current)),-1)+1;
+  }
   function move(id:string,team:string,target?:string){
     if(!organizer||cloudBusy||publishing||loading||!players.some(p=>p.player_id===id)||id===target)return;
     if(destinationIsFull(team,id,target)){
@@ -162,11 +176,18 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     }
     setBoard(previous=>{
       const next={...previous};const source=next[id];
-      if(target&&next[target]){
-        if(source)next[target]={...next[target],team:source.team};else delete next[target];
+      const targetPlacement=target?next[target]:undefined;
+      if(target&&targetPlacement){
+        const targetPosition=positionOf(target,targetPlacement.team,next);
+        if(source)next[target]={...targetPlacement,team:source.team,position:positionOf(id,source.team,next)};else delete next[target];
+        if(team)next[id]={...source,team,position:targetPosition,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
+        else delete next[id];
+      } else if(team) {
+        const keepPosition=source?.team===team?positionOf(id,team,next):nextPosition(team,next);
+        next[id]={...source,team,position:keepPosition,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
+      } else {
+        delete next[id];
       }
-      if(team) next[id]={...source,team,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
-      else delete next[id];
       for(const playerId of Object.keys(next))if(next[playerId].team==="STANDBY"){
         next[playerId]={...next[playerId],jungle:undefined,tower:undefined};
       }
@@ -219,7 +240,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     </article>;
   }
   function squad(team:string){
-    const members=players.filter(p=>board[p.player_id]?.team===team);
+    const members=ordered(team);
     const tank=members.filter(p=>role(p)==="Tank").length,heal=members.filter(p=>role(p)==="Heal").length;
     const teamFull=limitedTeam(team)&&members.length>=5;
     const isTeamDropTarget=dropTarget?.team===team&&!dropTarget.playerId;
@@ -253,7 +274,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const summaryLines=[
     (th?"ฉบับร่าง — ยังไม่ประกาศ":"DRAFT — NOT PUBLISHED")+" | "+roundLabel,
     ...[...teams,"UNASSIGNED"].flatMap(team=>{
-      const members=players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team);
+      const members=team==="UNASSIGNED"?players.filter(p=>!board[p.player_id]):ordered(team);
       return ["",title(team,th)+" ("+members.length+")",...members.map(playerSummary)];
     })
   ];
@@ -299,10 +320,10 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <header><div><h2>{th?"สรุปทีม":"Team Summary"}</h2><p>{roundLabel}</p></div><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></header>
       <p className="gw-status">{th?"ฉบับร่าง · ยังไม่ประกาศ":"Draft · Not published"}</p>
       {(pool.length>0||warnings>0)&&<p className="gw-error">{pool.length} {th?"ยังไม่จัด · เตือนทีม":"Unassigned · warnings"} {warnings}</p>}
-      <div className="gw-summary-grid">{[...teams,"UNASSIGNED"].map(team=><section key={team} className={"gw-summary-team "+teamClass(team)}>
-        <header><h3>{title(team,th)}</h3><span>{players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).length}{team!=="STANDBY"&&team!=="UNASSIGNED"?"/5":""}</span></header>
-        {players.filter(p=>team==="UNASSIGNED"?!board[p.player_id]:board[p.player_id]?.team===team).map((p,i)=><p key={p.player_id}>{playerSummary(p,i)}</p>)}
-      </section>)}</div>
+      <div className="gw-summary-grid">{[...teams,"UNASSIGNED"].map(team=>{const members=team==="UNASSIGNED"?players.filter(p=>!board[p.player_id]):ordered(team);return (<section key={team} className={"gw-summary-team "+teamClass(team)}>
+        <header><h3>{title(team,th)}</h3><span>{members.length}{team!=="STANDBY"&&team!=="UNASSIGNED"?"/5":""}</span></header>
+        {members.map((p,i)=><p key={p.player_id}>{playerSummary(p,i)}</p>)}
+      </section>);})}</div>
       <div>
         <button disabled={publishing||cloudBusy||loading||!organizer||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={publishTeam}>
           {publishing?(th?"กำลังประกาศ…":"Publishing…"):(th?"ประกาศทีมและสร้างลิงก์":"Publish teams and create link")}

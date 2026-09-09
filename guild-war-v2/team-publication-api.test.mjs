@@ -50,6 +50,14 @@ test("builds a compact Discord payload without private registration data",()=>{
  assert.doesNotMatch(JSON.stringify(payload),/PRIVATE|player_id/);
 });
 
+test("keeps the saved player order inside a team",()=>{
+ const source={event:{starts_at:"2026-09-06T12:00:00Z",war_type:"League"},registrations:[
+  {player_id:"a",character_name:"First",loadouts:[]},{player_id:"b",character_name:"Second",loadouts:[]}
+ ]};
+ const snapshot=publicationSnapshot({a:{team:"ATTACK_1",loadout:"",position:1},b:{team:"ATTACK_1",loadout:"",position:0}},source);
+ assert.deepEqual(snapshot.members.map(member=>member.name),["Second","First"]);
+});
+
 test("requires organizer, same-origin writes and current saved revision",async()=>{
  const f=await fixture();
  try {
