@@ -2,6 +2,8 @@ import {useEffect,useState} from "react";
 import "./GuildWarPublication.css";
 type Publication={publishedAt:string;event:{startsAt:string;warType:string};unassignedCount:number;members:{name:string;team:string;role:string;mainWeapon:string;subWeapon:string;jungle:string;tower:string}[]};
 const teams=["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
+const teamNames:Record<string,[string,string]>={ATTACK_1:['ทีมบุก 1','Attack 1'],ATTACK_2:['ทีมบุก 2','Attack 2'],ATTACK_3:['ทีมบุก 3','Attack 3'],DEFENSE_1:['ทีมป้องกัน 1','Defense 1'],DEFENSE_2:['ทีมป้องกัน 2','Defense 2'],FOREST:['ป่า','Forest'],STANDBY:['สำรอง','Standby']};
+const teamClass=(team:string)=>'gw-team-'+team.toLowerCase();
 export function GuildWarPublication({language,eventId,publicationId}:{language:"th"|"en";eventId:string;publicationId:string}){
  const th=language==="th";
  const [data,setData]=useState<Publication|null>(null),[error,setError]=useState(""),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState(false);
@@ -23,8 +25,8 @@ export function GuildWarPublication({language,eventId,publicationId}:{language:"
    <p>{th?"ลิงก์นี้เป็นทีมฉบับที่ประกาศไว้ หากผู้จัดประกาศใหม่จะมีลิงก์ใหม่":"This link preserves this published edition. A new edition has a new link."}</p>
    <button onClick={async()=>{try{await navigator.clipboard.writeText(window.location.href);setCopied(true);}catch{setCopyError(true);}}}>{copied?(th?"คัดลอกแล้ว":"Copied"):(th?"คัดลอกลิงก์":"Copy link")}</button>
    {copyError&&<p role="status">{th?"คัดลอกไม่ได้ กรุณาคัดลอก URL จากแถบที่อยู่":"Copy the URL from your address bar."}</p>}
-   <div className="gw-publication-grid">{teams.map(team=><section key={team}>
-    <h2>{team.replaceAll("_"," ")} <small>({data.members.filter(m=>m.team===team).length})</small></h2>
+   <div className="gw-publication-grid">{teams.map(team=><section key={team} className={teamClass(team)}>
+    <h2>{teamNames[team][th?0:1]} <small>({data.members.filter(m=>m.team===team).length})</small></h2>
     <ol>{data.members.filter(m=>m.team===team).map((m,i)=><li key={i}><strong>{m.name}</strong><span>{m.role}{m.mainWeapon?" · "+m.mainWeapon+" + "+m.subWeapon:""}</span>{m.jungle&&<span>Jungle · {m.jungle.replaceAll("_"," ")}</span>}{m.tower&&<span>Tower · {m.tower}</span>}</li>)}</ol>
    </section>)}</div>
    {data.unassignedCount>0&&<p>{th?"ผู้ลงทะเบียนที่ยังไม่ได้จัดทีม ณ เวลาประกาศ: ":"Unassigned at publication: "}{data.unassignedCount}</p>}

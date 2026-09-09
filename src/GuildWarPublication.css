@@ -2,8 +2,8 @@
 .gw-publication h1 {font-size:clamp(24px,5vw,36px);margin:20px 0 12px}
 .gw-publication button {padding:10px 16px;background:#ffcd78;color:#171322;border:0;border-radius:8px;cursor:pointer}
 .gw-publication-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;margin-top:24px}
-.gw-publication-grid section {border:1px solid #34313e;border-radius:10px;padding:16px;min-width:0;background:#191b25}
-.gw-publication-grid h2 {font-size:16px;color:#ffcd78;margin:0 0 12px}
+.gw-publication-grid section {border:1px solid rgba(var(--team-rgb,52,49,62),.65);border-top:4px solid var(--team,#ffcd78);border-radius:10px;padding:16px;min-width:0;background:linear-gradient(155deg,rgba(var(--team-rgb,25,27,37),.15),#191b25 46%)}
+.gw-publication-grid h2 {font-size:16px;color:var(--team,#ffcd78);margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid rgba(var(--team-rgb,255,205,120),.25)}
 .gw-publication-grid ol {padding-left:22px}
 .gw-publication-grid li {margin-bottom:14px;overflow-wrap:anywhere}
 .gw-publication-grid span {display:block;font-size:13px;color:#c6c4cf;margin-top:4px}
