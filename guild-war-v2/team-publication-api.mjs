@@ -3,6 +3,23 @@ import {validDraft} from "./team-draft-api.mjs";
 import {readApi} from "./read-api.mjs";
 
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
+const discordTeams = [["ATTACK_1","🔴 ทีมบุก 1"],["ATTACK_2","🔴 ทีมบุก 2"],["ATTACK_3","🔴 ทีมบุก 3"],["DEFENSE_1","🔵 ทีมกัน 1"],["DEFENSE_2","🔵 ทีมกัน 2"],["FOREST","🟢 ป่า"],["STANDBY","⚪ สำรอง"]];
+const literal = value => String(value || "").replace(/@/g,"@\u200b").replace(/[\r\n]/g," ").slice(0,180);
+export function discordWebhookPayload(snapshot, publicationUrl) {
+  const fields=discordTeams.map(([team,name])=>{
+    const members=snapshot.members.filter(member=>member.team===team);
+    const value=members.length?members.map(member=>"• "+literal(member.name)+(member.role?" · "+literal(member.role):"")).join("\n"):"—";
+    return {name:name+" · "+members.length+(team!=="STANDBY"?"/5":""),value:value.slice(0,1024),inline:true};
+  });
+  const starts=new Date(snapshot.event.startsAt).getTime();
+  return {username:"Path of Memories",embeds:[{title:"⚔️ Guild War Team Ready",url:publicationUrl,description:(Number.isFinite(starts)?"<t:"+Math.floor(starts/1000)+":F>\n":"")+"[เปิดสรุปทีม]("+publicationUrl+")",color:0xC8A86B,fields,footer:{text:"Path of Memories · Guild War"}}]};
+}
+async function sendDiscordWebhook(env,snapshot,publicationUrl) {
+  if(!env.DISCORD_WEBHOOK_URL)return "unconfigured";
+  let webhook;try {webhook=new URL(env.DISCORD_WEBHOOK_URL);}catch{return "failed";}
+  if(webhook.protocol!=="https:"||!/(^|\.)discord(?:app)?\.com$/i.test(webhook.hostname)||!webhook.pathname.startsWith("/api/webhooks/"))return "failed";
+  try {const response=await fetch(webhook,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(discordWebhookPayload(snapshot,publicationUrl))});return response.ok?"sent":"failed";}catch{return "failed";}
+}
 export function publicationSnapshot(board, source) {
   if (!validDraft({revision: 0, board}) || !Object.keys(board).length) throw new Error("invalid_board");
   const counts = {};
@@ -44,7 +61,7 @@ export async function teamPublicationApi(request, env) {
     let data; try {data = JSON.parse(raw);} catch {return json({error: "invalid_request"},400);}
     if (!Number.isSafeInteger(data?.revision) || data.revision < 1) return json({error: "save_draft_first"},400);
     const existing = await db.prepare("SELECT id FROM team_publications WHERE game_id=? AND event_id=? AND organizer_id=? AND draft_revision=?").bind(game,event,user.id,data.revision).first();
-    if (existing) return json({id: existing.id});
+    if (existing) return json({id: existing.id,webhook:"already_published"});
     const draft = await db.prepare("SELECT board_json FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=? AND revision=?").bind(game,event,user.id,data.revision).first();
     if (!draft) return json({error: "draft_conflict"},409);
     const rosterResponse = await readApi(new Request(url.origin+"/api/v2/games/"+game+"/war/events/"+event+"/registrations"),env);
@@ -59,6 +76,9 @@ export async function teamPublicationApi(request, env) {
     await db.prepare("INSERT INTO team_publications (id,game_id,event_id,organizer_id,draft_revision,snapshot_json,published_at) SELECT ?,game_id,event_id,organizer_id,revision,?,? FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=? AND revision=? ON CONFLICT(game_id,event_id,organizer_id,draft_revision) DO NOTHING")
       .bind(publicationId,JSON.stringify(snapshot),new Date().toISOString(),game,event,user.id,data.revision).run();
     const published = await db.prepare("SELECT id FROM team_publications WHERE game_id=? AND event_id=? AND organizer_id=? AND draft_revision=?").bind(game,event,user.id,data.revision).first();
-    return published ? json({id: published.id}) : json({error: "draft_conflict"},409);
+    if(!published)return json({error: "draft_conflict"},409);
+    let origin=url.origin;try{origin=new URL(env.PUBLIC_ORIGIN||url.origin).origin;}catch{}
+    const webhook=await sendDiscordWebhook(env,snapshot,origin+"/games/where-winds-meet/guild-war/published/"+event+"/"+published.id);
+    return json({id: published.id,webhook});
   } catch {return json({error: "publication_unavailable"},503);}
 }

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
-import {teamPublicationApi, publicationSnapshot} from "./team-publication-api.mjs";
+import {teamPublicationApi, publicationSnapshot, discordWebhookPayload} from "./team-publication-api.mjs";
 import {sha256} from "./discord-oauth.mjs";
 
 async function fixture() {
@@ -30,7 +30,7 @@ test("publishes immutable public snapshots and retries return the same link",asy
  const f=await fixture();
  try {
   const response=await f.post();assert.equal(response.status,200);
-  const {id}=await response.json();
+  const {id,webhook}=await response.json();assert.equal(webhook,"unconfigured");
   assert.equal((await (await f.post()).json()).id,id);
   const original=await (await f.get(id)).json();
   assert.equal(original.members[0].name,"Hero");assert.equal(original.members[0].tower,"TOP");
@@ -39,6 +39,15 @@ test("publishes immutable public snapshots and retries return the same link",asy
   assert.deepEqual(await (await f.get(id)).json(),original);
   assert.equal((await f.post(2)).status,409);
  } finally {f.sql.close();}
+});
+
+test("builds a compact Discord payload without private registration data",()=>{
+ const snapshot={event:{startsAt:"2026-09-06T12:00:00Z",warType:"League"},members:[{name:"@Hero",team:"ATTACK_1",role:"Tank"}],unassignedCount:0};
+ const payload=discordWebhookPayload(snapshot,"https://pathofmemories.com/published/example");
+ assert.equal(payload.embeds[0].fields.length,7);
+ assert.match(payload.embeds[0].fields[0].value,/@\u200bHero/);
+ assert.match(payload.embeds[0].description,/pathofmemories\.com/);
+ assert.doesNotMatch(JSON.stringify(payload),/PRIVATE|player_id/);
 });
 
 test("requires organizer, same-origin writes and current saved revision",async()=>{
