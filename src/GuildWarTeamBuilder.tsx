@@ -17,7 +17,6 @@ const base = "/api/v2/games/where-winds-meet";
 export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const th = language === "th";
   const summaryDialog = useRef<HTMLDialogElement>(null);
-  const [copyMessage,setCopyMessage] = useState("");
 
   const [rounds,setRounds] = useState<Round[]>([]);
   const [round,setRound] = useState("");
@@ -261,16 +260,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
 
   const roundInfo=rounds.find(r=>r.id===round);
   const roundLabel=roundInfo?new Date(roundInfo.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})+" · "+roundInfo.war_type:round;
-  // Keep copied names literal and prevent pasted names from creating Discord mentions.
-  const literal=(value:string)=>value.replace(/@/g,"@\u200b").replace(/[\r\n]/g," ").replace(/([*_~\x60|>\\])/g,"\\$1");
-  function playerSummary(p:Player,index:number){
-    const placement=board[p.player_id];
-    const loadout=p.loadouts.find(l=>l.id===placement?.loadout);
-    return (index+1)+". "+literal(p.character_name)+" · "+role(p)+
-      (loadout?" · "+literal(loadout.main_weapon_name)+" + "+literal(loadout.sub_weapon_name):"")+
-      (placement?.jungle?" · Jungle: "+title(placement.jungle,th):"")+
-      (placement?.tower?" · Tower: "+placement.tower:"");
-  }
   function jungleLabel(jungle?:string){
     const labels=th?["ศัตรูบน","ศัตรูล่าง","เราบน","เราล่าง"]:["Enemy top","Enemy bottom","Ally top","Ally bottom"];
     return jungle?labels[jungles.indexOf(jungle)]||jungle:"";
@@ -286,35 +275,13 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       {placement?.jungle&&<span className={"gw-summary-jungle gw-jungle-"+placement.jungle.toLowerCase()}>{jungleLabel(placement.jungle)}</span>}
     </div>;
   }
-  const summaryLines=[
-    (th?"ฉบับร่าง — ยังไม่ประกาศ":"DRAFT — NOT PUBLISHED")+" | "+roundLabel,
-    ...teams.flatMap(team=>{
-      const members=ordered(team);
-      return ["",title(team,th)+" ("+members.length+")",...members.map(playerSummary)];
-    })
-  ];
-  // Split at line boundaries, with a bounded fallback for unusually long player names.
-  const copyParts:string[]=[];
-  for(const line of summaryLines){
-    for(let offset=0;offset<Math.max(1,line.length);offset+=1700){
-      const piece=line.slice(offset,offset+1700);
-      const last=copyParts.length-1;
-      if(last<0||copyParts[last].length+piece.length+1>1800)copyParts.push(piece);
-      else copyParts[last]+="\n"+piece;
-    }
-  }
-  async function copyPart(index:number){
-    try{await navigator.clipboard.writeText(copyParts[index]);setCopyMessage(th?"คัดลอกส่วนที่ "+(index+1)+" แล้ว":"Copied part "+(index+1));}
-    catch{setCopyMessage(th?"คัดลอกอัตโนมัติไม่ได้ เลือกข้อความด้านล่างเพื่อคัดลอกเอง":"Clipboard unavailable. Select the text below to copy.");}
-  }
-
   return <section className="gw-builder"><fieldset disabled={cloudBusy||publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
     <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากผู้เล่นไปทับอีกคนเพื่อสลับ · ทีมละ 5 คน":"Drag a player onto another to swap · 5 per team"}</p></div>
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/regulars">{th?"ขาประจำ":"Regulars"}</a>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("load")}>{th?"โหลดออนไลน์":"Load online"}</button>
-      <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>{setCopyMessage("");summaryDialog.current?.showModal();}}>Team Summary</button>
+      <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>summaryDialog.current?.showModal()}>Team Summary</button>
       <button onClick={()=>setRefresh(v=>v+1)}>Refresh</button><button disabled={!organizer||loading} onClick={()=>{if(window.confirm(th?"ล้างฉบับร่างรอบนี้?":"Clear this round's draft?"))setBoard({});}}>Reset board</button></div></header>
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     <p role="status" aria-live="polite">{cloudBusy?(th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"):cloudMessage}</p>
@@ -332,27 +299,17 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     </section>}
   </fieldset>
     <dialog ref={summaryDialog} className="gw-summary-dialog">
-      <header><div><h2>{th?"สรุปทีม":"Team Summary"}</h2><p>{roundLabel}</p></div><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></header>
+      <header><div><h2>{th?"สรุปทีม":"Team Summary"}</h2><p>{roundLabel}</p></div><div className="gw-summary-actions"><button className="gw-publish" disabled={publishing||cloudBusy||loading||!organizer||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={publishTeam}>{publishing?(th?"กำลังประกาศ…":"Publishing…"):(th?"ประกาศทีม":"Publish teams")}</button><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></div></header>
       <p className="gw-status">{th?"ฉบับร่าง · ยังไม่ประกาศ":"Draft · Not published"}</p>
       {warnings>0&&<p className="gw-error">{warnings} {th?"ทีมต้องตรวจสอบ":"team warnings"}</p>}
       <div className="gw-summary-grid">{teams.filter(team=>team!=="STANDBY").map(team=>{const members=ordered(team);return (<section key={team} className={"gw-summary-team "+teamClass(team)}>
         <header><h3>{title(team,th)}</h3><span>{members.length}{team!=="STANDBY"&&team!=="UNASSIGNED"?"/5":""}</span></header>
         <div className="gw-summary-members">{members.map(summaryPlayer)}</div>
       </section>);})}</div>
-      <section className="gw-summary-towers"><header><h3>TOWER</h3><p>{th?"สมาชิกที่เลือกขึ้นป้อม":"Players assigned to a tower"}</p></header><div>{lanes.map(lane=>{const members=players.filter(p=>board[p.player_id]?.tower===lane).sort((a,b)=>positionOf(a.player_id,board[a.player_id].team,board)-positionOf(b.player_id,board[b.player_id].team,board));return <section key={lane}><h4>{th?({TOP:"บน",MID:"กลาง",BOTTOM:"ล่าง"}[lane]||lane):lane}</h4>{members.length?members.map(player=><p key={player.player_id}><b>{player.character_name}</b>{player.nickname&&<small>{player.nickname}</small>}</p>):<p className="gw-summary-empty">—</p>}</section>;})}</div></section>
+      <section className="gw-summary-towers"><header><h3>TOWER</h3><p>{th?"คนแรกของแต่ละป้อมคือ กลางป้อม":"The first player in each tower is the tower center"}</p></header><div>{lanes.map(lane=>{const members=players.filter(p=>board[p.player_id]?.tower===lane).sort((a,b)=>positionOf(a.player_id,board[a.player_id].team,board)-positionOf(b.player_id,board[b.player_id].team,board));return <section key={lane}><h4>{th?"ป้อม"+({TOP:"บน",MID:"กลาง",BOTTOM:"ล่าง"}[lane]||lane):"Tower "+lane}</h4>{members.length?members.map((player,index)=><p key={player.player_id}><b>{player.character_name}</b>{index===0&&<span className="gw-tower-center">{th?"กลางป้อม":"Tower center"}</span>}</p>):<p className="gw-summary-empty">—</p>}</section>;})}</div></section>
       <section className="gw-summary-standby gw-team-standby"><header><h3>{th?"สำรอง":"Standby"}</h3><span>{ordered("STANDBY").length}</span></header><div>{ordered("STANDBY").map(player=><p key={player.player_id}>{player.character_name}</p>)}</div></section>
-      <div>
-        <button disabled={publishing||cloudBusy||loading||!organizer||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={publishTeam}>
-          {publishing?(th?"กำลังประกาศ…":"Publishing…"):(th?"ประกาศทีมและสร้างลิงก์":"Publish teams and create link")}
-        </button>
-        {savedBoard!==JSON.stringify(board)&&<p>{th?"กลับไปบันทึกออนไลน์ก่อนประกาศทีมฉบับนี้":"Save this board online before publishing."}</p>}
-        {publishedLink&&<p role="status">{th?"ประกาศแล้ว: ":"Published: "}<a href={publishedLink} target="_blank" rel="noreferrer">{th?"เปิดทีมที่ประกาศ":"Open published teams"}</a><input readOnly aria-label={th?"ลิงก์ประกาศทีม":"Published team link"} value={publishedLink} onFocus={e=>e.target.select()}/></p>}
-        {error&&<p role="alert">{error}</p>}
-      </div>
-      <h3>{th?"ข้อความสำหรับ Discord":"Discord text"}</h3>
-      <p>{th?"คัดลอกทีละส่วนแล้วนำไปวางใน Discord ได้":"Copy each part and paste it into Discord."}</p>
-      <p role="status" aria-live="polite">{copyMessage}</p>
-      {copyParts.map((part,i)=><div key={i} className="gw-copy-part"><button onClick={()=>copyPart(i)}>{th?"คัดลอกส่วนที่ ":"Copy part "}{i+1}/{copyParts.length}</button><textarea readOnly aria-label={"Discord text "+(i+1)} value={part} onFocus={e=>e.target.select()}/></div>)}
+      {savedBoard!==JSON.stringify(board)&&<p className="gw-summary-notice">{th?"บันทึกออนไลน์ก่อนจึงจะประกาศทีมได้":"Save online before publishing this team."}</p>}
+      {publishedLink&&<p className="gw-summary-notice" role="status">{th?"ประกาศแล้ว: ":"Published: "}<a href={publishedLink} target="_blank" rel="noreferrer">{th?"เปิดทีมที่ประกาศ":"Open published teams"}</a></p>}
     </dialog>
   </section>;
 }
