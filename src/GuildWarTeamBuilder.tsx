@@ -321,7 +321,13 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }).length;
 
   const roundInfo=rounds.find(r=>r.id===round);
-  const roundLabel=roundInfo?new Date(roundInfo.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})+" · "+roundInfo.war_type:round;
+  function roundHeading(info?:Round){
+    if(!info)return round;
+    const date=new Date(info.starts_at),parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(date),hour=parts.find(part=>part.type==="hour")?.value||"",minute=parts.find(part=>part.type==="minute")?.value||"";
+    const day=new Intl.DateTimeFormat(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",day:"numeric",month:"short",year:"numeric"}).format(date);
+    const number=rounds.findIndex(item=>item.id===info.id)+1;
+    return th?`รอบ ${number} (${info.war_type}) · ${hour}.${minute} · ${day}`:`Round ${number} (${info.war_type}) · ${hour}:${minute} · ${day}`;
+  }
   function jungleLabel(jungle?:string){
     const labels=th?["ศัตรูบน","ศัตรูล่าง","เราบน","เราล่าง"]:["Enemy top","Enemy bottom","Ally top","Ally bottom"];
     return jungle?labels[jungles.indexOf(jungle)]||jungle:"";
@@ -360,7 +366,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     </section></div>}
   </fieldset>
     <dialog ref={summaryDialog} className="gw-summary-dialog">
-      <header><div><h2>{th?"สรุปทีม":"Team Summary"}</h2><p>{roundLabel}</p></div><div className="gw-summary-actions"><button className="gw-publish" disabled={publishing||cloudBusy||loading||!organizer||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={publishTeam}>{publishing?(th?"กำลังประกาศ…":"Publishing…"):(th?"ประกาศทีม":"Publish teams")}</button><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></div></header>
+      <header><div><h2 className="gw-summary-round-heading">{roundHeading(roundInfo)}</h2></div><div className="gw-summary-actions"><button className="gw-publish" disabled={publishing||cloudBusy||loading||!organizer||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={publishTeam}>{publishing?(th?"กำลังประกาศ…":"Publishing…"):(th?"ประกาศทีม":"Publish teams")}</button><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></div></header>
       <p className="gw-status">{th?"ฉบับร่าง · ยังไม่ประกาศ":"Draft · Not published"}</p>
       {warnings>0&&<p className="gw-error">{warnings} {th?"ทีมต้องตรวจสอบ":"team warnings"}</p>}
       <div className="gw-summary-grid">{teams.filter(team=>team!=="STANDBY").map(team=>{const members=ordered(team);return (<section key={team} className={"gw-summary-team "+teamClass(team)}>
