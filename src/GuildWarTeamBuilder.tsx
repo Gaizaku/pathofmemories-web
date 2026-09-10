@@ -37,7 +37,8 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [savedBoard,setSavedBoard] = useState("");
   const [publishedLink,setPublishedLink] = useState("");
   const [publishing,setPublishing] = useState(false);
-  const [copyRound,setCopyRound] = useState("");
+  const [copyRounds,setCopyRounds] = useState<string[]>([]);
+  const [copyPanel,setCopyPanel] = useState(false);
   const [copying,setCopying] = useState(false);
   const [revision,setRevision] = useState(0);
   const activeRound = useRef(round);
@@ -103,13 +104,14 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     finally{setPublishing(false);}
   }
 
-  async function copyBoardToRound() {
-    if(!organizer||copying||cloudBusy||publishing||loading||loadedRound!==round||!copyRound||copyRound===round)return;
+  async function copyBoardToRounds() {
+    const destinations=copyRounds.filter(destination=>destination!==round);
+    if(!organizer||copying||cloudBusy||publishing||loading||loadedRound!==round||!destinations.length)return;
     if(!Object.keys(board).length){setError(th?"ยังไม่มีทีมให้คัดลอก":"There is no team to copy");return;}
-    if(!window.confirm(th?"คัดลอกทีมนี้ไปแทนฉบับร่างออนไลน์ของรอบปลายทาง? รายชื่อที่ไม่ได้ลงรอบนั้นจะถูกข้าม":"Replace the destination's online draft with this team? Players not registered for that round will be skipped."))return;
-    const destination=copyRound;
+    if(!window.confirm(th?`คัดลอกทีมนี้ไปแทนฉบับร่างของ ${destinations.length} รอบที่เลือก? รายชื่อที่ไม่ได้ลงรอบนั้นจะถูกข้าม`:`Replace the online drafts for ${destinations.length} selected rounds? Players not registered for a round will be skipped.`))return;
     setCopying(true);setCloudMessage("");setError("");
-    try {
+    const outcomes=await Promise.all(destinations.map(async destination=>{
+      try {
       const [rosterResponse,draftResponse]=await Promise.all([
         fetch(base+"/war/events/"+destination+"/registrations"),
         fetch(base+"/war/events/"+destination+"/draft")
@@ -133,13 +135,18 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       const response=await fetch(base+"/war/events/"+destination+"/draft",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision:draftData.revision||0,board:next})});
       const result=await response.json();
       if(!response.ok){
-        if(result.error==="draft_conflict")throw new Error(th?"ฉบับร่างปลายทางเปลี่ยนแล้ว ลองคัดลอกอีกครั้ง":"The destination draft changed. Try copying again.");
-        if(result.error==="roster_changed")throw new Error(th?"รายชื่อรอบปลายทางเปลี่ยนแล้ว ลอง Refresh ก่อน":"The destination roster changed. Refresh and retry.");
-        throw new Error(th?"คัดลอกทีมไม่สำเร็จ":"Could not copy the team");
+        if(result.error==="draft_conflict")throw new Error(th?"ฉบับร่างเปลี่ยนแล้ว":"The draft changed");
+        if(result.error==="roster_changed")throw new Error(th?"รายชื่อเปลี่ยนแล้ว":"The roster changed");
+        throw new Error(th?"คัดลอกไม่สำเร็จ":"Copy failed");
       }
-      setCloudMessage(th?`คัดลอก ${Object.keys(next).length} คนไปยังรอบปลายทางแล้ว · เปลี่ยนรอบและกดโหลดออนไลน์เพื่อตรวจ`:`Copied ${Object.keys(next).length} players to the destination · Switch rounds and load online to review`);
-    } catch(err) {setError(err instanceof Error?err.message:"Copy failed");}
-    finally {setCopying(false);}
+      return {destination,count:Object.keys(next).length};
+      } catch(error) {return {destination,error:error instanceof Error?error.message:"Copy failed"};}
+    }));
+    const done=outcomes.filter((outcome):outcome is {destination:string;count:number}=>"count" in outcome);
+    const failed=outcomes.filter((outcome):outcome is {destination:string;error:string}=>"error" in outcome);
+    if(done.length){setCloudMessage(th?`คัดลอกทีมไป ${done.length} รอบแล้ว · เปลี่ยนรอบปลายทางและกดโหลดออนไลน์เพื่อตรวจ`:`Copied the team to ${done.length} rounds · Switch to a destination and load online to review`);setCopyRounds([]);setCopyPanel(false);}
+    if(failed.length)setError(th?`คัดลอกไม่สำเร็จ ${failed.length} รอบ: ${failed.map(outcome=>rounds.find(item=>item.id===outcome.destination)?.war_type||outcome.destination).join(", ")}`:`Could not copy ${failed.length} rounds: ${failed.map(outcome=>outcome.error).join(", ")}`);
+    setCopying(false);
   }
 
   async function get(url:string,signal:AbortSignal) {
@@ -341,12 +348,12 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/regulars">{th?"ขาประจำ":"Regulars"}</a>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={autoAssign}>{th?"จัดอัตโนมัติ":"Auto assign"}</button>
-      <select aria-label={th?"คัดลอกไปรอบ":"Copy to round"} value={copyRound} onChange={e=>setCopyRound(e.target.value)} disabled={!organizer||loading||copying}><option value="">{th?"คัดลอกไปรอบ…":"Copy to round…"}</option>{rounds.filter(item=>item.id!==round).map(item=><option key={item.id} value={item.id}>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {item.war_type}</option>)}</select>
-      <button disabled={!organizer||loading||loadedRound!==round||!copyRound||copying} onClick={()=>void copyBoardToRound()}>{copying?(th?"กำลังคัดลอก…":"Copying…"):(th?"คัดลอกทีม":"Copy team")}</button>
+      <button disabled={!organizer||loading||loadedRound!==round||copying} onClick={()=>setCopyPanel(value=>!value)}>{th?`คัดลอกไปรอบอื่น${copyRounds.length?` (${copyRounds.length})`:""}`:`Copy to other rounds${copyRounds.length?` (${copyRounds.length})`:""}`}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("load")}>{th?"โหลดออนไลน์":"Load online"}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>summaryDialog.current?.showModal()}>Team Summary</button>
       <button onClick={()=>setRefresh(v=>v+1)}>Refresh</button><button disabled={!organizer||loading} onClick={()=>{if(window.confirm(th?"ล้างฉบับร่างรอบนี้?":"Clear this round's draft?"))setBoard({});}}>Reset board</button></div></header>
+    {copyPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"คัดลอกการจัดทีมไปยังรอบอื่น":"Copy team arrangement to other rounds"}</strong><p>{th?"เลือกรอบปลายทางได้หลายรอบพร้อมกัน รายชื่อที่ไม่ได้ลงในรอบนั้นจะถูกข้าม":"Choose multiple destination rounds. Players unavailable in a round will be skipped."}</p></div><button type="button" onClick={()=>setCopyPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.filter(item=>item.id!==round).map(item=>{const checked=copyRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={copying} onChange={()=>setCopyRounds(current=>checked?current.filter(id=>id!==item.id):[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setCopyRounds([])} disabled={!copyRounds.length||copying}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={!copyRounds.length||copying} onClick={()=>void copyBoardToRounds()}>{copying?(th?"กำลังคัดลอก…":"Copying…"):(th?`คัดลอกไป ${copyRounds.length} รอบ`:`Copy to ${copyRounds.length} rounds`)}</button></footer></section>}
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     <p role="status" aria-live="polite">{cloudBusy?(th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"):cloudMessage}</p>
     {error&&<p role="alert" className="gw-error">{error}</p>}
