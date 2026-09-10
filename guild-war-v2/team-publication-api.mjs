@@ -38,7 +38,7 @@ export function publicationSnapshot(board, source) {
       name: player.character_name, team: placement.team,
       role: loadout?.role || player.preferred_role || "",
       mainWeapon: loadout?.main_weapon_name || "", subWeapon: loadout?.sub_weapon_name || "",
-      jungle: placement.jungle || "", tower: placement.tower || "",
+      jungle: placement.jungle || "", tower: placement.tower || "", towerPosition: placement.towerPosition,
     };
   });
   return {event: {startsAt: source.event.starts_at, warType: source.event.war_type}, members,
