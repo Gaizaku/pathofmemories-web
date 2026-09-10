@@ -47,3 +47,14 @@ test('rejects invalid slots and cross-origin changes',async()=>{
  assert.equal(validSlots(['6:2','6:3','0:4']),true);assert.equal(validSlots(['6:2','6:2']),false);assert.equal(validSlots(['5:1']),false);
  const f=fixture();try{assert.equal((await f.post('save',{},'https://evil.example')).status,403);}finally{f.sql.close();}
 });
+test('allows a member to be opened and updated from another device',async()=>{
+ const f=fixture();try{
+  const {events,weekStart}=await ensureWeekend(f.db,clock);
+  const selected=[events[0].id];
+  const body={playerId:'p1',weekStart,selected,loadoutIds:['l1'],preferredRole:'DPS',preferredTeam:'ATTACK_1',note:'',regular:false,revision:0};
+  assert.equal((await f.post('save',body)).status,200);
+  const lookup=await f.post('lookup',{playerId:'p1'});assert.equal(lookup.status,200);
+  const profile=await lookup.json();assert.equal(profile.revision,1);
+  assert.equal((await f.post('save',{...body,selected:[],revision:profile.revision})).status,200);
+ }finally{f.sql.close();}
+});
