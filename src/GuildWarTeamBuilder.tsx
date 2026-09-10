@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import {autoAssignUnassigned} from "./GuildWarAutoAssign";
 type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type DropTarget = {team:string; playerId?:string};
 type Round = {id:string;starts_at:string;war_type:string};
@@ -194,6 +195,14 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     });
     setError("");setDraggingPlayer("");setDropTarget(null);
   }
+  function autoAssign(){
+    if(!organizer||cloudBusy||publishing||loading||loadedRound!==round)return;
+    const result=autoAssignUnassigned(players,board);
+    if(result.assigned===0&&result.standby===0){setCloudMessage(th?"ไม่มีผู้เล่นที่ยังไม่จัดทีม":"Everyone is already assigned");return;}
+    setBoard(result.board);
+    setError("");
+    setCloudMessage(th?`จัดผู้เล่นเพิ่ม ${result.assigned} คน${result.standby?` · สำรอง ${result.standby} คน`:""} · ตรวจทีมก่อนบันทึก`:`Assigned ${result.assigned} players${result.standby?` · ${result.standby} standby`:""} · Review before saving`);
+  }
   function drop(e:React.DragEvent,team:string,target?:string){
     e.preventDefault();e.stopPropagation();
     move(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,team,target);
@@ -290,6 +299,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากผู้เล่นไปทับอีกคนเพื่อสลับ · ทีมละ 5 คน":"Drag a player onto another to swap · 5 per team"}</p></div>
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/regulars">{th?"ขาประจำ":"Regulars"}</a>
+      <button disabled={!organizer||loading||loadedRound!==round} onClick={autoAssign}>{th?"จัดอัตโนมัติ":"Auto assign"}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("save")}>{th?"บันทึกออนไลน์":"Save online"}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>cloudDraft("load")}>{th?"โหลดออนไลน์":"Load online"}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>summaryDialog.current?.showModal()}>Team Summary</button>
