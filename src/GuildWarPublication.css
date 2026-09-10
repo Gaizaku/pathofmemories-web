@@ -1,9 +1,1 @@
-.gw-publication {padding:24px;background:#101218;border:1px solid #34313e;border-radius:16px;color:#f8f2e6}
-.gw-publication h1 {font-size:clamp(24px,5vw,36px);margin:20px 0 12px}
-.gw-publication button {padding:10px 16px;background:#ffcd78;color:#171322;border:0;border-radius:8px;cursor:pointer}
-.gw-publication-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;margin-top:24px}
-.gw-publication-grid section {border:1px solid rgba(var(--team-rgb,52,49,62),.65);border-top:4px solid var(--team,#ffcd78);border-radius:10px;padding:16px;min-width:0;background:linear-gradient(155deg,rgba(var(--team-rgb,25,27,37),.15),#191b25 46%)}
-.gw-publication-grid h2 {font-size:16px;color:var(--team,#ffcd78);margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid rgba(var(--team-rgb,255,205,120),.25)}
-.gw-publication-grid ol {padding-left:22px}
-.gw-publication-grid li {margin-bottom:14px;overflow-wrap:anywhere}
-.gw-publication-grid span {display:block;font-size:13px;color:#c6c4cf;margin-top:4px}
+.gw-publication-summary{width:min(1380px,100%);margin:auto;padding:16px;background:#0f1115;border:1px solid #343b47;border-radius:12px;color:#f4f6f8;font:13px/1.4 system-ui,sans-serif}.gw-publication-summary>a{color:#c8a86b;text-decoration:none;font-size:12px}.gw-publication-summary>a:hover{text-decoration:underline}.gw-publication-summary>p{margin:12px 0;color:#aeb8c8}.gw-publication-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0}.gw-publication-header h1{margin:0 0 3px;font:750 27px/1.2 system-ui,sans-serif;color:#f4f6f8}.gw-publication-header p,.gw-publication-header small{display:block;margin:0;color:#aeb8c8}.gw-publication-header small{margin-top:3px;font-size:11px}.gw-publication-header button{padding:8px 12px;border:1px solid #e8ca8b;border-radius:8px;background:#d6b15c;color:#17120b;font-weight:850;cursor:pointer}@media(max-width:560px){.gw-publication-summary{padding:12px}.gw-publication-header{align-items:flex-start;flex-direction:column}.gw-publication-header h1{font-size:23px}}
