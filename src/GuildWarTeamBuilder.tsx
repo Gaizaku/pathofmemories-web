@@ -57,6 +57,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [copying,setCopying] = useState(false);
   const [revision,setRevision] = useState(0);
   const activeRound = useRef(round);
+  const roundCache = useRef<Record<string,{players:Player[];board:Record<string,Placement>;organizer:string;revision:number;savedBoard:string}>>({});
   activeRound.current = round;
   useEffect(()=>{setRevision(0);setSavedBoard("");setPublishedLink("");setCloudMessage("");},[round,refresh]);
   async function cloudDraft() {
@@ -153,7 +154,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }
   useEffect(()=>{
     const c = new AbortController();
-    get("/api/auth/discord/session",c.signal).then(d=>setOrganizer(d.organizer?.displayName||"")).catch(()=>{});
     get(base+"/war/events",c.signal).then(d=>{
       setRounds(d.events||[]); setRound(r=>r||d.events?.[0]?.id||"");setLoading(false);
     }).catch(()=>{if(!c.signal.aborted){setError(th?"โหลดรอบ War ไม่สำเร็จ":"Could not load rounds");setLoading(false);}});
@@ -161,31 +161,37 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   },[refresh]);
   useEffect(()=>{
     if(!round)return;
-    const c=new AbortController();setLoading(true);setError("");setLoadedRound("");setDraggingPlayer("");setDropTarget(null);
+    const c=new AbortController();
+    const cached=roundCache.current[round];
+    setLoading(!cached);setError("");setLoadedRound(cached?round:"");setDraggingPlayer("");setDropTarget(null);
+    if(cached){
+      setPlayers(cached.players);setBoard(cached.board);setOrganizer(cached.organizer);setRevision(cached.revision);setSavedBoard(cached.savedBoard);setSaved(true);
+    }
     void (async()=>{
       try {
-        const rosterResponse=await get(base+"/war/events/"+round+"/registrations",c.signal);
-        const roster:Player[]=rosterResponse.registrations||[];
+        const response=await get(base+"/war/events/"+round+"/team-builder",c.signal);
+        const roster:Player[]=response.registrations||[];
         let source:Record<string,Placement>|undefined;
         try{source=JSON.parse(localStorage.getItem("pom-board-v2:"+round)||"{}");}catch{source={};}
-        let onlineRevision=0,loadedOnline=false;
-        if(organizer){
-          const response=await fetch(base+"/war/events/"+round+"/draft",{signal:c.signal});
-          if(response.ok){const online=await response.json();if(online.revision>0){source=online.board;onlineRevision=online.revision;loadedOnline=true;}}
-        }
+        const onlineRevision=response.revision||0,loadedOnline=onlineRevision>0;
+        if(loadedOnline)source=response.board;
         if(c.signal.aborted)return;
         const valid=normalizeBoard(roster,source);
-        setPlayers(roster);setBoard(valid);setRevision(onlineRevision);setSavedBoard(loadedOnline?JSON.stringify(valid):"");setLoadedRound(round);setLoading(false);setSaved(true);
+        const next={players:roster,board:valid,organizer:response.organizer?.displayName||"",revision:onlineRevision,savedBoard:loadedOnline?JSON.stringify(valid):""};
+        roundCache.current[round]=next;
+        setPlayers(next.players);setBoard(next.board);setOrganizer(next.organizer);setRevision(next.revision);setSavedBoard(next.savedBoard);setLoadedRound(round);setLoading(false);setSaved(true);
         if(loadedOnline)setCloudMessage(th?"โหลดฉบับร่างออนไลน์อัตโนมัติแล้ว":"Online draft loaded automatically");
       }catch{if(!c.signal.aborted){setLoading(false);setError(th?"โหลดรายชื่อไม่สำเร็จ กด Refresh เพื่อลองใหม่":"Could not load roster. Refresh to retry.");}}
     })();
     return ()=>c.abort();
-  },[round,refresh,organizer]);
+  },[round,refresh]);
   useEffect(()=>{
     if(!organizer||loadedRound!==round||!round)return;
+    const cached=roundCache.current[round];
+    if(cached)roundCache.current[round]={...cached,board,organizer,revision,savedBoard};
     try{localStorage.setItem("pom-board-v2:"+round,JSON.stringify(board));setSaved(true);}
     catch{setSaved(false);setError(th?"บันทึกฉบับร่างในเครื่องไม่ได้":"Could not save local draft");}
-  },[board,loadedRound,round,organizer]);
+  },[board,loadedRound,round,organizer,revision,savedBoard]);
   function limitedTeam(team:string){return !!team&&team!=="STANDBY";}
   function teamMemberCount(team:string){return players.filter(p=>board[p.player_id]?.team===team).length;}
   function destinationIsFull(team:string,id:string,target?:string){
