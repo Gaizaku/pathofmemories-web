@@ -853,6 +853,7 @@ h1 em {
 .gw-builder p{font-size:12px;margin:0;color:#99a3b1}
 .gw-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .gw-toolbar{display:flex;gap:6px;flex-wrap:wrap}
+.gw-copy-panel{margin:10px 0;padding:14px;border:1px solid #4a5362;border-radius:10px;background:#171c24}.gw-copy-panel header,.gw-copy-panel footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.gw-copy-panel header p{margin:4px 0 0;color:#aeb8c8;font-size:13px}.gw-copy-rounds{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:7px;margin:13px 0}.gw-copy-rounds label{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid #343e4d;border-radius:7px;background:#11161d;color:#e6ebf2;font-size:14px}.gw-copy-rounds label:has(input:checked){border-color:#d6b15c;background:#28251c}.gw-copy-panel footer{justify-content:flex-end}.gw-copy-confirm{background:#d6b15c;color:#17120b}
 .gw-builder button,.gw-builder select,.gw-builder input{font:12px system-ui,sans-serif;color:#f4f6f8;background:#1d222b;border:1px solid #2b303b;border-radius:7px;padding:7px;min-width:0}
 .gw-builder button{cursor:pointer}.gw-builder button:disabled{cursor:default;opacity:.55}
 .gw-builder :focus-visible{outline:2px solid #c8a86b;outline-offset:2px}
