@@ -5,7 +5,7 @@ type Loadout={id:string;role:string;main_weapon_name:string;sub_weapon_name:stri
 type Round={id:string;starts_at:string;local_date:string;war_type:string;status:string;round_number:number;ends_at:string};
 type Weapon={id:string;name:string};
 const base='/api/v2/games/where-winds-meet';
-const teamNames=[['','ทีมไหนก็ได้','Any team'],['ATTACK_1','ทีมบุก 1','Attack 1'],['ATTACK_2','ทีมบุก 2','Attack 2'],['ATTACK_3','ทีมบุก 3','Attack 3'],['DEFENSE_1','ทีมป้องกัน 1','Defense 1'],['DEFENSE_2','ทีมป้องกัน 2','Defense 2'],['FOREST','ป่า','Forest'],['STANDBY','สำรอง','Standby']];
+const teamNames=[['','ทีมไหนก็ได้','Any team'],['ATTACK_1','บุก 1','Attack 1'],['ATTACK_2','บุก 2','Attack 2'],['ATTACK_3','บุก 3','Attack 3'],['DEFENSE_1','กัน 1','Defense 1'],['DEFENSE_2','กัน 2','Defense 2'],['FOREST','ป่า','Forest'],['STANDBY','สำรอง','Standby']];
 const weaponThai:Record<string,string>={
   'Infernal Twinblades':'ดาบคู่เพลิงนรก','Thundercry Blade':'ดาบอสนีครวญ','Inkwell Fan':'พัดหมึก','Mortal Rope Dart':'เชือกบินสังหาร','Strategic Sword':'กระบี่กลยุทธ์','Snowparting Blade':'ดาบแหวกหิมะ','Phalanxbane Blade':'ดาบทำลายทัพ','Panacea Fan':'พัดร้อยโอสถ','Vernal Umbrella':'ร่มวสันต์','Nameless Sword':'กระบี่ไร้นาม','Nameless Spear':'หอกไร้นาม','Stormbreaker Spear':'หอกทำลายพายุ','Soulshade Umbrella':'ร่มเงาวิญญาณ','Heavenquaker Spear':'หอกสั่นสวรรค์','Heavenwill Gauntlets':'สนับมือเจตจำนงสวรรค์','Skygrasp Rope Dart':'เชือกบินคว้านภา','Everspring Umbrella':'ร่มวสันต์นิรันดร์','Unfettered Rope Dart':'เชือกบินไร้พันธนาการ'
 };
