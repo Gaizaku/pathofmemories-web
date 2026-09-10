@@ -22,14 +22,24 @@ export function validDraft(value) {
  return true;
 }
 export async function teamDraftApi(request,env){
- const url=new URL(request.url),match=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/draft$/.exec(url.pathname);
+ const url=new URL(request.url),draftMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/draft$/.exec(url.pathname),builderMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/team-builder$/.exec(url.pathname),match=draftMatch||builderMatch;
  if(!match)return null;
- if(!["GET","PUT"].includes(request.method))return json({error:"method_not_allowed"},405);
- if(request.method==="PUT"&&request.headers.get("Origin")!==url.origin)return json({error:"origin_required"},403);
+ if(builderMatch&&request.method!=="GET")return json({error:"method_not_allowed"},405);
+ if(draftMatch&&!["GET","PUT"].includes(request.method))return json({error:"method_not_allowed"},405);
+ if(draftMatch&&request.method==="PUT"&&request.headers.get("Origin")!==url.origin)return json({error:"origin_required"},403);
  try{
   const user=await activeOrganizer(env,request);
-  if(!user)return json({error:"organizer_required"},401);
   const db=env.GUILD_WAR_DB,[,game,event]=match;
+  if(builderMatch){
+   const [rosterResponse,draft]=await Promise.all([
+    readApi(new Request(url.origin+'/api/v2/games/'+game+'/war/events/'+event+'/registrations'),env),
+    user?db.prepare("SELECT revision,board_json,updated_at FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=?").bind(game,event,user.id).first():Promise.resolve(null)
+   ]);
+   if(!rosterResponse.ok)return rosterResponse;
+   const roster=await rosterResponse.json();
+   return json({...roster,organizer:user?{displayName:user.displayName}:null,revision:draft?.revision||0,board:draft?JSON.parse(draft.board_json):{},updatedAt:draft?.updated_at||null});
+  }
+  if(!user)return json({error:"organizer_required"},401);
   const exists=await db.prepare("SELECT id FROM events WHERE game_id=? AND id=?").bind(game,event).first();
   if(!exists)return json({error:"event_not_found"},404);
   if(request.method==="GET"){
