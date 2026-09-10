@@ -876,6 +876,7 @@ h1 em {
 .gw-builder .gw-pick{background:none;border:0;padding:0 12px 2px 0;font-weight:750;text-align:left;width:100%;overflow-wrap:anywhere;font-size:12px}
 .gw-pick>span{display:block}.gw-pick small{display:inline;color:#c8a86b;font-size:10px;font-weight:650}
 .gw-player .gw-meta{padding:0 0 4px}.gw-player select{width:100%;font-size:10px;padding:4px}
+.gw-preferred-team{width:max-content;max-width:100%;margin:0 0 5px;padding:3px 6px;border:1px solid rgba(var(--team-rgb,200,168,107),.45);border-radius:999px;background:rgba(var(--team-rgb,200,168,107),.12);color:var(--team,#c8a86b);font-size:10px;font-weight:800;overflow-wrap:anywhere}
 .gw-dragging{opacity:.42;transform:scale(.98);cursor:grabbing}
 .gw-swap-target{border-color:#ffd875!important;box-shadow:0 0 0 2px rgba(255,216,117,.35),0 0 18px rgba(255,216,117,.22)}
 .gw-squad.gw-drag-source{box-shadow:inset 0 0 0 1px rgba(103,184,255,.65)}
