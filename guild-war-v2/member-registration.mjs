@@ -1,4 +1,4 @@
-import {createClaimToken,hashClaimToken,hasMatchingClaim} from './registration-token.mjs';
+import {createClaimToken,hashClaimToken} from './registration-token.mjs';
 import {GAME,rows,ensureWeekend,slotOf,validSlots} from './weekend.mjs';
 const json=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 const teams=['','ATTACK_1','ATTACK_2','ATTACK_3','DEFENSE_1','DEFENSE_2','FOREST','STANDBY'];
@@ -32,14 +32,8 @@ export async function memberRegistration(request,env,clock=new Date()) {
     const [player]=await rows(db,'SELECT id FROM players WHERE game_id=? AND id=? AND active=1',GAME,data.playerId);
     if(!player)return json({error:'player_not_found'},404);
     const [profile]=await rows(db,'SELECT * FROM member_preferences WHERE game_id=? AND player_id=?',GAME,data.playerId);
-    if(profile&&!await hasMatchingClaim(data.token,profile.token_hash))return json({error:'claim_required'},409);
-    // Honor existing per-round edit tokens when moving to a persistent member claim.
-    if(!profile) {
-      const claims=await rows(db,'SELECT event_id,token_hash FROM registration_claims WHERE game_id=? AND player_id=?',GAME,data.playerId);
-      for(const claim of claims)if(!await hasMatchingClaim(data.claims?.[claim.event_id],claim.token_hash))return json({error:'claim_required'},409);
-    }
     if(action==='/claim') {
-      if(profile)return json({token:data.token,revision:profile.revision});
+      if(profile)return json({revision:profile.revision});
       const token=createClaimToken();
       await db.prepare('INSERT INTO member_preferences (game_id,player_id,token_hash,updated_at,operation_id) VALUES (?,?,?,?,?)').bind(GAME,data.playerId,await hashClaimToken(token),new Date().toISOString(),crypto.randomUUID()).run();
       return json({token,revision:0});
@@ -72,7 +66,7 @@ export async function memberRegistration(request,env,clock=new Date()) {
     if(!open.length)return json({error:'registration_closed'},409);
     const slots=events.filter(e=>regularSlots.includes(e.id)).map(slotOf);
     if(!validSlots(slots))return json({error:'invalid_slots'},400);
-    const operation=crypto.randomUUID(),now=new Date().toISOString(),token=profile?data.token:createClaimToken();
+    const operation=crypto.randomUUID(),now=new Date().toISOString(),token=createClaimToken();
     // Every write is guarded by the successful revision change inside one D1 batch.
     const guard='EXISTS (SELECT 1 FROM member_preferences WHERE game_id=? AND player_id=? AND operation_id=?)';
     const guardArgs=[GAME,data.playerId,operation];
@@ -89,6 +83,6 @@ export async function memberRegistration(request,env,clock=new Date()) {
     statements.push(db.prepare('INSERT INTO audit_log (id,game_id,actor_id,action,entity_id,created_at) SELECT ?,?,?,?,?,? WHERE '+guard).bind(operation,GAME,data.playerId,'week_registration',weekStart,now,...guardArgs));
     const result=await db.batch(statements);
     if(result[0].meta.changes!==1)return json({error:'conflict'},409);
-    return json({token,revision:profile?revision+1:1});
+    return json({revision:profile?revision+1:1});
   }catch{return json({error:'temporarily_unavailable'},503);}
 }
