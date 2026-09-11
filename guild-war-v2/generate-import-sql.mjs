@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import { buildImportPlan } from "./import-plan.mjs";
 
-const snapshot = JSON.parse(fs.readFileSync("guild-war-v2/import-snapshot-2026-09-05.json", "utf8"));
+const snapshotName = process.argv[2] || "import-snapshot-2026-09-05.json";
+if (!/^import-snapshot-[A-Za-z0-9-]+\.json$/.test(snapshotName)) {
+  throw new Error("Invalid snapshot name.");
+}
+const snapshot = JSON.parse(fs.readFileSync(`guild-war-v2/${snapshotName}`, "utf8"));
 const { report, statements } = buildImportPlan(snapshot);
 
 function literal(value) {
