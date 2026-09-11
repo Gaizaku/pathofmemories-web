@@ -40,7 +40,15 @@ jobs:
 
       - name: Create organizer SQL
         run: |
-          node -e 'const quote=(v)=>"'"+v.replaceAll("'","''")+"'"; console.log("INSERT INTO organizers (discord_user_id, display_name, enabled, created_at) VALUES ("+quote(process.env.DISCORD_USER_ID)+", "+quote(process.env.DISPLAY_NAME)+", 1, datetime('now')) ON CONFLICT(discord_user_id) DO UPDATE SET display_name=excluded.display_name, enabled=1;")' > organizer.sql
+          node <<'NODE' > organizer.sql
+          const quote = (value) => "'" + value.replaceAll("'", "''") + "'";
+          console.log(
+            "INSERT INTO organizers (discord_user_id, display_name, enabled, created_at) VALUES (" +
+            quote(process.env.DISCORD_USER_ID) + ", " +
+            quote(process.env.DISPLAY_NAME) + ", 1, datetime('now')) " +
+            "ON CONFLICT(discord_user_id) DO UPDATE SET display_name=excluded.display_name, enabled=1;"
+          );
+          NODE
 
       - name: Add organizer to production D1
         run: npx wrangler d1 execute pathofmemories-guild-war --remote --file=organizer.sql
