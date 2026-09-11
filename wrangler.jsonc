@@ -13,8 +13,8 @@
   "d1_databases": [
     {
       "binding": "GUILD_WAR_DB",
-      "database_name": "pathofmemories-guild-war-test",
-      "database_id": "74cc2c58-2045-4143-b46d-cfc5db96da39"
+      "database_name": "pathofmemories-guild-war",
+      "database_id": "baccc4e1-a5a2-4398-922a-1ff43d80e03f"
     }
   ]
 }
