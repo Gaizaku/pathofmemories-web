@@ -58,3 +58,10 @@ test('allows a member to be opened and updated from another device',async()=>{
   assert.equal((await f.post('save',{...body,selected:[],revision:profile.revision})).status,200);
  }finally{f.sql.close();}
 });
+test('allows editing a legacy role when its old loadout is no longer available',async()=>{
+ const f=fixture();try{
+  const {events,weekStart}=await ensureWeekend(f.db,clock);
+  const body={playerId:'p1',weekStart,selected:[events[0].id],loadoutIds:[],preferredRole:'DPS',preferredTeam:'',note:'',regular:false,revision:0};
+  assert.equal((await f.post('save',body)).status,200);
+ }finally{f.sql.close();}
+});

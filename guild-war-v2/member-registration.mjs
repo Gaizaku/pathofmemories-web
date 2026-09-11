@@ -60,7 +60,11 @@ export async function memberRegistration(request,env,clock=new Date()) {
     if(action!=='/save')return json({error:'not_found'},404);
     const {selected,loadoutIds,preferredRole='',preferredTeam='',note='',regular,revision}=data;
     const regularSlots=Array.isArray(data.regularSlots)?data.regularSlots:selected;
-    if(!Array.isArray(selected)||selected.length>8||new Set(selected).size!==selected.length||!selected.every(x=>events.some(e=>e.id===x))||!Array.isArray(regularSlots)||regularSlots.length>8||new Set(regularSlots).size!==regularSlots.length||!regularSlots.every(x=>events.some(e=>e.id===x))||!Array.isArray(loadoutIds)||loadoutIds.length>8||new Set(loadoutIds).size!==loadoutIds.length||!loadoutIds.every(x=>owned.some(l=>l.id===x))||!teams.includes(preferredTeam)||typeof regular!=='boolean'||!Number.isSafeInteger(revision)||revision<0||typeof note!=='string'||note.length>500||typeof preferredRole!=='string'||(preferredRole&&!owned.some(l=>l.role===preferredRole&&loadoutIds.includes(l.id))))return json({error:'invalid_request'},400);
+    // Legacy registrations may have a preferred role without a matching
+    // loadout row (or may have had a loadout removed since registration).
+    // Keep the role choice editable; loadout IDs themselves are still
+    // strictly checked against the player's active loadouts.
+    if(!Array.isArray(selected)||selected.length>8||new Set(selected).size!==selected.length||!selected.every(x=>events.some(e=>e.id===x))||!Array.isArray(regularSlots)||regularSlots.length>8||new Set(regularSlots).size!==regularSlots.length||!regularSlots.every(x=>events.some(e=>e.id===x))||!Array.isArray(loadoutIds)||loadoutIds.length>8||new Set(loadoutIds).size!==loadoutIds.length||!loadoutIds.every(x=>owned.some(l=>l.id===x))||!teams.includes(preferredTeam)||typeof regular!=='boolean'||!Number.isSafeInteger(revision)||revision<0||typeof note!=='string'||note.length>500||typeof preferredRole!=='string'||(preferredRole&&!['Tank','Heal','DPS'].includes(preferredRole)))return json({error:'invalid_request'},400);
     if(data.weekStart!==weekStart)return json({error:'week_changed'},409);
     const open=events.filter(e=>e.status==='open'&&new Date(e.starts_at)>clock);
     if(!open.length)return json({error:'registration_closed'},409);
