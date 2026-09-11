@@ -23,6 +23,7 @@ export function buildImportPlan(source) {
   const blockedRegistrations = new Set(report.issues.filter((item) => item.entity === "registration").map((item) => item.id));
   const blockedRoles = new Set(report.issues.filter((item) => item.entity === "registration_role").map((item) => item.id));
   const registrations = rowsToObjects(source.registrations);
+  const registrationRoles = rowsToObjects(source.registrationRoles);
 
   const statements = [{
     sql: "INSERT INTO games (id, name) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name",
@@ -51,6 +52,30 @@ export function buildImportPlan(source) {
     });
   }
 
+  // Carry the legacy registration preferences into the new member profile so
+  // organizers can still see each player's preferred team and chosen builds.
+  const profileByPlayer = new Map();
+  for (const registration of registrations) {
+    if (!profileByPlayer.has(registration.player_id)) {
+      profileByPlayer.set(registration.player_id, {role: registration.preferred_role || "", team: registration.preferred_squad || "", submittedAt: registration.submitted_at || "", loadouts: new Set()});
+    }
+    const profile = profileByPlayer.get(registration.player_id);
+    if ((registration.submitted_at || "") >= profile.submittedAt) {
+      profile.role = registration.preferred_role || "";
+      profile.team = registration.preferred_squad || "";
+      profile.submittedAt = registration.submitted_at || "";
+    }
+    for (const selected of registrationRoles.filter((item) => item.registration_id === registration.registration_id)) {
+      if (!blockedRoles.has(selected.registration_id) && !blockedLoadouts.has(selected.loadout_id)) profile.loadouts.add(selected.loadout_id);
+    }
+  }
+  for (const [playerId, profile] of profileByPlayer) {
+    statements.push({
+      sql: "INSERT INTO member_preferences (game_id, player_id, token_hash, revision, regular, slots_json, loadouts_json, preferred_role, preferred_team, updated_at, operation_id) VALUES (?, ?, ?, 0, 0, '[]', ?, ?, ?, ?, 'legacy-import') ON CONFLICT(game_id, player_id) DO UPDATE SET loadouts_json = excluded.loadouts_json, preferred_role = excluded.preferred_role, preferred_team = excluded.preferred_team, updated_at = excluded.updated_at",
+      params: [GAME_ID, playerId, "legacy-import", JSON.stringify([...profile.loadouts]), profile.role, profile.team, profile.submittedAt || "1970-01-01T00:00:00Z"],
+    });
+  }
+
   for (const row of rowsToObjects(source.events)) {
     if (!row.event_id || !row.date || !row.time) continue;
     statements.push({
@@ -67,7 +92,7 @@ export function buildImportPlan(source) {
     });
   }
 
-  for (const row of rowsToObjects(source.registrationRoles)) {
+  for (const row of registrationRoles) {
     if (blockedRoles.has(row.registration_id)) continue;
     const registration = registrations.find((item) => item.registration_id === row.registration_id);
     if (!registration || blockedRegistrations.has(registration.registration_id) || blockedLoadouts.has(row.loadout_id)) continue;
