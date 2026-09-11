@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {autoAssignUnassigned} from "./GuildWarAutoAssign";
-type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
+type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; note?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type DropTarget = {team:string; playerId?:string};
 type Round = {id:string;starts_at:string;war_type:string};
 type Placement = {team:string; loadout:string; jungle?:string; tower?:string; position?:number; towerPosition?:number};
@@ -290,6 +290,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
       <div className="gw-meta">{th?"อยากเล่น: ":"Preferred: "}{p.preferred_role||"—"}</div>
       {!place&&p.preferred_team&&<div className={"gw-preferred-team "+teamClass(p.preferred_team)}>{th?"อยากอยู่: ":"Wants: "}{title(p.preferred_team,th)}</div>}
+      {!place&&p.note&&<div className="gw-player-note">{th?"หมายเหตุ: ":"Note: "}{p.note}</div>}
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
         {!p.loadouts.length&&<option value="">—</option>}{p.loadouts.map(l=><option key={l.id} value={l.id}>{l.role} · {l.main_weapon_name} + {l.sub_weapon_name}</option>)}
       </select>:<div className="gw-meta">{p.loadouts.map(l=>l.main_weapon_name+" + "+l.sub_weapon_name).join(" / ")}</div>}
