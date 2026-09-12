@@ -3,6 +3,7 @@ import { inspectImportSnapshot, rowsToObjects } from "./import-preview.mjs";
 const GAME_ID = "where-winds-meet";
 const ROLES = new Set(["Tank", "Heal", "DPS"]);
 const TEAMS = new Set(["", "ATTACK_1", "ATTACK_2", "ATTACK_3", "DEFENSE_1", "DEFENSE_2", "FOREST", "STANDBY"]);
+const LEGACY_REGULAR_NOTE = "Auto register: War Regular";
 
 // The legacy app used ANY as a display value. The new database represents it
 // with an empty preference, so imports cannot create a value the registration
@@ -13,6 +14,10 @@ function preferredRole(value) {
 
 function preferredTeam(value) {
   return TEAMS.has(value) ? value : "";
+}
+
+function registrationNote(value) {
+  return value === LEGACY_REGULAR_NOTE ? "" : value || "";
 }
 
 function asFlag(value) {
@@ -101,7 +106,7 @@ export function buildImportPlan(source) {
     if (blockedRegistrations.has(row.registration_id)) continue;
     statements.push({
       sql: "INSERT INTO attendance_choices (game_id, event_id, player_id, status, preferred_role, note, updated_at, updated_by) VALUES (?, ?, ?, 'attending', ?, ?, ?, ?) ON CONFLICT(game_id, event_id, player_id) DO UPDATE SET preferred_role = excluded.preferred_role, note = excluded.note, updated_at = excluded.updated_at, updated_by = excluded.updated_by",
-      params: [GAME_ID, row.event_id, row.player_id, preferredRole(row.preferred_role) || null, row.note || "", row.submitted_at || "1970-01-01T00:00:00Z", "legacy-import"],
+      params: [GAME_ID, row.event_id, row.player_id, preferredRole(row.preferred_role) || null, registrationNote(row.note), row.submitted_at || "1970-01-01T00:00:00Z", "legacy-import"],
     });
   }
 

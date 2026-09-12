@@ -11,3 +11,7 @@ WHERE game_id = 'where-winds-meet' AND preferred_team = 'ANY';
 UPDATE attendance_choices
 SET preferred_role = NULL
 WHERE game_id = 'where-winds-meet' AND preferred_role = 'ANY';
+
+UPDATE attendance_choices
+SET note = ''
+WHERE game_id = 'where-winds-meet' AND note = 'Auto register: War Regular';

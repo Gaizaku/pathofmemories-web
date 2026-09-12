@@ -40,3 +40,16 @@ test("normalizes legacy ANY preferences before they enter D1", () => {
   assert.deepEqual(profile.params.slice(4, 6), ["", ""]);
   assert.equal(choice.params[3], null);
 });
+
+test("does not import the legacy automatic-registration text as a player note", () => {
+  const { statements } = buildImportPlan({
+    players: sheet(["player_id", "character_name", "active"], ["P001", "Golf", true]),
+    weapons: sheet(["weapon_id", "weapon_name", "active"], ["W001", "Sword", true], ["W002", "Spear", true]),
+    loadouts: sheet(["loadout_id", "player_id", "role", "main_weapon_id", "sub_weapon_id", "active"], ["L001", "P001", "DPS", "W001", "W002", true]),
+    events: sheet(["event_id", "date", "time", "war_type", "registration_status", "max_players"], ["E001", "2026-09-05", "19:30", "League", "OPEN", 30]),
+    registrations: sheet(["registration_id", "event_id", "player_id", "preferred_role", "note", "submitted_at"], ["R001", "E001", "P001", "DPS", "Auto register: War Regular", "2026-09-01T00:00:00Z"]),
+    registrationRoles: sheet(["registration_id", "loadout_id"], ["R001", "L001"]),
+  });
+  const choice = statements.find((statement) => statement.sql.includes("INSERT INTO attendance_choices"));
+  assert.equal(choice.params[4], "");
+});

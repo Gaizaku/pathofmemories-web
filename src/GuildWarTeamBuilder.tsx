@@ -290,7 +290,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
       <div className="gw-meta">{th?"อยากเล่น: ":"Preferred: "}{p.preferred_role||"—"}</div>
       {!place&&p.preferred_team&&<div className={"gw-preferred-team "+teamClass(p.preferred_team)}>{th?"อยากอยู่: ":"Wants: "}{title(p.preferred_team,th)}</div>}
-      {!place&&p.note&&<div className="gw-player-note">{th?"หมายเหตุ: ":"Note: "}{p.note}</div>}
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
         {!p.loadouts.length&&<option value="">—</option>}{p.loadouts.map(l=><option key={l.id} value={l.id}>{l.role} · {l.main_weapon_name} + {l.sub_weapon_name}</option>)}
       </select>:<div className="gw-meta">{p.loadouts.map(l=>l.main_weapon_name+" + "+l.sub_weapon_name).join(" / ")}</div>}
@@ -316,6 +315,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     </section>;
   }
   const pool=players.filter(p=>!board[p.player_id]);
+  const playerNotes=players.filter(p=>p.note?.trim()).sort((a,b)=>a.character_name.localeCompare(b.character_name));
   const warnings=teams.filter(t=>t!=="STANDBY").filter(t=>{
     const m=players.filter(p=>board[p.player_id]?.team===t);
     return m.length>0&&(m.length>5||!m.some(p=>role(p)==="Tank")||!m.some(p=>role(p)==="Heal"));
@@ -365,6 +365,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         {towerMembers(lane).map((player,index)=><div className="gw-tower-player" key={player.player_id} onDragOver={e=>{e.preventDefault();e.stopPropagation();}} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,lane,true);}}><span>{player.character_name}</span>{index===0?<b className="gw-tower-center">{th?"กลางป้อม":"Center"}</b>:<button className="gw-center-button" disabled={!organizer} onClick={()=>setTower(player.player_id,lane,true)}>{th?"ตั้งกลาง":"Set center"}</button>}<button disabled={!organizer} onClick={()=>setTower(player.player_id,"")} aria-label={"Remove tower "+player.character_name}>×</button></div>)}
       </section>)}</div>
     </section></div>}
+    {!loading&&playerNotes.length>0&&<section className="gw-player-notes"><header><div><h2>{th?"หมายเหตุถึงคนจัดทีม":"Notes for the organizer"}</h2><p>{th?"ข้อความจากผู้เล่นในรอบนี้":"Player messages for this round"}</p></div><span>{playerNotes.length}</span></header><div className="gw-player-notes-list">{playerNotes.map(player=><article key={player.player_id}><strong>{player.character_name}{player.nickname&&<small> ({player.nickname})</small>}</strong><p>{player.note}</p></article>)}</div></section>}
   </fieldset>
     <dialog ref={summaryDialog} className="gw-summary-dialog">
       <header><div><h2 className="gw-summary-round-heading">{roundHeading(roundInfo)}</h2></div><div className="gw-summary-actions"><button className="gw-publish" disabled={publishing||cloudBusy||loading||!organizer||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={publishTeam}>{publishing?(th?"กำลังประกาศ…":"Publishing…"):(th?"ประกาศทีม":"Publish teams")}</button><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></div></header>
