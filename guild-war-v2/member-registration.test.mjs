@@ -58,6 +58,14 @@ test('allows a member to be opened and updated from another device',async()=>{
   assert.equal((await f.post('save',{...body,selected:[],revision:profile.revision})).status,200);
  }finally{f.sql.close();}
 });
+test('deactivates only the selected player’s active loadout',async()=>{
+ const f=fixture();try{
+  const deleted=await f.post('loadout/delete',{playerId:'p1',loadoutId:'l1'});
+  assert.equal(deleted.status,200);
+  assert.equal(f.sql.prepare("SELECT active FROM loadouts WHERE id='l1'").get().active,0);
+  assert.equal((await f.post('loadout/delete',{playerId:'p1',loadoutId:'l1'})).status,404);
+ }finally{f.sql.close();}
+});
 test('allows editing a legacy role when its old loadout is no longer available',async()=>{
  const f=fixture();try{
   const {events,weekStart}=await ensureWeekend(f.db,clock);

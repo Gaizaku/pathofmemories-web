@@ -8,7 +8,7 @@ export async function memberRegistration(request,env,clock=new Date()) {
   const url=new URL(request.url),base='/api/v2/games/'+GAME+'/member-registration';
   if(!url.pathname.startsWith(base))return null;
   const action=url.pathname.slice(base.length);
-  if(!['','/lookup','/save','/player','/loadout','/claim'].includes(action))return json({error:'not_found'},404);
+  if(!['','/lookup','/save','/player','/loadout','/loadout/delete','/claim'].includes(action))return json({error:'not_found'},404);
   const db=env.GUILD_WAR_DB;
   try {
     if(action===''&&request.method==='GET')return json(await ensureWeekend(db,clock));
@@ -47,6 +47,13 @@ export async function memberRegistration(request,env,clock=new Date()) {
       const loadoutId=crypto.randomUUID();
       await db.prepare('INSERT INTO loadouts (game_id,id,player_id,role,main_weapon_id,sub_weapon_id) VALUES (?,?,?,?,?,?)').bind(GAME,loadoutId,data.playerId,data.role,data.mainWeapon,data.subWeapon).run();
       return json({id:loadoutId},201);
+    }
+    if(action==='/loadout/delete') {
+      if(!id(data.loadoutId))return json({error:'invalid_loadout'},400);
+      // Keep historical attendance references intact while hiding this build from future registration.
+      const result=await db.prepare('UPDATE loadouts SET active=0 WHERE game_id=? AND id=? AND player_id=? AND active=1').bind(GAME,data.loadoutId,data.playerId).run();
+      if(!result.meta.changes)return json({error:'loadout_not_found'},404);
+      return json({id:data.loadoutId});
     }
     const {events,weekStart}=await ensureWeekend(db,clock);
     if(action==='/lookup') {
