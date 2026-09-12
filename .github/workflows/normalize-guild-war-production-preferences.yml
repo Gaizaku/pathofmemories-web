@@ -1,0 +1,31 @@
+name: Normalize Guild War production preferences
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type NORMALIZE_PRODUCTION_GUILD_WAR_PREFERENCES to clean legacy ANY values
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DATABASE_NAME: pathofmemories-guild-war
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require exact confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: test "$CONFIRM" = "NORMALIZE_PRODUCTION_GUILD_WAR_PREFERENCES"
+      - name: Normalize only legacy Guild War preferences
+        run: npx wrangler d1 execute "$DATABASE_NAME" --remote --file=guild-war-v2/010_normalize_legacy_preferences.sql
+      - name: Verify no legacy values remain
+        run: |
+          npx wrangler d1 execute "$DATABASE_NAME" --remote --command "SELECT (SELECT COUNT(*) FROM member_preferences WHERE game_id='where-winds-meet' AND (preferred_role='ANY' OR preferred_team='ANY')) AS profile_any, (SELECT COUNT(*) FROM attendance_choices WHERE game_id='where-winds-meet' AND preferred_role='ANY') AS choice_any;" >> "$GITHUB_STEP_SUMMARY"
