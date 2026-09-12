@@ -1,6 +1,19 @@
 import { inspectImportSnapshot, rowsToObjects } from "./import-preview.mjs";
 
 const GAME_ID = "where-winds-meet";
+const ROLES = new Set(["Tank", "Heal", "DPS"]);
+const TEAMS = new Set(["", "ATTACK_1", "ATTACK_2", "ATTACK_3", "DEFENSE_1", "DEFENSE_2", "FOREST", "STANDBY"]);
+
+// The legacy app used ANY as a display value. The new database represents it
+// with an empty preference, so imports cannot create a value the registration
+// API will reject later.
+function preferredRole(value) {
+  return ROLES.has(value) ? value : "";
+}
+
+function preferredTeam(value) {
+  return TEAMS.has(value) ? value : "";
+}
 
 function asFlag(value) {
   return value === true || value === 1 || value === "TRUE" || value === "true" ? 1 : 0;
@@ -57,12 +70,12 @@ export function buildImportPlan(source) {
   const profileByPlayer = new Map();
   for (const registration of registrations) {
     if (!profileByPlayer.has(registration.player_id)) {
-      profileByPlayer.set(registration.player_id, {role: registration.preferred_role || "", team: registration.preferred_squad || "", submittedAt: registration.submitted_at || "", loadouts: new Set()});
+      profileByPlayer.set(registration.player_id, {role: preferredRole(registration.preferred_role), team: preferredTeam(registration.preferred_squad), submittedAt: registration.submitted_at || "", loadouts: new Set()});
     }
     const profile = profileByPlayer.get(registration.player_id);
     if ((registration.submitted_at || "") >= profile.submittedAt) {
-      profile.role = registration.preferred_role || "";
-      profile.team = registration.preferred_squad || "";
+      profile.role = preferredRole(registration.preferred_role);
+      profile.team = preferredTeam(registration.preferred_squad);
       profile.submittedAt = registration.submitted_at || "";
     }
     for (const selected of registrationRoles.filter((item) => item.registration_id === registration.registration_id)) {
@@ -88,7 +101,7 @@ export function buildImportPlan(source) {
     if (blockedRegistrations.has(row.registration_id)) continue;
     statements.push({
       sql: "INSERT INTO attendance_choices (game_id, event_id, player_id, status, preferred_role, note, updated_at, updated_by) VALUES (?, ?, ?, 'attending', ?, ?, ?, ?) ON CONFLICT(game_id, event_id, player_id) DO UPDATE SET preferred_role = excluded.preferred_role, note = excluded.note, updated_at = excluded.updated_at, updated_by = excluded.updated_by",
-      params: [GAME_ID, row.event_id, row.player_id, row.preferred_role || null, row.note || "", row.submitted_at || "1970-01-01T00:00:00Z", "legacy-import"],
+      params: [GAME_ID, row.event_id, row.player_id, preferredRole(row.preferred_role) || null, row.note || "", row.submitted_at || "1970-01-01T00:00:00Z", "legacy-import"],
     });
   }
 
