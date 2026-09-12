@@ -65,3 +65,12 @@ test('allows editing a legacy role when its old loadout is no longer available',
   assert.equal((await f.post('save',body)).status,200);
  }finally{f.sql.close();}
 });
+test('normalizes the old ANY role and team values while saving',async()=>{
+ const f=fixture();try{
+  const {events,weekStart}=await ensureWeekend(f.db,clock);
+  const body={playerId:'p1',weekStart,selected:[events[0].id],loadoutIds:['l1'],preferredRole:'ANY',preferredTeam:'ANY',note:'legacy',regular:false,revision:0};
+  assert.equal((await f.post('save',body)).status,200);
+  const lookup=await (await f.post('lookup',{playerId:'p1'})).json();
+  assert.equal(lookup.preferredRole,'');assert.equal(lookup.preferredTeam,'');
+ }finally{f.sql.close();}
+});

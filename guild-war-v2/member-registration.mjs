@@ -55,10 +55,15 @@ export async function memberRegistration(request,env,clock=new Date()) {
       const selected=events.filter(e=>{const choice=choices.find(c=>c.event_id===e.id);return choice?choice.status==='attending':defaults.includes(e.slot);}).map(e=>e.id);
       const legacy=profile?[]:await rows(db,'SELECT DISTINCT a.loadout_id FROM attendance_loadouts a JOIN events e ON e.game_id=a.game_id AND e.id=a.event_id WHERE a.game_id=? AND a.player_id=? AND e.week_start=?',GAME,data.playerId,weekStart);
       const regularSlots=events.filter(e=>defaults.includes(e.slot)).map(e=>e.id);
-      return json({revision:profile?.revision||0,regular:!!profile?.regular,regularSlots,selected,loadoutIds:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id)).filter(id=>owned.some(l=>l.id===id)),preferredRole:profile?.preferred_role||choices[0]?.preferred_role||'',preferredTeam:profile?.preferred_team||'',note:choices[0]?.note||'',weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
+      const preferredRole=profile?.preferred_role||choices[0]?.preferred_role||'';
+      const preferredTeam=profile?.preferred_team||'';
+      // The old app stored "ANY"; the new API uses an empty value for it.
+      return json({revision:profile?.revision||0,regular:!!profile?.regular,regularSlots,selected,loadoutIds:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id)).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:choices[0]?.note||'',weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
     }
     if(action!=='/save')return json({error:'not_found'},404);
-    const {selected,loadoutIds,preferredRole='',preferredTeam='',note='',regular,revision}=data;
+    const {selected,loadoutIds,note='',regular,revision}=data;
+    const preferredRole=data.preferredRole==='ANY'?'':(data.preferredRole||'');
+    const preferredTeam=data.preferredTeam==='ANY'?'':(data.preferredTeam||'');
     const regularSlots=Array.isArray(data.regularSlots)?data.regularSlots:selected;
     // Legacy registrations may have a preferred role without a matching
     // loadout row (or may have had a loadout removed since registration).
