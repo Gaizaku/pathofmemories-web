@@ -89,7 +89,10 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
 
   async function publishTeam() {
     if(publishing||cloudBusy||revision<1||savedBoard!==JSON.stringify(board))return;
-    if(!await confirm({title:th?"ประกาศทีม":"Publish teams",message:th?"ประกาศทีมฉบับนี้? ผู้มีลิงก์จะดูรายชื่อ อาวุธ และตำแหน่งได้ โดยไม่ต้องล็อกอิน":"Publish this edition? Anyone with the link can view names, weapons and assignments without signing in.",confirmLabel:th?"ประกาศทีม":"Publish",cancelLabel:th?"ยกเลิก":"Cancel"}))return;
+    const summaryWasOpen=summaryDialog.current?.open??false;
+    if(summaryWasOpen)summaryDialog.current?.close();
+    const accepted=await confirm({title:th?"ประกาศทีม":"Publish teams",message:th?"ประกาศทีมฉบับนี้? ผู้มีลิงก์จะดูรายชื่อ อาวุธ และตำแหน่งได้ โดยไม่ต้องล็อกอิน":"Publish this edition? Anyone with the link can view names, weapons and assignments without signing in.",confirmLabel:th?"ประกาศทีม":"Publish",cancelLabel:th?"ยกเลิก":"Cancel"});
+    if(!accepted){if(summaryWasOpen)summaryDialog.current?.showModal();return;}
     const requestedRound=round;
     setPublishing(true);setError("");
     try{
@@ -103,7 +106,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         setCloudMessage(result.webhook==="sent"?(th?"ประกาศทีมและส่ง Discord แล้ว":"Published and sent to Discord") : result.webhook==="unconfigured"?(th?"ประกาศทีมแล้ว · ยังไม่ตั้งค่า Discord Webhook":"Published · Discord Webhook is not configured") : result.webhook==="failed"?(th?"ประกาศทีมแล้ว · ส่ง Discord ไม่สำเร็จ":"Published · Discord delivery failed") : (th?"ประกาศทีมแล้ว":"Published"));
       }
     }catch(e){setError(e instanceof Error?e.message:"Publish failed");}
-    finally{setPublishing(false);}
+    finally{setPublishing(false);if(summaryWasOpen&&!summaryDialog.current?.open)summaryDialog.current?.showModal();}
   }
 
   async function copyBoardToRounds() {
