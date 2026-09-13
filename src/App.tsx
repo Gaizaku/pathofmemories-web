@@ -8,8 +8,6 @@ import { GuildWarPlayerManagement } from "./GuildWarPlayerManagement";
 
 type Language = "th" | "en";
 
-const guildWarUrl =
-  "https://script.google.com/macros/s/AKfycbzIFk8_ZNRQ5OiZ_n8pdAQKFfXu7S60iwrXlYvgvucrtY_KQ4LCb3fwzmsjI1-uizq9/exec";
 const languageKey = "pom-language";
 
 const copy = {
@@ -39,6 +37,13 @@ const copy = {
     guildWarIntro: "ลงชื่อเข้าร่วมรอบถัดไปและเช็กเวลานัดหมายได้จากจุดเดียว",
     openRegister: "ไปหน้าลงทะเบียน",
     openBuilder: "Team Builder",
+    registrationLandingTitle: "เตรียมทีมให้พร้อม",
+    registrationLandingAccent: "แล้วเจอกันในวอร์",
+    registrationSchedule: "เปิดลงทะเบียนทุกสัปดาห์ · เสาร์–อาทิตย์",
+    registrationActionHint: "เลือกตัวละคร รอบ War และ Build ที่พร้อมเล่น",
+    builderActionHint: "สำหรับผู้จัดทีม จัดตำแหน่ง และประกาศทีม",
+    openRegistrationPage: "ลงทะเบียน Guild War",
+    backToGuildWar: "← กลับหน้า Guild War",
     managerNote: "เริ่มใช้งานได้โดยไม่ต้อง Login",
     nextRound: "รอบถัดไป",
     statusReady: "พร้อมใช้งาน",
@@ -83,6 +88,13 @@ const copy = {
     guildWarIntro: "Join the next round and check the session times from one place.",
     openRegister: "Open registration",
     openBuilder: "Team Builder",
+    registrationLandingTitle: "Ready your team",
+    registrationLandingAccent: "for the next War",
+    registrationSchedule: "Weekly registration · Saturday–Sunday",
+    registrationActionHint: "Choose your character, rounds, and ready Loadouts",
+    builderActionHint: "For organizers to assign positions and publish teams",
+    openRegistrationPage: "Guild War registration",
+    backToGuildWar: "← Back to Guild War",
     managerNote: "No login is required to get started",
     nextRound: "NEXT ROUND",
     statusReady: "READY",
@@ -266,6 +278,42 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
   const t = copy[language];
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
+      <section className="manager-hero">
+        <div>
+          <a className="back-link" href="/games/where-winds-meet/">← Where Winds Meet</a>
+          <p className="eyebrow">WHERE WINDS MEET · GUILD WAR</p>
+          <h1>{t.registrationLandingTitle}<br /><em>{t.registrationLandingAccent}</em></h1>
+          <p className="intro">{t.guildWarIntro}</p>
+        </div>
+        <aside className="manager-status">
+          <span className="status-line"><i className="status-dot" />{t.statusReady}</span>
+          <strong>{t.nextRound}</strong>
+          <small>{t.registrationSchedule}</small>
+        </aside>
+      </section>
+      <section className="manager-actions" aria-label="Guild War actions">
+        <a className="manager-action manager-action-primary" href="/games/where-winds-meet/guild-war/register">
+          <span>01</span><strong>{t.openRegister}</strong><small>{t.registrationActionHint} <ExternalMark /></small>
+        </a>
+        <a className="manager-action" href="/games/where-winds-meet/guild-war/teams">
+          <span>02</span><strong>{t.openBuilder}</strong><small>{t.builderActionHint} <ExternalMark /></small>
+        </a>
+      </section>
+      <p className="manager-note">✦ {t.managerNote}</p>
+    </Shell>
+  );
+}
+
+function GuildWarRegistrationPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+  const t = copy[language];
+  return (
+    <Shell language={language} onLanguageChange={onLanguageChange}>
+      <section className="page-intro registration-page-intro">
+        <a className="back-link" href="/games/where-winds-meet/guild-war/">{t.backToGuildWar}</a>
+        <p className="eyebrow">WHERE WINDS MEET · GUILD WAR · REGISTER</p>
+        <h1>{t.openRegistrationPage}</h1>
+        <p className="intro">{t.guildWarIntro}</p>
+      </section>
       <GuildWarRegistration language={language} />
       <p className="manager-note">✦ {t.managerNote}</p>
     </Shell>
@@ -396,7 +444,8 @@ export default function App() {
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guides") return <GuidesPage language={language} onLanguageChange={setLanguage} />;
   if (path.startsWith("/games/where-winds-meet/guides/")) return <GuideDetailPage slug={path.split("/").filter(Boolean).pop() || ""} language={language} onLanguageChange={setLanguage} />;
-  if (path === "/games/where-winds-meet/guild-war/regulars") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
+  if (path === "/games/where-winds-meet/guild-war/register") return <GuildWarRegistrationPage language={language} onLanguageChange={setLanguage} />;
+  if (path === "/games/where-winds-meet/guild-war/regulars") return <GuildWarRegistrationPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war/teams") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarTeamBuilder language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war/players") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarPlayerManagement language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
