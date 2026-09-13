@@ -1,8 +1,9 @@
 import {useEffect, useRef, useState} from "react";
 import {autoAssignUnassigned} from "./GuildWarAutoAssign";
 import {useGuildWarOverlay} from "./GuildWarOverlay";
+import "./GuildWarInteractions.css";
 type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; note?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
-type DropTarget = {team:string; playerId?:string};
+type DropTarget = {team:string; playerId?:string; tower?:string; center?:boolean};
 type Round = {id:string;starts_at:string;war_type:string};
 type Placement = {team:string; loadout:string; jungle?:string; tower?:string; position?:number; towerPosition?:number};
 const jungles = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
@@ -264,6 +265,12 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       return aPosition-bPosition||positionOf(a.player_id,current[a.player_id].team,current)-positionOf(b.player_id,current[b.player_id].team,current);
     });
   }
+  function towerDropStatus(lane:string){
+    const placement=draggingPlayer?board[draggingPlayer]:undefined;
+    const memberCount=Object.values(board).filter(item=>item.tower===lane).length;
+    const eligible=!!placement&&placement.team!=="STANDBY";
+    return {eligible,full:eligible&&memberCount>=3&&placement?.tower!==lane};
+  }
   function setTower(id:string,lane:string,center=false) {
     if(!organizer||cloudBusy||publishing||loading||!board[id]||board[id].team==="STANDBY")return;
     if(lane&&Object.entries(board).filter(([pid,p])=>pid!==id&&p.tower===lane).length>=3){
@@ -363,14 +370,15 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     {cloudBusy&&<p role="status" aria-live="polite">{th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"}</p>}
     <div className="gw-stats">{[[players.length,"Registered"],[players.length-pool.length,"Assigned"],[pool.length,"Unassigned"],[warnings,"Squad warnings"]].map(([n,l])=><div key={l}><b>{n}</b><small>{l}</small></div>)}</div>
-    {loading?<p role="status">{th?"กำลังโหลด…":"Loading…"}</p>:<div className="gw-layout"><aside className={"gw-pool "+(dropTarget?.team===""&&!dropTarget.playerId?" gw-drop-ready":"")} onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team:""});}} onDrop={e=>drop(e,"")}>
+    {loading?<p role="status">{th?"กำลังโหลด…":"Loading…"}</p>:<div className="gw-layout"><aside className={"gw-pool "+(dropTarget?.team===""&&!dropTarget.playerId&&!dropTarget.tower?" gw-drop-ready":"")} onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team:""});}} onDrop={e=>drop(e,"")}>
       <header><strong>{th?"ยังไม่จัดทีม":"Unassigned"}</strong><input aria-label="Search players" placeholder={th?"ค้นหาชื่อ…":"Search players…"} value={search} onChange={e=>setSearch(e.target.value)}/></header>
       <div className="gw-pool-list">{pool.filter(p=>(p.character_name+" "+(p.nickname||"")).toLowerCase().includes(search.toLowerCase())).map(card)}</div>
     </aside><div className="gw-board"><div className="gw-sides"><section><h2>{th?"ฝั่งบุก":"Attack"}</h2><div className="gw-squads">{teams.slice(0,3).map(squad)}</div></section><section><h2>{th?"ฝั่งกัน":"Defense"}</h2><div className="gw-squads">{teams.slice(3,6).map(squad)}</div></section></div><div className="gw-standby">{squad("STANDBY")}</div></div><section className="gw-tactical"><h2>Tower Assignment</h2><p>{th?"ลากผู้เล่นจากทีมมาวาง · ลากทับรายชื่อหรือกดปุ่มเพื่อเลือกกลางป้อม":"Drag players from a team here · Drop on a name or use the button to set the tower center"}</p>
-      <div className="gw-towers">{lanes.map(lane=><section key={lane} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,lane);}}>
+      <div className="gw-towers">{lanes.map(lane=>{const status=towerDropStatus(lane);const isTowerDragOver=dropTarget?.tower===lane;const isEligibleTowerDragOver=isTowerDragOver&&status.eligible;return <section key={lane} className={(isEligibleTowerDragOver?"gw-tower-drag-over ":"")+(isEligibleTowerDragOver&&!status.full?"gw-tower-drop-ready ":"")+(isEligibleTowerDragOver&&status.full?"gw-tower-drop-blocked":"")} onDragOver={e=>{e.preventDefault();e.stopPropagation();if(draggingPlayer)setDropTarget({team:"",tower:lane});}} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,lane);}}>
         <header><strong>{title(lane,th)}</strong><span>{Object.values(board).filter(p=>p.tower===lane).length}/3</span></header>
-        {towerMembers(lane).map((player,index)=><div className="gw-tower-player" key={player.player_id} onDragOver={e=>{e.preventDefault();e.stopPropagation();}} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,lane,true);}}><span>{player.character_name}</span>{index===0?<b className="gw-tower-center">{th?"กลางป้อม":"Center"}</b>:<button className="gw-center-button" disabled={!organizer} onClick={()=>setTower(player.player_id,lane,true)}>{th?"ตั้งกลาง":"Set center"}</button>}<button disabled={!organizer} onClick={()=>setTower(player.player_id,"")} aria-label={"Remove tower "+player.character_name}>×</button></div>)}
-      </section>)}</div>
+        {towerMembers(lane).map((player,index)=><div className={"gw-tower-player "+(dropTarget?.tower===lane&&dropTarget.playerId===player.player_id?"gw-tower-center-target":"")} key={player.player_id} onDragOver={e=>{e.preventDefault();e.stopPropagation();if(draggingPlayer&&draggingPlayer!==player.player_id)setDropTarget({team:"",tower:lane,playerId:player.player_id,center:true});}} onDrop={e=>{e.preventDefault();e.stopPropagation();setTower(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,lane,true);}}><span>{player.character_name}</span>{index===0?<b className="gw-tower-center">{th?"กลางป้อม":"Center"}</b>:<button className="gw-center-button" disabled={!organizer} onClick={()=>setTower(player.player_id,lane,true)}>{th?"ตั้งกลาง":"Set center"}</button>}<button disabled={!organizer} onClick={()=>setTower(player.player_id,"")} aria-label={"Remove tower "+player.character_name}>×</button></div>)}
+        {isTowerDragOver&&status.eligible&&<small className="gw-tower-drop-hint">{status.full?(th?"เต็มแล้ว":"Tower full"):(th?"ปล่อยเพื่อใส่ Tower":"Release to assign")}</small>}
+      </section>;})}</div>
     </section></div>}
     {!loading&&playerNotes.length>0&&<section className="gw-player-notes"><header><div><h2>{th?"หมายเหตุถึงคนจัดทีม":"Notes for the organizer"}</h2><p>{th?"ข้อความจากผู้เล่นในรอบนี้":"Player messages for this round"}</p></div><span>{playerNotes.length}</span></header><div className="gw-player-notes-list">{playerNotes.map(player=><article key={player.player_id}><strong>{player.character_name}{player.nickname&&<small> ({player.nickname})</small>}</strong><p>{player.note}</p></article>)}</div></section>}
   </fieldset>
