@@ -64,10 +64,9 @@ export async function playerManagementApi(request, env) {
     const raw = await request.text();
     if (raw.length > 300) return json({error: "too_large"}, 413);
     let data; try { data = JSON.parse(raw); } catch { data = null; }
-    if (!data || !playerPattern.test(data.playerId) || typeof data.confirmation !== "string") return json({error: "invalid_request"}, 400);
+    if (!data || !playerPattern.test(data.playerId)) return json({error: "invalid_request"}, 400);
     const [player] = await all(env.GUILD_WAR_DB, "SELECT id,character_name FROM players WHERE game_id=? AND id=? AND active=1", gameId, data.playerId);
     if (!player) return json({error: "player_not_found"}, 404);
-    if (data.confirmation !== player.character_name) return json({error: "confirmation_mismatch"}, 400);
     await deletePlayerData(env.GUILD_WAR_DB, gameId, player.id, organizer.id);
     return json({deletedPlayerId: player.id});
   } catch {

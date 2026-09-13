@@ -29,18 +29,17 @@ export function GuildWarPlayerManagement({language}:{language:"th"|"en"}) {
   useEffect(() => {void load();}, []);
   async function removePlayer() {
     if (!current) return;
-    const typed = window.prompt(th?`พิมพ์ชื่อ “${current.characterName}” เพื่อยืนยันการลบถาวร`:`Type “${current.characterName}” to permanently delete this player.`);
-    if (typed === null) return;
+    if (!window.confirm(th?`ยืนยันลบ ${current.characterName} และข้อมูลที่เกี่ยวข้องทั้งหมดถาวร?`:`Permanently delete ${current.characterName} and all related data?`)) return;
     setBusy(true); setMessage("");
     try {
-      const response = await fetch(base+"/players/manage", {method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({playerId:current.id,confirmation:typed})});
+      const response = await fetch(base+"/players/manage", {method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({playerId:current.id})});
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "request_failed");
       setPlayers((all) => all.filter((player) => player.id !== current.id));
       setSelected("");
       setMessage(th?`ลบ ${current.characterName} และข้อมูลที่เกี่ยวข้องแล้ว`:`Deleted ${current.characterName} and related data.`);
-    } catch (error) {
-      setMessage(error instanceof Error && error.message === "confirmation_mismatch" ? (th?"ชื่อที่พิมพ์ไม่ตรง จึงยังไม่ได้ลบข้อมูล":"The typed name does not match. Nothing was deleted.") : (th?"ลบรายชื่อไม่สำเร็จ":"Could not delete the player."));
+    } catch {
+      setMessage(th?"ลบรายชื่อไม่สำเร็จ":"Could not delete the player.");
     } finally { setBusy(false); }
   }
   if (!organizer && !busy) return <section className="player-manager"><p className="eyebrow">GUILD WAR · ORGANIZER</p><h1>{th?"จัดการรายชื่อ":"Player management"}</h1><p>{th?"หน้านี้สำหรับผู้จัดทีมเท่านั้น":"This page is for organizers only."}</p><a className="primary-button" href={"/api/auth/discord/login?return="+encodeURIComponent("/games/where-winds-meet/guild-war/players")}>{th?"เข้าสู่ระบบ Discord เพื่อจัดการ":"Sign in with Discord to manage"}</a></section>;
