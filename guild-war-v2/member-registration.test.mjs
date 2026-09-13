@@ -58,6 +58,13 @@ test('allows a member to be opened and updated from another device',async()=>{
   assert.equal((await f.post('save',{...body,selected:[],revision:profile.revision})).status,200);
  }finally{f.sql.close();}
 });
+test('adds a loadout for an imported player before any registration profile exists',async()=>{
+ const f=fixture();try{
+  const created=await f.post('loadout',{playerId:'p1',role:'Tank',mainWeapon:'w1',subWeapon:'w2'});
+  assert.equal(created.status,201);
+  assert.equal(f.sql.prepare('SELECT count(*) AS n FROM loadouts WHERE player_id=? AND active=1').get('p1').n,2);
+ }finally{f.sql.close();}
+});
 test('deactivates only the selected player’s active loadout',async()=>{
  const f=fixture();try{
   const deleted=await f.post('loadout/delete',{playerId:'p1',loadoutId:'l1'});

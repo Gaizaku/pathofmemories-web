@@ -40,7 +40,6 @@ export async function memberRegistration(request,env,clock=new Date()) {
     }
     const owned=await rows(db,'SELECT id,role FROM loadouts WHERE game_id=? AND player_id=? AND active=1',GAME,data.playerId);
     if(action==='/loadout') {
-      if(!profile)return json({error:'save_profile_first'},409);
       if(!['Tank','Heal','DPS'].includes(data.role)||!id(data.mainWeapon)||!id(data.subWeapon)||data.mainWeapon===data.subWeapon)return json({error:'invalid_loadout'},400);
       const weapons=await rows(db,'SELECT id FROM weapons WHERE game_id=? AND id IN (?,?)',GAME,data.mainWeapon,data.subWeapon);
       if(weapons.length!==2)return json({error:'invalid_loadout'},400);
