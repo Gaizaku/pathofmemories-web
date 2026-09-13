@@ -89,3 +89,11 @@ test('normalizes the old ANY role and team values while saving',async()=>{
   assert.equal(lookup.preferredRole,'');assert.equal(lookup.preferredTeam,'');
  }finally{f.sql.close();}
 });
+test('allows regular schedule edits after the current week closes',async()=>{
+ const f=fixture(),late=new Date('2026-09-13T15:00:00Z');try{
+  await ensureWeekend(f.db,clock);
+  const {events,weekStart}=await ensureWeekend(f.db,late);
+  const body={playerId:'p1',weekStart,selected:[],regularSlots:[events[0].id,events[4].id],loadoutIds:['l1'],preferredRole:'DPS',preferredTeam:'',note:'',regular:true,revision:0};
+  assert.equal((await memberRegistration(new Request('https://example.com/api/v2/games/'+GAME+'/member-registration/save',{method:'POST',headers:{Origin:'https://example.com'},body:JSON.stringify(body)}),f.env,late)).status,200);
+ }finally{f.sql.close();}
+});

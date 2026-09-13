@@ -78,7 +78,8 @@ export async function memberRegistration(request,env,clock=new Date()) {
     if(!Array.isArray(selected)||selected.length>8||new Set(selected).size!==selected.length||!selected.every(x=>events.some(e=>e.id===x))||!Array.isArray(regularSlots)||regularSlots.length>8||new Set(regularSlots).size!==regularSlots.length||!regularSlots.every(x=>events.some(e=>e.id===x))||!Array.isArray(loadoutIds)||loadoutIds.length>8||new Set(loadoutIds).size!==loadoutIds.length||!loadoutIds.every(x=>owned.some(l=>l.id===x))||!teams.includes(preferredTeam)||typeof regular!=='boolean'||!Number.isSafeInteger(revision)||revision<0||typeof note!=='string'||note.length>500||typeof preferredRole!=='string'||(preferredRole&&!['Tank','Heal','DPS'].includes(preferredRole)))return json({error:'invalid_request'},400);
     if(data.weekStart!==weekStart)return json({error:'week_changed'},409);
     const open=events.filter(e=>e.status==='open'&&new Date(e.starts_at)>clock);
-    if(!open.length)return json({error:'registration_closed'},409);
+    // Regular schedules may be updated for future weeks after this week's rounds close.
+    if(!open.length&&!regular)return json({error:'registration_closed'},409);
     const slots=events.filter(e=>regularSlots.includes(e.id)).map(slotOf);
     if(!validSlots(slots))return json({error:'invalid_slots'},400);
     const operation=crypto.randomUUID(),now=new Date().toISOString(),token=createClaimToken();
