@@ -1,5 +1,4 @@
-™°j¹ÔIèÂw§½Ê'~(!¶Úi®ŒrN¬Â)e²Ú)ÂŠäŠx"Ø^ìm™¨è®÷«²*'¡ùéšzfÁªçRy'£	Ş÷(ø †Ûi¦º1É8b³¥–Ëh§
-+’)àŠ{azw±¶f£¢»Ş®È¨‡ç¦ié›«IäŒ'z{Ü¢wâ‚m¦šèÇ$áŠÌ"–[-¢œ(®H§‚)í…éŞÆÙšŠïz»"¢z™·Şn7ßy¸ß}&XM Ñ¸ß}æÒmf>º1ÉéïŠº'™éí½ªâi¹^±×­yË^ug¥–ëÊ‹«¦º1Éú+}ë\†·ª¹ë-³I§¦l®u'’z0éïr‰ßŠm¶šk£“†+0ŠYl¶Šp¢¹"§¶§{fj:+½êìŠ‰è~zfimport {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode} from "react";
+import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode} from "react";
 import "./GuildWarOverlay.css";
 
 type NoticeKind = "success" | "error" | "info";
