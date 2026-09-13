@@ -28,3 +28,5 @@ jobs:
       - run: npm run build
       - name: Deploy Worker and assets
         run: npx wrangler deploy
+      - name: Update Guild War weapon catalog
+        run: npx wrangler d1 execute pathofmemories-guild-war --remote --file=guild-war-v2/011_weapon_catalog.sql
