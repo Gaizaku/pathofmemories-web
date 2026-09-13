@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {autoAssignUnassigned} from "./GuildWarAutoAssign";
+import {useGuildWarOverlay} from "./GuildWarOverlay";
 type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; note?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type DropTarget = {team:string; playerId?:string};
 type Round = {id:string;starts_at:string;war_type:string};
@@ -32,6 +33,7 @@ function normalizeBoard(roster:Player[], source:Record<string,Placement>|undefin
 }
 export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const th = language === "th";
+  const {notify,confirm} = useGuildWarOverlay();
   const summaryDialog = useRef<HTMLDialogElement>(null);
 
   const [rounds,setRounds] = useState<Round[]>([]);
@@ -59,6 +61,8 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const roundCache = useRef<Record<string,{players:Player[];board:Record<string,Placement>;organizer:string;revision:number;savedBoard:string}>>({});
   activeRound.current = round;
   useEffect(()=>{setRevision(0);setSavedBoard("");setPublishedLink("");setCloudMessage("");},[round]);
+  useEffect(()=>{if(cloudMessage)notify(cloudMessage,"success");},[cloudMessage,notify]);
+  useEffect(()=>{if(error)notify(error,"error");},[error,notify]);
   async function cloudDraft() {
     if(!organizer||cloudBusy||loading||loadedRound!==round)return;
     const requestedRound=round;
@@ -84,7 +88,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
 
   async function publishTeam() {
     if(publishing||cloudBusy||revision<1||savedBoard!==JSON.stringify(board))return;
-    if(!window.confirm(th?"ประกาศทีมฉบับนี้? ผู้มีลิงก์จะดูรายชื่อ อาวุธ และตำแหน่งได้ โดยไม่ต้องล็อกอิน":"Publish this edition? Anyone with the link can view names, weapons and assignments without signing in."))return;
+    if(!await confirm({title:th?"ประกาศทีม":"Publish teams",message:th?"ประกาศทีมฉบับนี้? ผู้มีลิงก์จะดูรายชื่อ อาวุธ และตำแหน่งได้ โดยไม่ต้องล็อกอิน":"Publish this edition? Anyone with the link can view names, weapons and assignments without signing in.",confirmLabel:th?"ประกาศทีม":"Publish",cancelLabel:th?"ยกเลิก":"Cancel"}))return;
     const requestedRound=round;
     setPublishing(true);setError("");
     try{
@@ -105,7 +109,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     const destinations=copyRounds.filter(destination=>destination!==round);
     if(!organizer||copying||cloudBusy||publishing||loading||loadedRound!==round||!destinations.length)return;
     if(!Object.keys(board).length){setError(th?"ยังไม่มีทีมให้คัดลอก":"There is no team to copy");return;}
-    if(!window.confirm(th?`คัดลอกทีมนี้ไปแทนฉบับร่างของ ${destinations.length} รอบที่เลือก? รายชื่อที่ไม่ได้ลงรอบนั้นจะถูกข้าม`:`Replace the online drafts for ${destinations.length} selected rounds? Players not registered for a round will be skipped.`))return;
+    if(!await confirm({title:th?"คัดลอกการจัดทีม":"Copy team arrangement",message:th?`คัดลอกทีมนี้ไปแทนฉบับร่างของ ${destinations.length} รอบที่เลือก? รายชื่อที่ไม่ได้ลงรอบนั้นจะถูกข้าม`:`Replace the online drafts for ${destinations.length} selected rounds? Players not registered for a round will be skipped.`,confirmLabel:th?"คัดลอก":"Copy",cancelLabel:th?"ยกเลิก":"Cancel"}))return;
     setCopying(true);setCloudMessage("");setError("");
     const outcomes=await Promise.all(destinations.map(async destination=>{
       try {
@@ -245,6 +249,10 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     setError("");
     setCloudMessage(th?`จัดผู้เล่นเพิ่ม ${result.assigned} คน${result.standby?` · สำรอง ${result.standby} คน`:""} · ตรวจทีมก่อนบันทึก`:`Assigned ${result.assigned} players${result.standby?` · ${result.standby} standby`:""} · Review before saving`);
   }
+  async function clearBoard(){
+    if(!await confirm({title:th?"ล้างทีม":"Clear team",message:th?"ล้างทีมของรอบนี้? การจัดทีมในเครื่องจะถูกลบ และต้องกดบันทึกเพื่ออัปเดตฉบับร่างออนไลน์":"Clear this round's team? The local board will be cleared; save afterwards to update the online draft.",confirmLabel:th?"ล้างทีม":"Clear",cancelLabel:th?"ยกเลิก":"Cancel",danger:true}))return;
+    setBoard({});
+  }
   function drop(e:React.DragEvent,team:string,target?:string){
     e.preventDefault();e.stopPropagation();
     move(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,team,target);
@@ -351,11 +359,10 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <button disabled={!organizer||loading||loadedRound!==round||copying} onClick={()=>setCopyPanel(value=>!value)}>{th?`คัดลอกไปรอบอื่น${copyRounds.length?` (${copyRounds.length})`:""}`:`Copy to other rounds${copyRounds.length?` (${copyRounds.length})`:""}`}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>summaryDialog.current?.showModal()}>Team Summary</button>
       <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/players">{th?"จัดการรายชื่อ":"Manage players"}</a>
-      <span className="gw-primary-actions"><button className="gw-save" disabled={!organizer||loading||loadedRound!==round} onClick={()=>void cloudDraft()}>{th?"บันทึก":"Save"}</button><button className="gw-clear-board" disabled={!organizer||loading} onClick={()=>{if(window.confirm(th?"ล้างทีมรอบนี้?":"Clear this team's board?"))setBoard({});}}>{th?"ล้างทีม":"Clear team"}</button></span></div></header>
+      <span className="gw-primary-actions"><button className="gw-save" disabled={!organizer||loading||loadedRound!==round} onClick={()=>void cloudDraft()}>{th?"บันทึก":"Save"}</button><button className="gw-clear-board" disabled={!organizer||loading} onClick={()=>void clearBoard()}>{th?"ล้างทีม":"Clear team"}</button></span></div></header>
     {copyPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"คัดลอกการจัดทีมไปยังรอบอื่น":"Copy team arrangement to other rounds"}</strong><p>{th?"เลือกรอบปลายทางได้หลายรอบพร้อมกัน รายชื่อที่ไม่ได้ลงในรอบนั้นจะถูกข้าม":"Choose multiple destination rounds. Players unavailable in a round will be skipped."}</p></div><button type="button" onClick={()=>setCopyPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.filter(item=>item.id!==round).map(item=>{const checked=copyRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={copying} onChange={()=>setCopyRounds(current=>checked?current.filter(id=>id!==item.id):[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setCopyRounds([])} disabled={!copyRounds.length||copying}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={!copyRounds.length||copying} onClick={()=>void copyBoardToRounds()}>{copying?(th?"กำลังคัดลอก…":"Copying…"):(th?`คัดลอกไป ${copyRounds.length} รอบ`:`Copy to ${copyRounds.length} rounds`)}</button></footer></section>}
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
-    <p role="status" aria-live="polite">{cloudBusy?(th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"):cloudMessage}</p>
-    {error&&<p role="alert" className="gw-error">{error}</p>}
+    {cloudBusy&&<p role="status" aria-live="polite">{th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"}</p>}
     <div className="gw-stats">{[[players.length,"Registered"],[players.length-pool.length,"Assigned"],[pool.length,"Unassigned"],[warnings,"Squad warnings"]].map(([n,l])=><div key={l}><b>{n}</b><small>{l}</small></div>)}</div>
     {loading?<p role="status">{th?"กำลังโหลด…":"Loading…"}</p>:<div className="gw-layout"><aside className={"gw-pool "+(dropTarget?.team===""&&!dropTarget.playerId?" gw-drop-ready":"")} onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team:""});}} onDrop={e=>drop(e,"")}>
       <header><strong>{th?"ยังไม่จัดทีม":"Unassigned"}</strong><input aria-label="Search players" placeholder={th?"ค้นหาชื่อ…":"Search players…"} value={search} onChange={e=>setSearch(e.target.value)}/></header>

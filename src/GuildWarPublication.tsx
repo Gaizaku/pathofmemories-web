@@ -1,5 +1,6 @@
 import {useEffect,useState} from "react";
 import "./GuildWarPublication.css";
+import {useGuildWarOverlay} from "./GuildWarOverlay";
 
 type Member={name:string;team:string;role:string;mainWeapon:string;subWeapon:string;jungle:string;tower:string;towerPosition?:number};
 type Publication={publishedAt:string;event:{startsAt:string;warType:string};unassignedCount:number;members:Member[]};
@@ -11,6 +12,7 @@ const jungleNames:Record<string,[string,string]>={ENEMY_TOP:["ศัตรูบ
 
 export function GuildWarPublication({language,eventId,publicationId}:{language:"th"|"en";eventId:string;publicationId:string}){
  const th=language==="th";
+ const {notify}=useGuildWarOverlay();
  const [data,setData]=useState<Publication|null>(null),[error,setError]=useState(""),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState(false);
  useEffect(()=>{
   const controller=new AbortController();
@@ -20,6 +22,9 @@ export function GuildWarPublication({language,eventId,publicationId}:{language:"
    .then(setData).catch(reason=>{if(!controller.signal.aborted)setError(reason.message);});
   return ()=>controller.abort();
  },[eventId,publicationId]);
+ useEffect(()=>{if(error)notify(error==="missing"?(th?"ไม่พบฉบับประกาศนี้ กรุณาตรวจลิงก์":"Publication not found. Check the link."):(th?"โหลดไม่สำเร็จ กรุณาลองใหม่":"Unable to load. Please retry."),"error");},[error,notify,th]);
+ useEffect(()=>{if(copyError)notify(th?"คัดลอกไม่ได้ กรุณาคัดลอก URL จากแถบที่อยู่":"Copy the URL from your address bar.","error");},[copyError,notify,th]);
+ useEffect(()=>{if(copied)notify(th?"คัดลอกลิงก์แล้ว":"Link copied.","success");},[copied,notify,th]);
  const date=(value:string)=>new Date(value).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"});
  const roundHeading=(startsAt:string,warType:string)=>{
   const value=new Date(startsAt),parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(value),hour=parts.find(part=>part.type==="hour")?.value||"",minute=parts.find(part=>part.type==="minute")?.value||"";
@@ -32,9 +37,8 @@ export function GuildWarPublication({language,eventId,publicationId}:{language:"
  const towerMembers=(lane:string)=>data?.members.filter(member=>member.tower===lane).sort((a,b)=>(a.towerPosition??Number.MAX_SAFE_INTEGER)-(b.towerPosition??Number.MAX_SAFE_INTEGER))||[];
  return <section className="gw-publication gw-publication-summary">
   <a href="/games/where-winds-meet/guild-war/">{th?"← กลับ Guild War":"← Back to Guild War"}</a>
-  {error?<p role="alert">{error==="missing"?(th?"ไม่พบฉบับประกาศนี้ กรุณาตรวจลิงก์":"Publication not found. Check the link."):(th?"โหลดไม่สำเร็จ กรุณาลองใหม่":"Unable to load. Please retry.")}</p>:!data?<p role="status">{th?"กำลังโหลดทีม…":"Loading teams…"}</p>:<>
+  {error?null:!data?<p role="status">{th?"กำลังโหลดทีม…":"Loading teams…"}</p>:<>
    <header className="gw-publication-header"><div><h1 className="gw-summary-round-heading">{roundHeading(data.event.startsAt,data.event.warType)}</h1><small>{th?"ประกาศแล้ว":"Published"} · {date(data.publishedAt)}</small></div><button onClick={async()=>{try{await navigator.clipboard.writeText(window.location.href);setCopied(true);}catch{setCopyError(true);}}}>{copied?(th?"คัดลอกแล้ว":"Copied"):(th?"คัดลอกลิงก์":"Copy link")}</button></header>
-   {copyError&&<p role="status" className="gw-summary-notice">{th?"คัดลอกไม่ได้ กรุณาคัดลอก URL จากแถบที่อยู่":"Copy the URL from your address bar."}</p>}
    <div className="gw-summary-grid">{teams.filter(team=>team!=="STANDBY").map(team=>{const teamMembers=members(team);return <section key={team} className={"gw-summary-team "+teamClass(team)}><header><h3>{text(teamNames[team])}</h3><span>{teamMembers.length}/5</span></header><div className="gw-summary-members">{teamMembers.map((member,index)=><div className="gw-summary-player" key={team+index}><span className="gw-summary-number">{index+1}</span><span className="gw-summary-name"><b>{member.name}</b></span><strong className={"gw-summary-role gw-role-"+member.role}>{member.role||"—"}</strong><span className="gw-summary-weapons">{member.mainWeapon?member.mainWeapon+" + "+member.subWeapon:"—"}</span>{member.jungle&&<span className={"gw-summary-jungle gw-jungle-"+member.jungle.toLowerCase()}>{text(jungleNames[member.jungle]||[member.jungle,member.jungle])}</span>}</div>)}</div></section>;})}</div>
    <section className="gw-summary-towers"><header><h3>TOWER</h3><p>{th?"คนแรกของแต่ละป้อมคือ กลางป้อม":"The first player in each tower is the tower center"}</p></header><div>{Object.keys(laneNames).map(lane=>{const assigned=towerMembers(lane);return <section key={lane}><h4>{text(laneNames[lane])}</h4>{assigned.length?assigned.map((member,index)=><p key={member.name+index}><b>{member.name}</b>{index===0&&<span className="gw-tower-center">{th?"กลางป้อม":"Tower center"}</span>}</p>):<p className="gw-summary-empty">—</p>}</section>;})}</div></section>
    <section className="gw-summary-standby gw-team-standby"><header><h3>{text(teamNames.STANDBY)}</h3><span>{members("STANDBY").length}</span></header><div>{members("STANDBY").map((member,index)=><p key={member.name+index}>{member.name}</p>)}</div></section>

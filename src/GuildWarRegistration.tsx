@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import './GuildWarRegistration.css';
+import {useGuildWarOverlay} from './GuildWarOverlay';
 type Player={id:string;character_name:string;nickname?:string;loadouts:Loadout[]};
 type Loadout={id:string;role:string;main_weapon_name:string;sub_weapon_name:string};
 type Round={id:string;starts_at:string;local_date:string;war_type:string;status:string;round_number:number;ends_at:string};
@@ -16,6 +17,7 @@ async function json(url:string,body?:unknown){const r=await fetch(url,body===und
 function credentials(playerId:string){return {playerId};}
 export function GuildWarRegistration({language}:{language:'th'|'en'}) {
   const th=language==='th',t=(a:string,b:string)=>th?a:b;
+  const {notify,confirm}=useGuildWarOverlay();
   const [players,setPlayers]=useState<Player[]>([]),[events,setEvents]=useState<Round[]>([]),[weekStart,setWeek]=useState('');
   const [playerId,setPlayer]=useState(''),[search,setSearch]=useState(''),[selected,setSelected]=useState<string[]>([]),[regularSlots,setRegularSlots]=useState<string[]>([]),[loadoutIds,setLoadouts]=useState<string[]>([]);
   const [role,setRole]=useState(''),[team,setTeam]=useState(''),[note,setNote]=useState(''),[regular,setRegular]=useState(false),[editingRegular,setEditingRegular]=useState(false),[revision,setRevision]=useState(0);
@@ -26,18 +28,19 @@ export function GuildWarRegistration({language}:{language:'th'|'en'}) {
   const error=(e:unknown)=>{setFailed(true);const code=e instanceof Error?e.message:'';setMessage(code==='conflict'?t('ข้อมูลเปลี่ยนแล้ว กรุณาเลือกตัวละครใหม่เพื่อโหลดข้อมูลล่าสุด','Data changed. Select the character again to reload.'):code==='name_exists'?t('มีชื่อตัวละครนี้แล้ว กรุณาเลือกจากรายชื่อ','This character already exists. Select it from the list.'):code==='invalid_loadout'?t('Loadout ไม่ถูกต้อง กรุณาเลือกอาวุธคนละชิ้น','Invalid Loadout. Choose two different weapons.'):code==='save_profile_first'?t('กรุณาบันทึกการลงทะเบียนก่อน แล้วลองเพิ่ม Loadout อีกครั้ง','Save the registration first, then add the Loadout again.'):t('บันทึกหรือโหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่','Could not load or save. Please retry.'));};
   async function initialize(){setBusy(true);try{const [rounds,data]=await Promise.all([json(base+'/member-registration'),json(base+'/players')]);setEvents(rounds.events);setWeek(rounds.weekStart);setPlayers(data.players);setMessage('');setFailed(false);}catch(e){error(e);}finally{setBusy(false);}}
   useEffect(()=>{void initialize();},[]);
+  useEffect(()=>{if(message)notify(message,failed?'error':'success');},[message,failed,notify]);
   useEffect(()=>{const version=++generation.current;setReady(false);setSelected([]);setRegularSlots([]);setEditingRegular(false);setLoadouts([]);setRole('');setTeam('');setNote('');setRegular(false);setMessage('');setNewBuild(false);if(!playerId)return;setLoadingProfile(true);
     json(base+'/member-registration/lookup',credentials(playerId)).then(d=>{if(version!==generation.current)return;setRevision(d.revision);setSelected(d.selected);setRegularSlots(d.regularSlots||[]);setLoadouts(d.loadoutIds);setRole(d.preferredRole);setTeam(d.preferredTeam);setRegular(d.regular);setNote(d.note);setWeapons(d.weapons);setReady(true);setFailed(false);}).catch(e=>{if(version===generation.current)error(e);}).finally(()=>{if(version===generation.current)setLoadingProfile(false);});
   },[playerId]);
   async function save(selectedForWeek=selected,successMessage?:string){if(!ready)return;setBusy(true);setMessage('');try{const d=await json(base+'/member-registration/save',{...credentials(playerId),weekStart,selected:selectedForWeek,regularSlots,loadoutIds,preferredRole:role,preferredTeam:team,note,regular,revision});setSelected(selectedForWeek);setRevision(d.revision);setEditingRegular(false);setFailed(false);setMessage(successMessage||(regular?t('บันทึกแล้ว รอบขาประจำและสถานะสัปดาห์นี้ได้รับการอัปเดต','Saved. Your regular rounds and this week’s availability are updated.'):t('บันทึกรอบสัปดาห์นี้แล้ว','This week’s registration is saved.')));}catch(e){error(e);}finally{setBusy(false);}}
   async function markUnavailableThisWeek(){
-    if(!window.confirm(t('ยืนยันว่าไม่ว่างทุก War รอบสัปดาห์นี้? รอบขาประจำจะยังคงใช้ต่อในสัปดาห์หน้า','Mark unavailable for every War round this week? Your regular schedule will continue next week.')))return;
+    if(!await confirm({title:t('ไม่ว่างสัปดาห์นี้','Unavailable this week'),message:t('ยืนยันว่าไม่ว่างทุก War รอบสัปดาห์นี้? รอบขาประจำจะยังคงใช้ต่อในสัปดาห์หน้า','Mark unavailable for every War round this week? Your regular schedule will continue next week.'),confirmLabel:t('ยืนยัน','Confirm'),cancelLabel:t('ยกเลิก','Cancel'),danger:true}))return;
     await save([],t('บันทึกแล้ว: ไม่ว่างทุก War รอบสัปดาห์นี้','Saved: unavailable for every War round this week.'));
   }
   async function addPlayer(){setBusy(true);try{const d=await json(base+'/member-registration/player',{characterName:name,nickname});const p=await json(base+'/players');setPlayers(p.players);setSearch('');setPlayer(d.playerId);setNewPlayer(false);setName('');setNickname('');}catch(e){error(e);}finally{setBusy(false);}}
   async function addBuild(){setBusy(true);try{const d=await json(base+'/member-registration/loadout',{...credentials(playerId),role:buildRole,mainWeapon:main,subWeapon:sub});const p=await json(base+'/players');setPlayers(p.players);setLoadouts(ids=>[...ids,d.id]);setRole(buildRole);setNewBuild(false);}catch(e){error(e);}finally{setBusy(false);}}
   async function deleteBuild(loadoutId:string){
-    if(!window.confirm(t('ลบ Loadout นี้? ประวัติการลงทะเบียนรอบเก่าจะยังคงอยู่','Remove this Loadout? Past registration history will be kept.')))return;
+    if(!await confirm({title:t('ลบ Loadout','Remove Loadout'),message:t('ลบ Loadout นี้? ประวัติการลงทะเบียนรอบเก่าจะยังคงอยู่','Remove this Loadout? Past registration history will be kept.'),confirmLabel:t('ลบ','Delete'),cancelLabel:t('ยกเลิก','Cancel'),danger:true}))return;
     setBusy(true);setMessage('');
     try{
       await json(base+'/member-registration/loadout/delete',{...credentials(playerId),loadoutId});
@@ -79,7 +82,6 @@ export function GuildWarRegistration({language}:{language:'th'|'en'}) {
       </fieldset>
     </fieldset>
     {busy||loadingProfile?<p role="status">{t('กำลังโหลดหรือบันทึก…','Loading or saving…')}</p>:null}
-    {message&&<p role={failed?'alert':'status'} className={failed?'registration-error':'registration-success'}>{message}</p>}
     {failed&&!events.length&&<button type="button" onClick={()=>void initialize()}>{t('ลองใหม่','Retry')}</button>}
   </section>;
 }
