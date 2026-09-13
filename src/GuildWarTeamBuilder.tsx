@@ -11,7 +11,7 @@ const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST"
 const teamNames: Record<string,string> = {
   ATTACK_1: "ทีมบุก 1", ATTACK_2: "ทีมบุก 2", ATTACK_3: "ทีมบุก 3",
   DEFENSE_1: "ทีมกัน 1", DEFENSE_2: "ทีมกัน 2", FOREST: "ป่า", STANDBY: "สำรอง",
-  UNASSIGNED: "ยังไม่จัดทีม"
+  UNASSIGNED: "ยังไม่จัดทีม", ANY: "ทีมไหนก็ได้"
 };
 const title = (s:string, thai=false) => thai ? (teamNames[s] || s) : s.replaceAll("_"," ");
 const teamClass = (s:string) => "gw-team-"+s.toLowerCase();
@@ -296,7 +296,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       </div>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
       <div className="gw-meta">{th?"อยากเล่น: ":"Preferred: "}{p.preferred_role||"—"}</div>
-      {!place&&p.preferred_team&&<div className={"gw-preferred-team "+teamClass(p.preferred_team)}>{th?"อยากอยู่: ":"Wants: "}{title(p.preferred_team,th)}</div>}
+      {!place&&<div className={"gw-preferred-team "+teamClass(p.preferred_team||"UNASSIGNED")}>{th?"ทีมที่อยากเล่น: ":"Preferred team: "}{title(p.preferred_team||"ANY",th)}</div>}
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
         {!p.loadouts.length&&<option value="">—</option>}{p.loadouts.map(l=><option key={l.id} value={l.id}>{l.role} · {l.main_weapon_name} + {l.sub_weapon_name}</option>)}
       </select>:<div className="gw-meta">{p.loadouts.map(l=>l.main_weapon_name+" + "+l.sub_weapon_name).join(" / ")}</div>}
