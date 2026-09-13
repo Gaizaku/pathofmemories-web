@@ -183,7 +183,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         const next={players:roster,board:valid,organizer:response.organizer?.displayName||"",revision:onlineRevision,savedBoard:loadedOnline?JSON.stringify(valid):""};
         roundCache.current[round]=next;
         setPlayers(next.players);setBoard(next.board);setOrganizer(next.organizer);setRevision(next.revision);setSavedBoard(next.savedBoard);setLoadedRound(round);setLoading(false);setSaved(true);
-        if(loadedOnline)setCloudMessage(th?"โหลดฉบับร่างออนไลน์อัตโนมัติแล้ว":"Online draft loaded automatically");
       }catch{if(!c.signal.aborted){setLoading(false);setError(th?"โหลดรายชื่อไม่สำเร็จ กด Refresh เพื่อลองใหม่":"Could not load roster. Refresh to retry.");}}
     })();
     return ()=>c.abort();
