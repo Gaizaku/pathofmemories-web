@@ -37,13 +37,30 @@ export async function teamDraftApi(request,env){
    const raw=await request.text();
    if(raw.length>2000)return json({error:"too_large"},413);
    let data;try{data=JSON.parse(raw);}catch{return json({error:"invalid_player"},400);}
+   const requestedPlayerId=typeof data?.playerId==="string"?data.playerId.trim():"";
    const name=typeof data?.characterName==="string"?data.characterName.trim():"";
    const nickname=typeof data?.nickname==="string"?data.nickname.trim():"";
    const preferredRole=typeof data?.preferredRole==="string"?data.preferredRole.trim():"";
-   if(!name||name.length>64||nickname.length>64||preferredRole&&!["Tank","Heal","DPS"].includes(preferredRole))return json({error:"invalid_player"},400);
+   if(requestedPlayerId&&!/^[A-Za-z0-9-]{1,64}$/.test(requestedPlayerId))return json({error:"invalid_player"},400);
+   if((!requestedPlayerId&&!name)||name.length>64||nickname.length>64||preferredRole&&!["Tank","Heal","DPS"].includes(preferredRole))return json({error:"invalid_player"},400);
    const eventRow=await db.prepare("SELECT id,status FROM events WHERE game_id=? AND id=?").bind(game,event).first();
    if(!eventRow)return json({error:"event_not_found"},404);
    if(eventRow.status!=="open")return json({error:"registration_closed"},409);
+   if(requestedPlayerId){
+    const existing=await db.prepare("SELECT p.id,p.character_name,p.nickname,COALESCE(m.preferred_team,'') AS preferred_team FROM players p LEFT JOIN member_preferences m ON m.game_id=p.game_id AND m.player_id=p.id WHERE p.game_id=? AND p.id=? AND p.active=1").bind(game,requestedPlayerId).first();
+    if(!existing)return json({error:"player_not_found"},404);
+    const choice=await db.prepare("SELECT status,preferred_role FROM attendance_choices WHERE game_id=? AND event_id=? AND player_id=?").bind(game,event,requestedPlayerId).first();
+    if(choice?.status==="attending")return json({error:"already_registered"},409);
+    const effectiveRole=preferredRole||choice?.preferred_role||"";
+    const now=new Date().toISOString();
+    await db.batch([
+     db.prepare("INSERT INTO attendance_choices (game_id,event_id,player_id,status,preferred_role,note,updated_at,updated_by) VALUES (?,?,?,'attending',?,?,?,'organizer') ON CONFLICT(game_id,event_id,player_id) DO UPDATE SET status='attending',preferred_role=excluded.preferred_role,note=excluded.note,updated_at=excluded.updated_at,updated_by=excluded.updated_by,revision=attendance_choices.revision+1").bind(game,event,requestedPlayerId,effectiveRole,"",now),
+     db.prepare("INSERT INTO audit_log (id,game_id,actor_id,action,entity_id,created_at) VALUES (lower(hex(randomblob(16))),?,?,?,?,?)").bind(game,user.id,"quick_player_registered",requestedPlayerId+":"+event,now)
+    ]);
+    const loadouts=await db.prepare("SELECT l.id,l.role,main.name AS main_weapon_name,sub.name AS sub_weapon_name FROM loadouts l JOIN weapons main ON main.game_id=l.game_id AND main.id=l.main_weapon_id JOIN weapons sub ON sub.game_id=l.game_id AND sub.id=l.sub_weapon_id WHERE l.game_id=? AND l.player_id=? AND l.active=1 ORDER BY l.id").bind(game,requestedPlayerId).all();
+    return json({player:{player_id:existing.id,character_name:existing.character_name,nickname:existing.nickname||"",preferred_role:effectiveRole,note:"",preferred_team:existing.preferred_team||"",loadouts:loadouts.results||[]},eventId:event});
+   }
+   if(!name||name.length>64||nickname.length>64)return json({error:"invalid_player"},400);
    const duplicateResult=await db.prepare("SELECT id FROM players WHERE game_id=? AND active=1 AND lower(character_name)=lower(?)").bind(game,name).all();
    if(duplicateResult.results?.length)return json({error:"name_exists"},409);
    const playerId=crypto.randomUUID(),now=new Date().toISOString();

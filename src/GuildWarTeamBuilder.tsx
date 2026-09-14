@@ -3,6 +3,7 @@ import {autoAssignUnassigned} from "./GuildWarAutoAssign";
 import {useGuildWarOverlay} from "./GuildWarOverlay";
 import "./GuildWarInteractions.css";
 type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; note?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
+type DirectoryPlayer = {id:string; character_name:string; nickname?:string; loadouts:Player["loadouts"]};
 type DropTarget = {team:string; playerId?:string; tower?:string; center?:boolean};
 type Round = {id:string;starts_at:string;war_type:string};
 type Placement = {team:string; loadout:string; jungle?:string; tower?:string; position?:number; towerPosition?:number};
@@ -59,6 +60,8 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [copying,setCopying] = useState(false);
   const [revision,setRevision] = useState(0);
   const [quickName,setQuickName] = useState("");
+  const [quickPlayerId,setQuickPlayerId] = useState("");
+  const [directoryPlayers,setDirectoryPlayers] = useState<DirectoryPlayer[]>([]);
   const [quickNickname,setQuickNickname] = useState("");
   const [quickRole,setQuickRole] = useState("");
   const [quickAdding,setQuickAdding] = useState(false);
@@ -72,13 +75,14 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   async function quickAddPlayer() {
     const requestedRound=round,name=quickName.trim(),nickname=quickNickname.trim();
     if(!organizer||loading||loadedRound!==round||quickAdding||cancellingPlayer||!requestedRound)return;
-    if(!name){setError(th?"กรุณาใส่ชื่อตัวละคร":"Enter a character name");return;}
+    if(!quickPlayerId&&!name){setError(th?"กรุณาเลือกผู้เล่นหรือใส่ชื่อตัวละครใหม่":"Select a player or enter a new character name");return;}
     setQuickAdding(true);setError("");setCloudMessage("");
     try{
-      const response=await fetch(base+"/war/events/"+requestedRound+"/quick-player",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({characterName:name,nickname,preferredRole:quickRole})});
+      const response=await fetch(base+"/war/events/"+requestedRound+"/quick-player",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({playerId:quickPlayerId||undefined,characterName:name,nickname,preferredRole:quickRole})});
       const data=await response.json();
       if(!response.ok){
-        if(data.error==="name_exists")throw new Error(th?"มีผู้เล่นชื่อนี้อยู่แล้ว":"A player with this name already exists");
+        if(data.error==="name_exists")throw new Error(th?"มีชื่อตัวละครนี้แล้ว":"A player with this name already exists");
+        if(data.error==="already_registered")throw new Error(th?"ผู้เล่นคนนี้ลงทะเบียนรอบนี้แล้ว":"This player is already registered for this round");
         if(data.error==="registration_closed")throw new Error(th?"รอบนี้ปิดรับลงทะเบียนแล้ว":"Registration is closed for this round");
         if(data.error==="organizer_required")throw new Error(th?"กรุณาเข้าสู่ระบบ Discord อีกครั้ง":"Please sign in with Discord again");
         throw new Error(th?"เพิ่มผู้เล่นไม่สำเร็จ":"Could not add player");
@@ -87,7 +91,8 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       setPlayers(current=>current.some(item=>item.player_id===player.player_id)?current:[...current,player].sort((a,b)=>a.character_name.localeCompare(b.character_name)));
       const cached=roundCache.current[requestedRound];
       if(cached&&!cached.players.some(item=>item.player_id===player.player_id))roundCache.current[requestedRound]={...cached,players:[...cached.players,player].sort((a,b)=>a.character_name.localeCompare(b.character_name))};
-      setQuickName("");setQuickNickname("");setQuickRole("");
+      setQuickName("");setQuickNickname("");setQuickRole("");setQuickPlayerId("");
+      setDirectoryPlayers(current=>current.some(item=>item.id===player.player_id)?current:[...current,{id:player.player_id,character_name:player.character_name,nickname:player.nickname||"",loadouts:player.loadouts}].sort((a,b)=>a.character_name.localeCompare(b.character_name)));
       setCloudMessage(th?"เพิ่มผู้เล่นเข้ารอบนี้แล้ว · ลากไปจัดทีมได้เลย":"Player added to this round · drag them into a team");
     }catch(error){setError(error instanceof Error?error.message:(th?"เพิ่มผู้เล่นไม่สำเร็จ":"Could not add player"));}
     finally{setQuickAdding(false);}
@@ -219,6 +224,11 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     get(base+"/war/events",c.signal).then(d=>{
       setRounds(d.events||[]); setRound(r=>r||d.events?.[0]?.id||"");setLoading(false);
     }).catch(()=>{if(!c.signal.aborted){setError(th?"โหลดรอบ War ไม่สำเร็จ":"Could not load rounds");setLoading(false);}});
+    return ()=>c.abort();
+  },[]);
+  useEffect(()=>{
+    const c=new AbortController();
+    get(base+"/players",c.signal).then(d=>setDirectoryPlayers(d.players||[])).catch(()=>{});
     return ()=>c.abort();
   },[]);
   useEffect(()=>{
@@ -360,7 +370,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <span>{p.character_name}{p.nickname&&<small> ({p.nickname})</small>}</span>
       </div>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
-      {organizer&&<button type="button" className="gw-cancel-registration" disabled={loading||quickAdding||!!cancellingPlayer} onClick={e=>{e.stopPropagation();void cancelRegistration(p)}}>{cancellingPlayer===p.player_id?(th?"กำลังยกเลิก…":"Cancelling…"):(th?"ยกเลิกรอบนี้":"Cancel round")}</button>}
       <div className="gw-meta">{th?"อยากเล่น: ":"Preferred: "}{p.preferred_role||"—"}</div>
       {!place&&<div className={"gw-preferred-team "+teamClass(p.preferred_team||"UNASSIGNED")}>{th?"ทีมที่อยากเล่น: ":"Preferred team: "}{title(p.preferred_team||"ANY",th)}</div>}
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
@@ -371,6 +380,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <option value="">{th?"ไม่เข้าป่า":"No jungle"}</option>
         {jungles.map((j,i)=><option key={j} value={j}>{th?["ศัตรูบน","ศัตรูล่าง","เราบน","เราล่าง"][i]:title(j,th)}</option>)}
       </select>}
+      {!place&&organizer&&<button type="button" className="gw-cancel-registration" disabled={loading||quickAdding||!!cancellingPlayer} onClick={e=>{e.stopPropagation();void cancelRegistration(p)}}>{cancellingPlayer===p.player_id?(th?"กำลังยกเลิก…":"Cancelling…"):(th?"ยกเลิกรอบนี้":"Cancel round")}</button>}
     </article>;
   }
   function squad(team:string){
@@ -431,8 +441,12 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     <section className="gw-quick-add">
       <header><div><strong>{th?"เพิ่มผู้เล่นด่วน":"Quick add player"}</strong><p>{th?"เพิ่มคนหน้างานเข้ารอบนี้ทันที ไม่ต้องรีโหลดหน้า":"Add an on-site player to this round without reloading the page"}</p></div><span>{roundInfo?.war_type||""}</span></header>
       <form onSubmit={e=>{e.preventDefault();void quickAddPlayer();}}>
-        <input value={quickName} onChange={e=>setQuickName(e.target.value)} maxLength={64} placeholder={th?"ชื่อตัวละคร *":"Character name *"} aria-label={th?"ชื่อตัวละคร":"Character name"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer} />
-        <input value={quickNickname} onChange={e=>setQuickNickname(e.target.value)} maxLength={64} placeholder={th?"ชื่อเล่น (ถ้ามี)":"Nickname (optional)"} aria-label={th?"ชื่อเล่น":"Nickname"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer} />
+        <select className="gw-quick-player-select" value={quickPlayerId} onChange={e=>setQuickPlayerId(e.target.value)} aria-label={th?"เลือกรายชื่อผู้เล่น":"Choose a player"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer}>
+          <option value="">{th?"เพิ่มผู้เล่นใหม่หน้างาน…":"Add a new on-site player…"}</option>
+          {directoryPlayers.filter(item=>!players.some(player=>player.player_id===item.id)).map(item=><option key={item.id} value={item.id}>{item.character_name}{item.nickname?" ("+item.nickname+")":""}</option>)}
+        </select>
+        {!quickPlayerId&&<input value={quickName} onChange={e=>setQuickName(e.target.value)} maxLength={64} placeholder={th?"ชื่อตัวละครใหม่ *":"New character name *"} aria-label={th?"ชื่อตัวละครใหม่":"New character name"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer} />}
+        {!quickPlayerId&&<input value={quickNickname} onChange={e=>setQuickNickname(e.target.value)} maxLength={64} placeholder={th?"ชื่อเล่น (ถ้ามี)":"Nickname (optional)"} aria-label={th?"ชื่อเล่น":"Nickname"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer} />}
         <select value={quickRole} onChange={e=>setQuickRole(e.target.value)} aria-label={th?"Role":"Role"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer}><option value="">{th?"Role (ถ้ามี)":"Role (optional)"}</option><option value="Tank">Tank</option><option value="Heal">Heal</option><option value="DPS">DPS</option></select>
         <button type="submit" className="gw-quick-add-submit" disabled={!organizer||loading||loadedRound!==round||quickAdding||!!cancellingPlayer}>{quickAdding?(th?"กำลังเพิ่ม…":"Adding…"):(th?"เพิ่มเข้ารอบนี้":"Add to round")}</button>
       </form>
