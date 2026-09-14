@@ -271,7 +271,7 @@ h1 em {
   letter-spacing: 0.03em;
 }
 
-.portal-section { padding: 54px 0 26px; }
+.portal-section { padding: 32px 0 26px; }
 
 .section-heading {
   display: flex;
@@ -305,10 +305,12 @@ h1 em {
 
 .portal-card {
   position: relative;
-  min-height: 190px;
-  padding: 22px;
+  min-height: 205px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   color: var(--cream);
   border: 1px solid rgba(255, 215, 136, 0.14);
   border-radius: 18px;
@@ -335,15 +337,30 @@ h1 em {
   letter-spacing: 0.12em;
 }
 
-.portal-copy { display: grid; gap: 8px; margin-top: auto; padding-top: 38px; }
+.portal-copy { display: flex; flex-direction: column; align-items: center; gap: 18px; margin: 0; padding: 0; text-align: center; }
 
 .portal-copy strong {
   font-family: "Marcellus", "Noto Sans Thai", serif;
-  font-size: 21px;
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
   font-weight: 400;
+  line-height: 1.1;
 }
 
 .portal-copy small { max-width: 300px; color: #aaa4bf; font-size: 11px; line-height: 1.6; }
+
+.portal-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  color: var(--gold);
+  border: 1px solid rgba(255, 215, 136, 0.25);
+  border-radius: 18px;
+  background: rgba(141, 92, 255, 0.12);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
+}
+
+.portal-icon svg { width: 36px; height: 36px; }
 
 .portal-arrow {
   position: absolute;
@@ -455,9 +472,9 @@ h1 em {
 .manager-status small { color: #aaa4bd; font: 400 10px "DM Mono", monospace; line-height: 1.7; }
 
 .manager-actions {
-  max-width: 900px;
+  max-width: 1100px;
   display: grid;
-  grid-template-columns: 1.25fr 0.75fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -483,6 +500,21 @@ h1 em {
 .manager-action-primary:hover { transform: translateY(-4px); border-color: rgba(255, 209, 128, 0.55); }
 .manager-action-muted { opacity: 0.55; border-style: dashed; }
 .manager-action-muted b { position: absolute; top: 19px; right: 20px; color: #938ba8; font: 500 9px "DM Mono", monospace; }
+
+.schedule-placeholder {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  color: var(--muted);
+  border: 1px solid rgba(255, 215, 136, 0.15);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(28, 18, 68, 0.72), rgba(12, 8, 36, 0.84));
+}
+
+.schedule-placeholder .portal-icon { width: 72px; height: 72px; }
+.schedule-placeholder strong { color: var(--cream); font-size: 18px; font-weight: 500; }
 .manager-note { margin: 17px 0 0; color: #8f88a5; font-size: 11px; }
 
 .guides-intro { padding-bottom: 31px; }
@@ -705,7 +737,7 @@ h1 em {
   .hero-summary { max-width: 630px; }
   .portal-grid { grid-template-columns: 1fr; }
   .portal-card { min-height: 145px; }
-  .portal-copy { padding-top: 25px; }
+  .portal-copy { padding: 0; }
   .manager-hero { grid-template-columns: 1fr; gap: 28px; }
   .manager-status { max-width: 430px; }
   .discord-panel { grid-template-columns: 70px 1fr; }
@@ -728,12 +760,14 @@ h1 em {
   h1 { font-size: clamp(2.35rem, 11vw, 3.5rem); line-height: 1.08; }
   .intro { font-size: 13px; line-height: 1.8; }
   .primary-button, .secondary-button, .share-button { width: 100%; min-height: 48px; }
-  .portal-section { padding-top: 42px; }
+  .portal-section { padding-top: 30px; }
   .section-heading { display: block; }
   .section-heading > p { margin-top: 12px; }
-  .portal-card { min-height: 136px; padding: 19px; border-radius: 15px; }
-  .portal-copy { padding-top: 22px; }
-  .portal-copy strong { font-size: 19px; }
+  .portal-card { min-height: 155px; padding: 19px; border-radius: 15px; }
+  .portal-copy { padding: 0; gap: 13px; }
+  .portal-copy strong { font-size: clamp(1.55rem, 8vw, 2.1rem); }
+  .portal-icon { width: 52px; height: 52px; border-radius: 15px; }
+  .portal-icon svg { width: 29px; height: 29px; }
   .page-intro, .manager-hero { padding: 48px 5px 32px; }
   .page-intro::before { top: 16px; right: 2%; font-size: 90px; }
   .page-intro h1, .manager-hero h1 { font-size: clamp(2.55rem, 13vw, 4rem); }

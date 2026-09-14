@@ -62,6 +62,11 @@ const copy = {
     discordChannels: "ห้องที่ใช้บ่อย",
     discordChannelsHint: "GVG · Guides · Announcements",
     bannerAlt: "สมาชิก Path of Memories รวมตัวกันรอบกองไฟใต้ท้องฟ้ายามค่ำ",
+    activitySchedule: "ตารางกิจกรรม",
+    schedulePageTitle: "ตารางกิจกรรม",
+    schedulePageIntro: "รวมกิจกรรมของกิลด์ไว้ในที่เดียว",
+    scheduleComingSoon: "กำลังเตรียมตารางกิจกรรม",
+    gvgPlanner: "GVG Planner",
   },
   en: {
     language: "Language",
@@ -113,6 +118,11 @@ const copy = {
     discordChannels: "FREQUENT CHANNELS",
     discordChannelsHint: "GVG · Guides · Announcements",
     bannerAlt: "Path of Memories members gathering around a campfire under the night sky",
+    activitySchedule: "Activity Schedule",
+    schedulePageTitle: "Activity Schedule",
+    schedulePageIntro: "The guild's activities in one place.",
+    scheduleComingSoon: "The activity schedule is coming soon.",
+    gvgPlanner: "GVG Planner",
   },
 } as const;
 
@@ -160,6 +170,18 @@ function ShareButton({ language }: { language: Language }) {
   return <button className="share-button" type="button" onClick={share}><span aria-hidden="true">✦</span>{label}</button>;
 }
 
+type TopicIconName = "schedule" | "guild-war" | "guides";
+
+function TopicIcon({ name }: { name: TopicIconName }) {
+  const shapes = {
+    schedule: <><rect x="3.5" y="5.5" width="17" height="15" rx="2" /><path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17M7.5 14h.01M12 14h.01M16.5 14h.01M7.5 17.5h.01M12 17.5h.01" /></>,
+    "guild-war": <><path d="M4 5.5h6l2 3 2-3h6v5.2c0 4.2-3.3 7.1-8 9.3-4.7-2.2-8-5.1-8-9.3z" /><path d="M12 8.5v7M8.5 12h7" /></>,
+    guides: <><path d="M5 4.5h10.5A3.5 3.5 0 0 1 19 8v11.5H8.5A3.5 3.5 0 0 1 5 16z" /><path d="M5 16a3.5 3.5 0 0 1 3.5-3.5H19M9 8h6M9 10.5h4" /></>,
+  };
+
+  return <span className="portal-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{shapes[name]}</svg></span>;
+}
+
 function Shell({ children, language, onLanguageChange }: { children: ReactNode; language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   return (
@@ -184,41 +206,24 @@ function Shell({ children, language, onLanguageChange }: { children: ReactNode; 
 function HomePage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   const portals = [
-    { number: "01", label: "GVG Planner", detail: t.planner, href: "/games/where-winds-meet/gvg-planner/" },
-    { number: "02", label: "Guild War", detail: t.registration, href: "/games/where-winds-meet/guild-war/" },
-    { number: "03", label: "Guides", detail: t.guidesPageIntro, href: "/games/where-winds-meet/guides/" },
+    { label: t.activitySchedule, href: "/games/where-winds-meet/schedule/", icon: "schedule" as const },
+    { label: "Guild War", href: "/games/where-winds-meet/guild-war/", icon: "guild-war" as const },
+    { label: "Guides", href: "/games/where-winds-meet/guides/", icon: "guides" as const },
   ];
 
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
-      <section className="home-hero" aria-labelledby="welcome-heading">
+      <section className="home-hero" aria-label={t.bannerAlt}>
         <div className="hero-media">
           <img src="/assets/pathofmemories-banner.jpg" alt={t.bannerAlt} fetchPriority="high" />
         </div>
-        <div className="hero-copy">
-          <div>
-            <p className="eyebrow">{t.homeKicker}</p>
-            <h1 id="welcome-heading">{t.playTogether}<br /><em>{t.keepMemories}</em></h1>
-          </div>
-          <div className="hero-summary">
-            <p className="intro">{t.intro}</p>
-            <a className="primary-button" href="/games/where-winds-meet/">{t.explore}<span aria-hidden="true">→</span></a>
-            <p className="login-hint">{t.noAccount}</p>
-          </div>
-        </div>
       </section>
 
-      <section className="portal-section" aria-labelledby="portal-heading">
-        <div className="section-heading">
-          <div><p className="eyebrow">{t.playSpaces}</p><h2 id="portal-heading">{t.chooseGame}</h2></div>
-          <p>{t.chooseGameHint}</p>
-        </div>
+      <section className="portal-section" aria-label={t.chooseGame}>
         <div className="portal-grid">
           {portals.map((portal) => (
             <a className="portal-card" href={portal.href} key={portal.label}>
-              <span className="portal-number">{portal.number}</span>
-              <span className="portal-copy"><strong>{portal.label}</strong><small>{portal.detail}</small></span>
-              <span className="portal-arrow" aria-hidden="true">↗</span>
+              <span className="portal-copy"><TopicIcon name={portal.icon} /><strong>{portal.label}</strong></span>
             </a>
           ))}
         </div>
@@ -249,7 +254,7 @@ function GamesPage({ language, onLanguageChange }: { language: Language; onLangu
 function WhereWindsMeetPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   const tools = [
-    { number: "01", label: "GVG Planner", detail: t.planner, href: "/games/where-winds-meet/gvg-planner/" },
+    { number: "01", label: t.activitySchedule, detail: t.schedulePageIntro, href: "/games/where-winds-meet/schedule/" },
     { number: "02", label: "Guild War Manager", detail: t.registration, href: "/games/where-winds-meet/guild-war/" },
     { number: "03", label: "Guides", detail: t.guidesPageIntro, href: "/games/where-winds-meet/guides/" },
   ];
@@ -275,6 +280,24 @@ function WhereWindsMeetPage({ language, onLanguageChange }: { language: Language
   );
 }
 
+function ActivitySchedulePage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+  const t = copy[language];
+  return (
+    <Shell language={language} onLanguageChange={onLanguageChange}>
+      <section className="page-intro schedule-intro">
+        <a className="back-link" href="/">← Path of Memories</a>
+        <p className="eyebrow">WHERE WINDS MEET · GUILD ACTIVITIES</p>
+        <h1>{t.schedulePageTitle}</h1>
+        <p className="intro">{t.schedulePageIntro}</p>
+      </section>
+      <section className="schedule-placeholder" aria-live="polite">
+        <TopicIcon name="schedule" />
+        <strong>{t.scheduleComingSoon}</strong>
+      </section>
+    </Shell>
+  );
+}
+
 function GuildWarPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
   return (
@@ -293,11 +316,14 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
         </aside>
       </section>
       <section className="manager-actions" aria-label="Guild War actions">
+        <a className="manager-action" href="/games/where-winds-meet/gvg-planner/">
+          <span>01</span><strong>{t.gvgPlanner}</strong><small>{t.planner} <ExternalMark /></small>
+        </a>
         <a className="manager-action manager-action-primary" href="/games/where-winds-meet/guild-war/register">
-          <span>01</span><strong>{t.openRegister}</strong><small>{t.registrationActionHint} <ExternalMark /></small>
+          <span>02</span><strong>{t.openRegister}</strong><small>{t.registrationActionHint} <ExternalMark /></small>
         </a>
         <a className="manager-action" href="/games/where-winds-meet/guild-war/teams">
-          <span>02</span><strong>{t.openBuilder}</strong><small>{t.builderActionHint} <ExternalMark /></small>
+          <span>03</span><strong>{t.openBuilder}</strong><small>{t.builderActionHint} <ExternalMark /></small>
         </a>
       </section>
       <p className="manager-note">✦ {t.managerNote}</p>
@@ -443,6 +469,7 @@ export default function App() {
   if (path === "/games") return <GamesPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/discord") return <DiscordPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet") return <WhereWindsMeetPage language={language} onLanguageChange={setLanguage} />;
+  if (path === "/games/where-winds-meet/schedule") return <ActivitySchedulePage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guides") return <GuidesPage language={language} onLanguageChange={setLanguage} />;
   if (path.startsWith("/games/where-winds-meet/guides/")) return <GuideDetailPage slug={path.split("/").filter(Boolean).pop() || ""} language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war/register") return <GuildWarRegistrationPage language={language} onLanguageChange={setLanguage} />;
