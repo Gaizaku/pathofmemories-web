@@ -13,6 +13,8 @@ export interface Env {
   DISCORD_CLIENT_SECRET: string;
   DISCORD_WEBHOOK_URL?: string;
   DISCORD_PUBLIC_KEY?: string;
+  DISCORD_BOT_TOKEN?: string;
+  DISCORD_CHANNEL_ID?: string;
   PUBLIC_ORIGIN?: string;
 }
 
