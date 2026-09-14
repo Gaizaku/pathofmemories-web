@@ -22,14 +22,67 @@ export function validDraft(value) {
  return true;
 }
 export async function teamDraftApi(request,env){
- const url=new URL(request.url),draftMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/draft$/.exec(url.pathname),builderMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/team-builder$/.exec(url.pathname),match=draftMatch||builderMatch;
+ const url=new URL(request.url),draftMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/draft$/.exec(url.pathname),builderMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/team-builder$/.exec(url.pathname),quickMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/quick-player$/.exec(url.pathname),cancelMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/registrations\/([A-Za-z0-9-]{1,64})$/.exec(url.pathname),match=draftMatch||builderMatch||quickMatch||cancelMatch;
  if(!match)return null;
  if(builderMatch&&request.method!=="GET")return json({error:"method_not_allowed"},405);
  if(draftMatch&&!["GET","PUT"].includes(request.method))return json({error:"method_not_allowed"},405);
- if(draftMatch&&request.method==="PUT"&&request.headers.get("Origin")!==url.origin)return json({error:"origin_required"},403);
+ if(quickMatch&&request.method!=="POST")return json({error:"method_not_allowed"},405);
+ if(cancelMatch&&request.method!=="DELETE")return json({error:"method_not_allowed"},405);
+ if(((draftMatch&&request.method==="PUT")||quickMatch||cancelMatch)&&request.headers.get("Origin")!==url.origin)return json({error:"origin_required"},403);
  try{
   const user=await activeOrganizer(env,request);
   const db=env.GUILD_WAR_DB,[,game,event]=match;
+  if(quickMatch){
+   if(!user)return json({error:"organizer_required"},401);
+   const raw=await request.text();
+   if(raw.length>2000)return json({error:"too_large"},413);
+   let data;try{data=JSON.parse(raw);}catch{return json({error:"invalid_player"},400);}
+   const name=typeof data?.characterName==="string"?data.characterName.trim():"";
+   const nickname=typeof data?.nickname==="string"?data.nickname.trim():"";
+   const preferredRole=typeof data?.preferredRole==="string"?data.preferredRole.trim():"";
+   if(!name||name.length>64||nickname.length>64||preferredRole&&!["Tank","Heal","DPS"].includes(preferredRole))return json({error:"invalid_player"},400);
+   const eventRow=await db.prepare("SELECT id,status FROM events WHERE game_id=? AND id=?").bind(game,event).first();
+   if(!eventRow)return json({error:"event_not_found"},404);
+   if(eventRow.status!=="open")return json({error:"registration_closed"},409);
+   const duplicateResult=await db.prepare("SELECT id FROM players WHERE game_id=? AND active=1 AND lower(character_name)=lower(?)").bind(game,name).all();
+   if(duplicateResult.results?.length)return json({error:"name_exists"},409);
+   const playerId=crypto.randomUUID(),now=new Date().toISOString();
+   await db.batch([
+    db.prepare("INSERT INTO players (game_id,id,character_name,nickname) VALUES (?,?,?,?)").bind(game,playerId,name,nickname),
+    db.prepare("INSERT INTO attendance_choices (game_id,event_id,player_id,status,preferred_role,note,updated_at,updated_by) VALUES (?,?,?,'attending',?,?,?,'organizer')").bind(game,event,playerId,preferredRole,"",now),
+    db.prepare("INSERT INTO audit_log (id,game_id,actor_id,action,entity_id,created_at) VALUES (lower(hex(randomblob(16))),?,?,?,?,?)").bind(game,user.id,"quick_player_added",playerId,now)
+   ]);
+   return json({player:{player_id:playerId,character_name:name,nickname,preferred_role:preferredRole,note:"",preferred_team:"",loadouts:[]},eventId:event},201);
+  }
+  if(cancelMatch){
+   if(!user)return json({error:"organizer_required"},401);
+   const playerId=cancelMatch[3];
+   const player=await db.prepare("SELECT id FROM players WHERE game_id=? AND id=? AND active=1").bind(game,playerId).first();
+   if(!player)return json({error:"player_not_found"},404);
+   const eventRow=await db.prepare("SELECT id FROM events WHERE game_id=? AND id=?").bind(game,event).first();
+   if(!eventRow)return json({error:"event_not_found"},404);
+   const draft=await db.prepare("SELECT revision,board_json FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=?").bind(game,event,user.id).first();
+   let draftBoard=null,draftRevision=null,draftUpdate=null;
+   if(draft){
+    try{
+     draftBoard=JSON.parse(draft.board_json);
+     if(draftBoard&&typeof draftBoard==="object"&&!Array.isArray(draftBoard)&&Object.prototype.hasOwnProperty.call(draftBoard,playerId)){
+      delete draftBoard[playerId];
+      draftRevision=draft.revision+1;
+      draftUpdate=db.prepare("UPDATE team_drafts SET revision=revision+1,board_json=?,updated_at=? WHERE game_id=? AND event_id=? AND organizer_id=? AND revision=?").bind(JSON.stringify(draftBoard),new Date().toISOString(),game,event,user.id,draft.revision);
+     }else draftRevision=draft.revision;
+    }catch{draftBoard=null;draftRevision=draft.revision;}
+   }
+   const now=new Date().toISOString();
+   const statements=[
+    db.prepare("INSERT INTO attendance_choices (game_id,event_id,player_id,status,preferred_role,note,updated_at,updated_by) VALUES (?,?,?,'unavailable',NULL,'',?,'organizer') ON CONFLICT(game_id,event_id,player_id) DO UPDATE SET status=excluded.status,preferred_role=excluded.preferred_role,note=excluded.note,updated_at=excluded.updated_at,updated_by=excluded.updated_by,revision=attendance_choices.revision+1").bind(game,event,playerId,now),
+    db.prepare("DELETE FROM attendance_loadouts WHERE game_id=? AND event_id=? AND player_id=?").bind(game,event,playerId),
+    db.prepare("INSERT INTO audit_log (id,game_id,actor_id,action,entity_id,created_at) VALUES (lower(hex(randomblob(16))),?,?,?,?,?)").bind(game,user.id,"registration_cancelled",playerId+":"+event,now)
+   ];
+   if(draftUpdate)statements.push(draftUpdate);
+   await db.batch(statements);
+   return json({ok:true,playerId,eventId:event,draftRevision,draftBoard});
+  }
   if(builderMatch){
    const [rosterResponse,draft]=await Promise.all([
     readApi(new Request(url.origin+'/api/v2/games/'+game+'/war/events/'+event+'/registrations'),env),

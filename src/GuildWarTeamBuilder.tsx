@@ -58,12 +58,67 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [copyPanel,setCopyPanel] = useState(false);
   const [copying,setCopying] = useState(false);
   const [revision,setRevision] = useState(0);
+  const [quickName,setQuickName] = useState("");
+  const [quickNickname,setQuickNickname] = useState("");
+  const [quickRole,setQuickRole] = useState("");
+  const [quickAdding,setQuickAdding] = useState(false);
+  const [cancellingPlayer,setCancellingPlayer] = useState("");
   const activeRound = useRef(round);
   const roundCache = useRef<Record<string,{players:Player[];board:Record<string,Placement>;organizer:string;revision:number;savedBoard:string}>>({});
   activeRound.current = round;
   useEffect(()=>{setRevision(0);setSavedBoard("");setPublishedLink("");setCloudMessage("");},[round]);
   useEffect(()=>{if(cloudMessage)notify(cloudMessage,"success");},[cloudMessage,notify]);
   useEffect(()=>{if(error)notify(error,"error");},[error,notify]);
+  async function quickAddPlayer() {
+    const requestedRound=round,name=quickName.trim(),nickname=quickNickname.trim();
+    if(!organizer||loading||loadedRound!==round||quickAdding||cancellingPlayer||!requestedRound)return;
+    if(!name){setError(th?"กรุณาใส่ชื่อตัวละคร":"Enter a character name");return;}
+    setQuickAdding(true);setError("");setCloudMessage("");
+    try{
+      const response=await fetch(base+"/war/events/"+requestedRound+"/quick-player",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({characterName:name,nickname,preferredRole:quickRole})});
+      const data=await response.json();
+      if(!response.ok){
+        if(data.error==="name_exists")throw new Error(th?"มีผู้เล่นชื่อนี้อยู่แล้ว":"A player with this name already exists");
+        if(data.error==="registration_closed")throw new Error(th?"รอบนี้ปิดรับลงทะเบียนแล้ว":"Registration is closed for this round");
+        if(data.error==="organizer_required")throw new Error(th?"กรุณาเข้าสู่ระบบ Discord อีกครั้ง":"Please sign in with Discord again");
+        throw new Error(th?"เพิ่มผู้เล่นไม่สำเร็จ":"Could not add player");
+      }
+      const player:Player=data.player;
+      setPlayers(current=>current.some(item=>item.player_id===player.player_id)?current:[...current,player].sort((a,b)=>a.character_name.localeCompare(b.character_name)));
+      const cached=roundCache.current[requestedRound];
+      if(cached&&!cached.players.some(item=>item.player_id===player.player_id))roundCache.current[requestedRound]={...cached,players:[...cached.players,player].sort((a,b)=>a.character_name.localeCompare(b.character_name))};
+      setQuickName("");setQuickNickname("");setQuickRole("");
+      setCloudMessage(th?"เพิ่มผู้เล่นเข้ารอบนี้แล้ว · ลากไปจัดทีมได้เลย":"Player added to this round · drag them into a team");
+    }catch(error){setError(error instanceof Error?error.message:(th?"เพิ่มผู้เล่นไม่สำเร็จ":"Could not add player"));}
+    finally{setQuickAdding(false);}
+  }
+  async function cancelRegistration(player:Player) {
+    if(!organizer||loading||loadedRound!==round||cancellingPlayer||quickAdding)return;
+    const accepted=await confirm({title:th?"ยกเลิกการลงทะเบียน":"Cancel registration",message:th?"ยกเลิกการลงทะเบียนของ "+player.character_name+" เฉพาะรอบนี้? ข้อมูลผู้เล่นและรอบอื่นจะยังอยู่":"Cancel "+player.character_name+"'s registration for this round only? The player and other rounds will remain.",confirmLabel:th?"ยกเลิกรอบนี้":"Cancel this round",cancelLabel:th?"กลับ":"Keep",danger:true});
+    if(!accepted)return;
+    const requestedRound=round;
+    setCancellingPlayer(player.player_id);setError("");setCloudMessage("");
+    const nextBoard={...board};delete nextBoard[player.player_id];
+    try{
+      const response=await fetch(base+"/war/events/"+requestedRound+"/registrations/"+player.player_id,{method:"DELETE"});
+      const data=await response.json();
+      if(!response.ok){
+        if(data.error==="player_not_found")throw new Error(th?"ไม่พบผู้เล่นคนนี้":"Player not found");
+        throw new Error(th?"ยกเลิกการลงทะเบียนไม่สำเร็จ":"Could not cancel registration");
+      }
+      setPlayers(current=>current.filter(item=>item.player_id!==player.player_id));
+      setBoard(nextBoard);
+      const cached=roundCache.current[requestedRound];
+      if(cached)roundCache.current[requestedRound]={...cached,players:cached.players.filter(item=>item.player_id!==player.player_id),board:nextBoard,revision:Number.isSafeInteger(data.draftRevision)&&data.draftRevision!==null?data.draftRevision:cached.revision,savedBoard:data.draftBoard?JSON.stringify(data.draftBoard):cached.savedBoard};
+      if(data.draftBoard){
+        setRevision(data.draftRevision||0);
+        setSavedBoard(JSON.stringify(data.draftBoard));
+      }
+      setCloudMessage(th?"ยกเลิกผู้เล่นออกจากรอบนี้แล้ว":"Player cancelled for this round");
+    }catch(error){setError(error instanceof Error?error.message:(th?"ยกเลิกการลงทะเบียนไม่สำเร็จ":"Could not cancel registration"));}
+    finally{setCancellingPlayer("");}
+  }
+
   async function cloudDraft() {
     if(!organizer||cloudBusy||loading||loadedRound!==round)return;
     const requestedRound=round;
@@ -305,6 +360,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         <span>{p.character_name}{p.nickname&&<small> ({p.nickname})</small>}</span>
       </div>
       {place&&<button className="gw-remove" disabled={!organizer} onClick={()=>move(p.player_id,"")} aria-label={th?"นำออกจากทีม":"Remove from team"}>×</button>}
+      {organizer&&<button type="button" className="gw-cancel-registration" disabled={loading||quickAdding||!!cancellingPlayer} onClick={e=>{e.stopPropagation();void cancelRegistration(p)}}>{cancellingPlayer===p.player_id?(th?"กำลังยกเลิก…":"Cancelling…"):(th?"ยกเลิกรอบนี้":"Cancel round")}</button>}
       <div className="gw-meta">{th?"อยากเล่น: ":"Preferred: "}{p.preferred_role||"—"}</div>
       {!place&&<div className={"gw-preferred-team "+teamClass(p.preferred_team||"UNASSIGNED")}>{th?"ทีมที่อยากเล่น: ":"Preferred team: "}{title(p.preferred_team||"ANY",th)}</div>}
       {place?<select aria-label={"Loadout "+p.character_name} value={place.loadout} disabled={!organizer} onChange={e=>setBoard(current=>({...current,[p.player_id]:{...current[p.player_id],loadout:e.target.value}}))}>
@@ -372,6 +428,15 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     {copyPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"คัดลอกการจัดทีมไปยังรอบอื่น":"Copy team arrangement to other rounds"}</strong><p>{th?"เลือกรอบปลายทางได้หลายรอบพร้อมกัน รายชื่อที่ไม่ได้ลงในรอบนั้นจะถูกข้าม":"Choose multiple destination rounds. Players unavailable in a round will be skipped."}</p></div><button type="button" onClick={()=>setCopyPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.filter(item=>item.id!==round).map(item=>{const checked=copyRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={copying} onChange={()=>setCopyRounds(current=>checked?current.filter(id=>id!==item.id):[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setCopyRounds([])} disabled={!copyRounds.length||copying}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={!copyRounds.length||copying} onClick={()=>void copyBoardToRounds()}>{copying?(th?"กำลังคัดลอก…":"Copying…"):(th?`คัดลอกไป ${copyRounds.length} รอบ`:`Copy to ${copyRounds.length} rounds`)}</button></footer></section>}
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     {cloudBusy&&<p role="status" aria-live="polite">{th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"}</p>}
+    <section className="gw-quick-add">
+      <header><div><strong>{th?"เพิ่มผู้เล่นด่วน":"Quick add player"}</strong><p>{th?"เพิ่มคนหน้างานเข้ารอบนี้ทันที ไม่ต้องรีโหลดหน้า":"Add an on-site player to this round without reloading the page"}</p></div><span>{roundInfo?.war_type||""}</span></header>
+      <form onSubmit={e=>{e.preventDefault();void quickAddPlayer();}}>
+        <input value={quickName} onChange={e=>setQuickName(e.target.value)} maxLength={64} placeholder={th?"ชื่อตัวละคร *":"Character name *"} aria-label={th?"ชื่อตัวละคร":"Character name"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer} />
+        <input value={quickNickname} onChange={e=>setQuickNickname(e.target.value)} maxLength={64} placeholder={th?"ชื่อเล่น (ถ้ามี)":"Nickname (optional)"} aria-label={th?"ชื่อเล่น":"Nickname"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer} />
+        <select value={quickRole} onChange={e=>setQuickRole(e.target.value)} aria-label={th?"Role":"Role"} disabled={!organizer||loading||quickAdding||!!cancellingPlayer}><option value="">{th?"Role (ถ้ามี)":"Role (optional)"}</option><option value="Tank">Tank</option><option value="Heal">Heal</option><option value="DPS">DPS</option></select>
+        <button type="submit" className="gw-quick-add-submit" disabled={!organizer||loading||loadedRound!==round||quickAdding||!!cancellingPlayer}>{quickAdding?(th?"กำลังเพิ่ม…":"Adding…"):(th?"เพิ่มเข้ารอบนี้":"Add to round")}</button>
+      </form>
+    </section>
     <div className="gw-stats">{[[players.length,"Registered"],[players.length-pool.length,"Assigned"],[pool.length,"Unassigned"],[warnings,"Squad warnings"]].map(([n,l])=><div key={l}><b>{n}</b><small>{l}</small></div>)}</div>
     {loading?<p role="status">{th?"กำลังโหลด…":"Loading…"}</p>:<div className="gw-layout"><aside className={"gw-pool "+(dropTarget?.team===""&&!dropTarget.playerId&&!dropTarget.tower?" gw-drop-ready":"")} onDragOver={e=>{e.preventDefault();if(draggingPlayer)setDropTarget({team:""});}} onDrop={e=>drop(e,"")}>
       <header><strong>{th?"ยังไม่จัดทีม":"Unassigned"}</strong><input aria-label="Search players" placeholder={th?"ค้นหาชื่อ…":"Search players…"} value={search} onChange={e=>setSearch(e.target.value)}/></header>
