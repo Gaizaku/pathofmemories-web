@@ -1,5 +1,5 @@
 import {createClaimToken,hashClaimToken} from './registration-token.mjs';
-import {GAME,rows,ensureWeekend,slotOf,validSlots} from './weekend.mjs';
+import {GAME,rows,ensureWeekend,slotOf,validSlots,eventWeekday,regularSlotMatches,regularRuleApplies,regularWarType} from './weekend.mjs';
 const json=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 const teams=['','ATTACK_1','ATTACK_2','ATTACK_3','DEFENSE_1','DEFENSE_2','FOREST','STANDBY'];
 const id=value=>typeof value==='string'&&/^[A-Za-z0-9-]{1,64}$/.test(value);
@@ -32,6 +32,7 @@ export async function memberRegistration(request,env,clock=new Date()) {
     const [player]=await rows(db,'SELECT id FROM players WHERE game_id=? AND id=? AND active=1',GAME,data.playerId);
     if(!player)return json({error:'player_not_found'},404);
     const [profile]=await rows(db,'SELECT * FROM member_preferences WHERE game_id=? AND player_id=?',GAME,data.playerId);
+    const [organizerRule]=await rows(db,'SELECT enabled,starts_on,ends_on,default_role,default_loadout_id,preferred_team,paused_until FROM regular_rules WHERE game_id=? AND player_id=?',GAME,data.playerId);
     if(action==='/claim') {
       if(profile)return json({revision:profile.revision});
       const token=createClaimToken();
@@ -57,14 +58,20 @@ export async function memberRegistration(request,env,clock=new Date()) {
     const {events,weekStart}=await ensureWeekend(db,clock);
     if(action==='/lookup') {
       const choices=await rows(db,'SELECT c.event_id,c.status,c.preferred_role,c.note FROM attendance_choices c JOIN events e ON e.game_id=c.game_id AND e.id=c.event_id WHERE c.game_id=? AND c.player_id=? AND e.week_start=?',GAME,data.playerId,weekStart);
-      const defaults=profile?.regular?JSON.parse(profile.slots_json):[];
-      const selected=events.filter(e=>{const choice=choices.find(c=>c.event_id===e.id);return choice?choice.status==='attending':defaults.includes(e.slot);}).map(e=>e.id);
+      const ruleSlots=organizerRule?await rows(db,'SELECT weekday,war_type FROM regular_slots WHERE game_id=? AND player_id=?',GAME,data.playerId):[];
+      const ruleIsActive=!!organizerRule&&events.some(e=>regularRuleApplies(organizerRule,e));
+      const defaults=organizerRule
+        ? events.filter(e=>ruleIsActive&&regularRuleApplies(organizerRule,e)&&ruleSlots.some(slot=>regularSlotMatches(e,slot))).map(e=>e.id)
+        : (profile?.regular?JSON.parse(profile.slots_json):[]);
+      const [absence]=await rows(db,'SELECT player_id FROM weekly_absences WHERE game_id=? AND player_id=? AND week_start=?',GAME,data.playerId,weekStart);
+      const selected=events.filter(e=>{const choice=choices.find(c=>c.event_id===e.id);return choice?choice.status==='attending':!absence&&defaults.includes(organizerRule?e.id:e.slot);}).map(e=>e.id);
       const legacy=profile?[]:await rows(db,'SELECT DISTINCT a.loadout_id FROM attendance_loadouts a JOIN events e ON e.game_id=a.game_id AND e.id=a.event_id WHERE a.game_id=? AND a.player_id=? AND e.week_start=?',GAME,data.playerId,weekStart);
-      const regularSlots=events.filter(e=>defaults.includes(e.slot)).map(e=>e.id);
-      const preferredRole=profile?.preferred_role||choices[0]?.preferred_role||'';
-      const preferredTeam=profile?.preferred_team||'';
+      const regularSlots=organizerRule?defaults:events.filter(e=>defaults.includes(e.slot)).map(e=>e.id);
+      const preferredRole=(organizerRule?.default_role||profile?.preferred_role||choices[0]?.preferred_role||'');
+      const preferredTeam=(organizerRule?.preferred_team||profile?.preferred_team||'');
+      const organizerLoadouts=organizerRule?.default_loadout_id?[organizerRule.default_loadout_id]:[];
       // The old app stored "ANY"; the new API uses an empty value for it.
-      return json({revision:profile?.revision||0,regular:!!profile?.regular,regularSlots,selected,loadoutIds:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id)).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:choices[0]?.note||'',weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
+      return json({revision:profile?.revision||0,regular:organizerRule?ruleIsActive:!!profile?.regular,regularSlots,selected,loadoutIds:(organizerRule?organizerLoadouts:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id))).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:choices[0]?.note||'',weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
     }
     if(action!=='/save')return json({error:'not_found'},404);
     const {selected,loadoutIds,note='',regular,revision}=data;
@@ -95,6 +102,12 @@ export async function memberRegistration(request,env,clock=new Date()) {
       statements.push(db.prepare('INSERT INTO attendance_choices (game_id,event_id,player_id,status,preferred_role,note,updated_at,updated_by) SELECT ?,?,?,?,?,?,?,? WHERE '+guard+' ON CONFLICT(game_id,event_id,player_id) DO UPDATE SET status=excluded.status,preferred_role=excluded.preferred_role,note=excluded.note,updated_at=excluded.updated_at,updated_by=excluded.updated_by,revision=attendance_choices.revision+1').bind(GAME,event.id,data.playerId,attending?'attending':'unavailable',preferredRole,note,now,'member',...guardArgs));
       statements.push(db.prepare('DELETE FROM attendance_loadouts WHERE game_id=? AND event_id=? AND player_id=? AND '+guard).bind(GAME,event.id,data.playerId,...guardArgs));
       if(attending)for(const loadout of loadoutIds)statements.push(db.prepare('INSERT INTO attendance_loadouts (game_id,event_id,player_id,loadout_id) SELECT ?,?,?,? WHERE '+guard).bind(GAME,event.id,data.playerId,loadout,...guardArgs));
+    }
+    if(organizerRule) {
+      const recurringSlots=[...new Map(events.filter(e=>regularSlots.includes(e.id)).map(e=>[eventWeekday(e)+':'+regularWarType(e.war_type),{weekday:eventWeekday(e),warType:regularWarType(e.war_type)}])).values()];
+      statements.push(db.prepare('UPDATE regular_rules SET enabled=?,revision=revision+1 WHERE game_id=? AND player_id=? AND '+guard).bind(+regular,GAME,data.playerId,...guardArgs));
+      statements.push(db.prepare('DELETE FROM regular_slots WHERE game_id=? AND player_id=? AND '+guard).bind(GAME,data.playerId,...guardArgs));
+      for(const slot of recurringSlots)statements.push(db.prepare('INSERT INTO regular_slots (game_id,player_id,weekday,war_type) SELECT ?,?,?,? WHERE '+guard).bind(GAME,data.playerId,slot.weekday,slot.warType,...guardArgs));
     }
     statements.push(db.prepare('INSERT INTO audit_log (id,game_id,actor_id,action,entity_id,created_at) SELECT ?,?,?,?,?,? WHERE '+guard).bind(operation,GAME,data.playerId,'week_registration',weekStart,now,...guardArgs));
     const result=await db.batch(statements);

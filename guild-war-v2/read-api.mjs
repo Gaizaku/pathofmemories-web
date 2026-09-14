@@ -1,4 +1,4 @@
-import {GAME, ensureWeekend, slotOf, rows} from './weekend.mjs';
+import {GAME, ensureWeekend, slotOf, rows, eventWeekday} from './weekend.mjs';
 export function bangkokWeek(now = new Date()) {
   const local = new Date(now.getTime() + 7 * 3600000);
   const daysSinceMonday = (local.getUTCDay() + 6) % 7;
@@ -39,18 +39,19 @@ export async function readApi(request, env, now = new Date()) {
     if (registrationMatch) {
       const [, gameId, eventId] = registrationMatch;
       const [event] = await query(env.GUILD_WAR_DB,
-        "SELECT id, starts_at, local_date, war_type, status, capacity FROM events WHERE game_id = ? AND id = ?",
+        "SELECT id, starts_at, local_date, week_start, war_type, status, capacity FROM events WHERE game_id = ? AND id = ?",
         gameId, eventId
       );
       if (!event) return json({error: "event_not_found"}, 404);
 
-      const [registrations,chosenLoadouts,preferences,defaults,allLoadouts] = await Promise.all([
+      const [registrations,chosenLoadouts,preferences,defaults,organizerDefaults,allLoadouts] = await Promise.all([
         gameId===GAME
           ? query(env.GUILD_WAR_DB,"SELECT c.player_id, p.character_name, p.nickname, c.preferred_role, c.note, c.updated_at, m.preferred_team FROM attendance_choices c JOIN players p ON p.game_id = c.game_id AND p.id = c.player_id LEFT JOIN member_preferences m ON m.game_id = c.game_id AND m.player_id = c.player_id WHERE c.game_id = ? AND c.event_id = ? AND c.status = 'attending' ORDER BY c.updated_at, c.player_id LIMIT 200",gameId,eventId)
           : query(env.GUILD_WAR_DB,"SELECT c.player_id, p.character_name, p.nickname, c.preferred_role, c.note, c.updated_at FROM attendance_choices c JOIN players p ON p.game_id = c.game_id AND p.id = c.player_id WHERE c.game_id = ? AND c.event_id = ? AND c.status = 'attending' ORDER BY c.updated_at, c.player_id LIMIT 200",gameId,eventId),
         query(env.GUILD_WAR_DB,"SELECT a.player_id, l.id, l.role, main.name AS main_weapon_name, sub.name AS sub_weapon_name FROM attendance_loadouts a JOIN loadouts l ON l.game_id = a.game_id AND l.id = a.loadout_id AND l.player_id = a.player_id AND l.active = 1 JOIN weapons main ON main.game_id = l.game_id AND main.id = l.main_weapon_id JOIN weapons sub ON sub.game_id = l.game_id AND sub.id = l.sub_weapon_id WHERE a.game_id = ? AND a.event_id = ? ORDER BY a.player_id, l.id LIMIT 500",gameId,eventId),
-        gameId===GAME ? rows(env.GUILD_WAR_DB,'SELECT player_id,preferred_team FROM member_preferences WHERE game_id=?',gameId) : Promise.resolve([]),
-        gameId===GAME ? rows(env.GUILD_WAR_DB,`SELECT p.id,p.character_name,p.nickname,m.* FROM member_preferences m JOIN players p ON p.game_id=m.game_id AND p.id=m.player_id WHERE m.game_id=? AND m.regular=1 AND p.active=1 AND NOT EXISTS (SELECT 1 FROM attendance_choices c WHERE c.game_id=m.game_id AND c.player_id=m.player_id AND c.event_id=?) AND NOT EXISTS (SELECT 1 FROM weekly_absences w JOIN events e ON e.game_id=w.game_id AND e.week_start=w.week_start WHERE e.id=? AND w.game_id=m.game_id AND w.player_id=m.player_id)`,gameId,eventId,eventId) : Promise.resolve([]),
+        gameId===GAME ? rows(env.GUILD_WAR_DB,'SELECT * FROM member_preferences WHERE game_id=?',gameId) : Promise.resolve([]),
+        gameId===GAME ? rows(env.GUILD_WAR_DB,`SELECT p.id,p.character_name,p.nickname,m.* FROM member_preferences m JOIN players p ON p.game_id=m.game_id AND p.id=m.player_id WHERE m.game_id=? AND m.regular=1 AND p.active=1 AND NOT EXISTS (SELECT 1 FROM regular_rules r WHERE r.game_id=m.game_id AND r.player_id=m.player_id) AND NOT EXISTS (SELECT 1 FROM attendance_choices c WHERE c.game_id=m.game_id AND c.player_id=m.player_id AND c.event_id=?) AND NOT EXISTS (SELECT 1 FROM weekly_absences w WHERE w.game_id=m.game_id AND w.week_start=? AND w.player_id=m.player_id)`,gameId,eventId,event.week_start) : Promise.resolve([]),
+        gameId===GAME ? rows(env.GUILD_WAR_DB,`SELECT r.player_id,p.character_name,p.nickname,r.default_role,r.default_loadout_id,r.preferred_team,r.starts_on,r.ends_on,r.paused_until,m.preferred_role,m.preferred_team AS member_preferred_team,m.loadouts_json FROM regular_rules r JOIN players p ON p.game_id=r.game_id AND p.id=r.player_id LEFT JOIN member_preferences m ON m.game_id=r.game_id AND m.player_id=r.player_id JOIN regular_slots s ON s.game_id=r.game_id AND s.player_id=r.player_id WHERE r.game_id=? AND r.enabled=1 AND s.weekday=? AND (s.war_type=? OR (s.war_type='Matching' AND ?='Rank') OR (s.war_type='Rank' AND ?='Matching')) AND (r.starts_on IS NULL OR r.starts_on<=?) AND (r.ends_on IS NULL OR r.ends_on>=?) AND (r.paused_until IS NULL OR r.paused_until<?) AND NOT EXISTS (SELECT 1 FROM attendance_choices c WHERE c.game_id=r.game_id AND c.player_id=r.player_id AND c.event_id=?) AND NOT EXISTS (SELECT 1 FROM weekly_absences w WHERE w.game_id=r.game_id AND w.player_id=r.player_id AND w.week_start=?)`,gameId,eventWeekday(event),event.war_type,event.war_type,event.war_type,event.local_date,event.local_date,event.local_date,eventId,event.week_start) : Promise.resolve([]),
         gameId===GAME ? rows(env.GUILD_WAR_DB,'SELECT l.id,l.player_id,l.role,a.name AS main_weapon_name,b.name AS sub_weapon_name FROM loadouts l JOIN weapons a ON a.game_id=l.game_id AND a.id=l.main_weapon_id JOIN weapons b ON b.game_id=l.game_id AND b.id=l.sub_weapon_id WHERE l.game_id=? AND l.active=1',gameId) : Promise.resolve([])
       ]);
       const grouped = new Map(registrations.map((registration) => [registration.player_id, {...registration, loadouts: []}]));
@@ -60,6 +61,13 @@ export async function readApi(request, env, now = new Date()) {
         for(const p of defaults)if(event.status!=='cancelled'&&JSON.parse(p.slots_json).includes(slotOf(event))) {
           const ids=JSON.parse(p.loadouts_json);
           grouped.set(p.player_id,{player_id:p.player_id,character_name:p.character_name,nickname:p.nickname,preferred_role:p.preferred_role,note:'',attendance_status:'expected',preferred_team:p.preferred_team,loadouts:allLoadouts.filter(l=>l.player_id===p.player_id&&ids.includes(l.id))});
+        }
+        // Organizer rules are the canonical recurring schedule when present.
+        const organizerByPlayer = new Map();
+        for(const p of organizerDefaults) organizerByPlayer.set(p.player_id,p);
+        for(const p of organizerByPlayer.values()) {
+          const ids=p.default_loadout_id?[p.default_loadout_id]:JSON.parse(p.loadouts_json||'[]');
+          grouped.set(p.player_id,{player_id:p.player_id,character_name:p.character_name,nickname:p.nickname,preferred_role:p.default_role||p.preferred_role||'',note:'',attendance_status:'expected',preferred_team:p.preferred_team||p.member_preferred_team||'',loadouts:allLoadouts.filter(l=>l.player_id===p.player_id&&ids.includes(l.id))});
         }
       }
       return json({gameId, event, registrations: [...grouped.values()]});

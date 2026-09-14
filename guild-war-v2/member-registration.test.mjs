@@ -43,6 +43,21 @@ test('saves a whole week, remembers exact slots, rejects stale writes, and withd
  assert.equal((await (await readApi(new Request(url),f.env)).json()).registrations.length,0);
  }finally{f.sql.close();}
 });
+test('uses organizer regular rules for member defaults and team expectations',async()=>{
+ const f=fixture();try{
+  const {events,weekStart}=await ensureWeekend(f.db,clock);
+  f.sql.exec("INSERT INTO regular_rules (game_id,player_id,enabled) VALUES ('where-winds-meet','p1',1); INSERT INTO regular_slots (game_id,player_id,weekday,war_type) VALUES ('where-winds-meet','p1',6,'Matching');");
+  const lookup=await f.post('lookup',{playerId:'p1'});assert.equal(lookup.status,200);
+  const profile=await lookup.json();
+  const expected=events.filter(e=>e.local_date==='2026-09-12'&&e.round_number>1).map(e=>e.id);
+  assert.equal(profile.regular,true);assert.deepEqual(profile.regularSlots,expected);assert.deepEqual(profile.selected,expected);
+  const roster=await (await readApi(new Request('https://example.com/api/v2/games/where-winds-meet/war/events/'+expected[0]+'/registrations'),f.env)).json();
+  assert.equal(roster.registrations[0].player_id,'p1');assert.equal(roster.registrations[0].attendance_status,'expected');
+  const saved=await f.post('save',{playerId:'p1',weekStart,selected:expected,regularSlots:expected,loadoutIds:['l1'],preferredRole:'DPS',preferredTeam:'',note:'',regular:true,revision:profile.revision});
+  assert.equal(saved.status,200);
+  assert.deepEqual(f.sql.prepare("SELECT weekday,war_type FROM regular_slots WHERE player_id='p1'").all().map(row=>({weekday:row.weekday,war_type:row.war_type})),[{weekday:6,war_type:'Matching'}]);
+ }finally{f.sql.close();}
+});
 test('rejects invalid slots and cross-origin changes',async()=>{
  assert.equal(validSlots(['6:2','6:3','0:4']),true);assert.equal(validSlots(['6:2','6:2']),false);assert.equal(validSlots(['5:1']),false);
  const f=fixture();try{assert.equal((await f.post('save',{},'https://evil.example')).status,403);}finally{f.sql.close();}

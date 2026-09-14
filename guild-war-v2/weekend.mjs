@@ -19,6 +19,21 @@ export function slotOf(event) {
   const round=ROUNDS.find(r=>r.time===local.toISOString().slice(11,16));
   return [0,6].includes(day)&&round ? day+':'+round.number : null;
 }
+export function eventWeekday(event) {
+  return new Date(event.local_date+'T12:00:00+07:00').getUTCDay();
+}
+export function regularWarType(warType) {
+  return warType==='Rank' ? 'Matching' : warType;
+}
+export function regularSlotMatches(event,slot) {
+  return eventWeekday(event)===Number(slot.weekday) && regularWarType(event.war_type)===regularWarType(slot.war_type);
+}
+export function regularRuleApplies(rule,event) {
+  return Number(rule?.enabled)===1 &&
+    (!rule.starts_on || event.local_date>=rule.starts_on) &&
+    (!rule.ends_on || event.local_date<=rule.ends_on) &&
+    (!rule.paused_until || event.local_date>rule.paused_until);
+}
 export async function rows(db,sql,...args) {
   const result=await db.prepare(sql).bind(...args).all();
   if(result.success===false)throw new Error('query_failed');
