@@ -120,7 +120,7 @@ export async function sendDiscordRoundBundle(env, rounds, origin) {
   if (!env.DISCORD_WEBHOOK_URL) return "unconfigured";
   let webhook;
   try { webhook = new URL(env.DISCORD_WEBHOOK_URL); } catch { return "failed"; }
-  if (webhook.protocol !== "https:" || !/(^|\\.)discord(?:app)?\\.com$/i.test(webhook.hostname) || !webhook.pathname.startsWith("/api/webhooks/")) return "failed";
+  if (webhook.protocol !== "https:" || !/(^|\.)discord(?:app)?\.com$/i.test(webhook.hostname) || !webhook.pathname.startsWith("/api/webhooks/")) return "failed";
   try {
     const response = await fetch(webhook, {
       method: "POST",
