@@ -32,7 +32,7 @@ jobs:
           test "$CONFIRM" = "CONFIGURE_DISCORD_INTERACTIONS"
           test -n "$DISCORD_PUBLIC_KEY"
           test -n "$DISCORD_BOT_TOKEN"
-          test "$DISCORD_CHANNEL_ID" -match "^[0-9]{15,25}$"
+          [[ "$DISCORD_CHANNEL_ID" =~ ^[0-9]{15,25}$ ]]
       - name: Set Discord public key secret on Cloudflare Worker
         run: printf "%s" "$DISCORD_PUBLIC_KEY" | npx wrangler secret put DISCORD_PUBLIC_KEY
       - name: Set Discord bot token secret on Cloudflare Worker
