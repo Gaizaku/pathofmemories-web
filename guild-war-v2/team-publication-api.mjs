@@ -5,14 +5,24 @@ import {readApi} from "./read-api.mjs";
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
 const discordTeams = [["ATTACK_1","🔴 ทีมบุก 1"],["ATTACK_2","🔴 ทีมบุก 2"],["ATTACK_3","🔴 ทีมบุก 3"],["DEFENSE_1","🔵 ทีมกัน 1"],["DEFENSE_2","🔵 ทีมกัน 2"],["FOREST","🟢 ป่า"],["STANDBY","⚪ สำรอง"]];
 const literal = value => String(value || "").replace(/@/g,"@\u200b").replace(/[\r\n]/g," ").slice(0,180);
+const roundByTime={"19:30":1,"20:00":2,"20:30":3,"21:00":4};
+const thaiWeekdays=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+function discordRoundInfo(startsAt){
+  const instant=new Date(startsAt);
+  if(!Number.isFinite(instant.getTime()))return {round:"",time:"",date:"",weekday:""};
+  const local=new Date(instant.getTime()+7*60*60*1000);
+  const hour=String(local.getUTCHours()).padStart(2,"0"),minute=String(local.getUTCMinutes()).padStart(2,"0"),isoTime=hour+":"+minute;
+  return {round:roundByTime[isoTime]||"",time:hour+"."+minute,date:local.getUTCDate()+"/"+(local.getUTCMonth()+1)+"/"+String(local.getUTCFullYear()+543).slice(-2),weekday:thaiWeekdays[local.getUTCDay()]||""};
+}
 export function discordWebhookPayload(snapshot, publicationUrl) {
   const fields=discordTeams.map(([team,name])=>{
     const members=snapshot.members.filter(member=>member.team===team);
     const value=members.length?members.map(member=>"• "+literal(member.name)+(member.role?" · "+literal(member.role):"")).join("\n"):"—";
     return {name:name+" · "+members.length+(team!=="STANDBY"?"/5":""),value:value.slice(0,1024),inline:true};
   });
-  const starts=new Date(snapshot.event.startsAt).getTime();
-  return {username:"Path of Memories",embeds:[{title:"⚔️ Guild War Team Ready",url:publicationUrl,description:(Number.isFinite(starts)?"<t:"+Math.floor(starts/1000)+":F>\n":"")+"[เปิดสรุปทีม]("+publicationUrl+")",color:0xC8A86B,fields,footer:{text:"Path of Memories · Guild War"}}]};
+  const info=discordRoundInfo(snapshot.event.startsAt);
+  const roundLine=info.round?"รอบ "+info.round+" "+literal(snapshot.event.warType)+" "+info.time+" "+info.date+" ("+info.weekday+")":"Guild War · "+literal(snapshot.event.warType);
+  return {username:"Path of Memories",embeds:[{title:"ประกาศรอบวอร์",url:publicationUrl,description:roundLine+"\n[เปิดดูรายชื่อทีม]("+publicationUrl+")",color:0xC8A86B,fields,footer:{text:"Path of Memories · Guild War"}}]};
 }
 async function sendDiscordWebhook(env,snapshot,publicationUrl) {
   if(!env.DISCORD_WEBHOOK_URL)return "unconfigured";
