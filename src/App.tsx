@@ -335,14 +335,7 @@ function GuildWarRegistrationPage({ language, onLanguageChange }: { language: La
   const t = copy[language];
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
-      <section className="page-intro registration-page-intro">
-        <a className="back-link" href="/games/where-winds-meet/guild-war/">{t.backToGuildWar}</a>
-        <p className="eyebrow">WHERE WINDS MEET · GUILD WAR · REGISTER</p>
-        <h1>{t.openRegistrationPage}</h1>
-        <p className="intro">{t.guildWarIntro}</p>
-      </section>
       <GuildWarRegistration language={language} />
-      <p className="manager-note">✦ {t.managerNote}</p>
     </Shell>
   );
 }
