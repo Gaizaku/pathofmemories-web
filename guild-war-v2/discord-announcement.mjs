@@ -117,6 +117,20 @@ export function isValidAnnouncementEventIds(eventIds) {
 }
 
 export async function sendDiscordRoundBundle(env, rounds, origin) {
+  const payload = buildAnnouncementPayload(rounds, 0);
+  if (env.DISCORD_BOT_TOKEN || env.DISCORD_CHANNEL_ID) {
+    if (!env.DISCORD_BOT_TOKEN || !/^\d{15,25}$/.test(env.DISCORD_CHANNEL_ID || "")) return "failed";
+    try {
+      const response = await fetch("https://discord.com/api/v10/channels/" + env.DISCORD_CHANNEL_ID + "/messages", {
+        method: "POST",
+        headers: {"Authorization": "Bot " + env.DISCORD_BOT_TOKEN, "Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      });
+      return response.ok ? "sent" : "failed";
+    } catch {
+      return "failed";
+    }
+  }
   if (!env.DISCORD_WEBHOOK_URL) return "unconfigured";
   let webhook;
   try { webhook = new URL(env.DISCORD_WEBHOOK_URL); } catch { return "failed"; }
@@ -125,7 +139,7 @@ export async function sendDiscordRoundBundle(env, rounds, origin) {
     const response = await fetch(webhook, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(buildAnnouncementPayload(rounds, 0)),
+      body: JSON.stringify(payload),
     });
     return response.ok ? "sent" : "failed";
   } catch {
