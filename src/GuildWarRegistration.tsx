@@ -7,6 +7,13 @@ type Round={id:string;starts_at:string;local_date:string;war_type:string;status:
 type Weapon={id:string;name:string};
 const base='/api/v2/games/where-winds-meet';
 const teamNames=[['','ทีมไหนก็ได้','Any team'],['ATTACK_1','บุก 1','Attack 1'],['ATTACK_2','บุก 2','Attack 2'],['ATTACK_3','บุก 3','Attack 3'],['DEFENSE_1','กัน 1','Defense 1'],['DEFENSE_2','กัน 2','Defense 2'],['FOREST','ป่า','Forest'],['STANDBY','สำรอง','Standby']];
+const completionMessages=[
+  ['เรียบร้อยแล้วน้า อย่าบิดกันล่ะ OwO','All set! Don’t bail on us, OwO'],
+  ['บันทึกเสร็จแล้ว รอเล่นด้วยกันอยู่น้า','Saved! Looking forward to playing together.'],
+  ['เสร็จแล้วครับ อาทิตย์นี้เตรียมวอร์กันมันส์ๆเลย','Done! Let’s get ready for an exciting War this week.'],
+  ['บันทึกเรียบร้อย ไว้เจอกันตอนวอร์น้า >w<','Saved! See you at War, >w<'],
+  ['กราบขอบพระคุณท่านผู้เจริญ ซึ่งมากไปด้วยสติปัญญา','Our deepest thanks to you, wise and noble one.']
+] as const;
 const weaponThai:Record<string,string>={
   'Nameless Sword':'ดาบไร้นาม','Strategic Sword':'ดาบเลือด','Infernal Twinblades':'ดาบคู่ปั่นๆ','Nameless Spear':'หอกไร้นาม','Heavenquaker Spear':'หอกเลือด','Stormbreaker Spear':'หอกแทงค์','Panacea Fan':'พัดฮิล','Inkwell Fan':'พัดดาเมจ','Vernal Umbrella':'ร้มยิง','Soulshade Umbrella':'ร้มฮิล','Everspring Umbrella':'ร่มปา','Mortal Rope Dart':'โซ่หนู','Unfettered Rope Dart':'โซ่ร่มปา','Skygrasp Rope Dart':'โซ่หมัด','Thundercry Blade':'ดาบโม่','Phalanxbane Blade':'ดาบโม่ถัง','Snowparting Blade':'ดาบถัง','Heavenwill Gauntlets':'หมัดชาร์จ','Skystrike Gauntlets':'หมัดเมา','Riven Twinblades':'ดาบคู่ตัดนํ้า'
 };
@@ -17,6 +24,7 @@ async function json(url:string,body?:unknown){const r=await fetch(url,body===und
 function credentials(playerId:string){return {playerId};}
 export function GuildWarRegistration({language}:{language:'th'|'en'}) {
   const th=language==='th',t=(a:string,b:string)=>th?a:b;
+  const randomCompletionMessage=()=>{const item=completionMessages[Math.floor(Math.random()*completionMessages.length)];return t(item[0],item[1]);};
   const {notify,confirm}=useGuildWarOverlay();
   const [players,setPlayers]=useState<Player[]>([]),[events,setEvents]=useState<Round[]>([]),[weekStart,setWeek]=useState('');
   const [playerId,setPlayer]=useState(''),[search,setSearch]=useState(''),[selected,setSelected]=useState<string[]>([]),[regularSlots,setRegularSlots]=useState<string[]>([]),[loadoutIds,setLoadouts]=useState<string[]>([]);
@@ -32,10 +40,10 @@ export function GuildWarRegistration({language}:{language:'th'|'en'}) {
   useEffect(()=>{const version=++generation.current;setReady(false);setSelected([]);setRegularSlots([]);setEditingRegular(false);setLoadouts([]);setRole('');setTeam('');setNote('');setRegular(false);setMessage('');setNewBuild(false);if(!playerId)return;setLoadingProfile(true);
     json(base+'/member-registration/lookup',credentials(playerId)).then(d=>{if(version!==generation.current)return;setRevision(d.revision);setSelected(d.selected);setRegularSlots(d.regularSlots||[]);setLoadouts(d.loadoutIds);setRole(d.preferredRole);setTeam(d.preferredTeam);setRegular(d.regular);setNote(d.note);setWeapons(d.weapons);setReady(true);setFailed(false);}).catch(e=>{if(version===generation.current)error(e);}).finally(()=>{if(version===generation.current)setLoadingProfile(false);});
   },[playerId]);
-  async function save(selectedForWeek=selected,successMessage?:string){if(!ready)return;setBusy(true);setMessage('');try{const d=await json(base+'/member-registration/save',{...credentials(playerId),weekStart,selected:selectedForWeek,regularSlots,loadoutIds,preferredRole:role,preferredTeam:team,note,regular,revision});setSelected(selectedForWeek);setRevision(d.revision);setEditingRegular(false);setFailed(false);setMessage(successMessage||(regular?t('บันทึกแล้ว รอบขาประจำและสถานะสัปดาห์นี้ได้รับการอัปเดต','Saved. Your regular rounds and this week’s availability are updated.'):t('บันทึกรอบสัปดาห์นี้แล้ว','This week’s registration is saved.')));}catch(e){error(e);}finally{setBusy(false);}}
+  async function save(selectedForWeek=selected,successMessage?:string){if(!ready)return;setBusy(true);setMessage('');try{const d=await json(base+'/member-registration/save',{...credentials(playerId),weekStart,selected:selectedForWeek,regularSlots,loadoutIds,preferredRole:role,preferredTeam:team,note,regular,revision});setSelected(selectedForWeek);setRevision(d.revision);setEditingRegular(false);setFailed(false);setMessage(successMessage||randomCompletionMessage());}catch(e){error(e);}finally{setBusy(false);}}
   async function markUnavailableThisWeek(){
     if(!await confirm({title:t('ไม่ว่างสัปดาห์นี้','Unavailable this week'),message:t('ยืนยันว่าไม่ว่างทุก War รอบสัปดาห์นี้? รอบขาประจำจะยังคงใช้ต่อในสัปดาห์หน้า','Mark unavailable for every War round this week? Your regular schedule will continue next week.'),confirmLabel:t('ยืนยัน','Confirm'),cancelLabel:t('ยกเลิก','Cancel'),danger:true}))return;
-    await save([],t('บันทึกแล้ว: ไม่ว่างทุก War รอบสัปดาห์นี้','Saved: unavailable for every War round this week.'));
+    await save([],t('ไว้มาเล่นด้วยกันสัปดาห์หน้าน้า','See you next week!'));
   }
   async function addPlayer(){setBusy(true);try{const d=await json(base+'/member-registration/player',{characterName:name,nickname});const p=await json(base+'/players');setPlayers(p.players);setSearch('');setPlayer(d.playerId);setNewPlayer(false);setName('');setNickname('');}catch(e){error(e);}finally{setBusy(false);}}
   async function addBuild(){setBusy(true);try{const d=await json(base+'/member-registration/loadout',{...credentials(playerId),role:buildRole,mainWeapon:main,subWeapon:sub});const p=await json(base+'/players');setPlayers(p.players);setLoadouts(ids=>[...ids,d.id]);setRole(buildRole);setNewBuild(false);}catch(e){error(e);}finally{setBusy(false);}}
