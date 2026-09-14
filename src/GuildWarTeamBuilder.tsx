@@ -173,7 +173,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }
 
   async function announceFourRounds() {
-    const selected = announcementRounds.filter(id => rounds.some(item => item.id === id));
+    const selected = announcementRounds.filter(id => rounds.some(item => item.id === id)).sort((left, right) => rounds.findIndex(item => item.id === left) - rounds.findIndex(item => item.id === right));
     if (selected.length !== 4) {
       setError(th ? "กรุณาเลือกให้ครบ 4 รอบ" : "Select exactly 4 rounds");
       return;
