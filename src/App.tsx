@@ -166,7 +166,7 @@ function Shell({ children, language, onLanguageChange }: { children: ReactNode; 
     <main className="site-shell">
       <header className="site-header">
         <a className="brand" href="/" aria-label="Path of Memories home">
-          <span className="brand-mark" aria-hidden="true">◆</span>
+          <img className="brand-mark" src="/assets/pom-logo.png" alt="" aria-hidden="true" />
           <span className="brand-name"><span className="brand-long">Path of Memories</span><span className="brand-short">POM</span></span>
         </a>
         <nav className="top-links" aria-label="Primary navigation">

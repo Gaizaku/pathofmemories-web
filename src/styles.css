@@ -96,15 +96,13 @@ a { color: inherit; }
 .brand-mark {
   width: 34px;
   height: 34px;
-  display: grid;
-  place-items: center;
+  display: block;
   flex: 0 0 auto;
-  color: var(--gold);
+  object-fit: cover;
+  overflow: hidden;
   border: 1px solid rgba(255, 215, 136, 0.68);
   border-radius: 11px;
-  background: radial-gradient(circle, rgba(141, 92, 255, 0.48), rgba(28, 15, 70, 0.86));
   box-shadow: inset 0 0 15px rgba(255, 173, 63, 0.12), 0 0 19px rgba(255, 173, 63, 0.13);
-  font-size: 13px;
 }
 
 .brand-name {
