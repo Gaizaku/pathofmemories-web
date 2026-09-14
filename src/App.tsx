@@ -207,8 +207,8 @@ function HomePage({ language, onLanguageChange }: { language: Language; onLangua
   const t = copy[language];
   const portals = [
     { label: t.activitySchedule, href: "/games/where-winds-meet/schedule/", icon: "schedule" as const },
-    { label: "Guild War", href: "/games/where-winds-meet/guild-war/", icon: "guild-war" as const },
-    { label: "Guides", href: "/games/where-winds-meet/guides/", icon: "guides" as const },
+    { label: "กิลวอร์", href: "/games/where-winds-meet/guild-war/", icon: "guild-war" as const },
+    { label: "ข้อมูลแนะนำ", href: "/games/where-winds-meet/guides/", icon: "guides" as const },
   ];
 
   return (
@@ -255,8 +255,8 @@ function WhereWindsMeetPage({ language, onLanguageChange }: { language: Language
   const t = copy[language];
   const tools = [
     { number: "01", label: t.activitySchedule, detail: t.schedulePageIntro, href: "/games/where-winds-meet/schedule/" },
-    { number: "02", label: "Guild War Manager", detail: t.registration, href: "/games/where-winds-meet/guild-war/" },
-    { number: "03", label: "Guides", detail: t.guidesPageIntro, href: "/games/where-winds-meet/guides/" },
+    { number: "02", label: "กิลวอร์", detail: t.registration, href: "/games/where-winds-meet/guild-war/" },
+    { number: "03", label: "ข้อมูลแนะนำ", detail: t.guidesPageIntro, href: "/games/where-winds-meet/guides/" },
   ];
 
   return (
