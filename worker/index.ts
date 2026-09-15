@@ -12,12 +12,18 @@ export interface Env {
   DISCORD_CLIENT_ID: string;
   DISCORD_CLIENT_SECRET: string;
   DISCORD_WEBHOOK_URL?: string;
+  DISCORD_PUBLIC_KEY?: string;
+  DISCORD_BOT_TOKEN?: string;
+  DISCORD_CHANNEL_ID?: string;
   PUBLIC_ORIGIN?: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    const discordInteractionResponse = await discordInteractionApi(request, env);
+    if (discordInteractionResponse) return discordInteractionResponse;
 
     if (url.pathname === "/api/health") {
       return Response.json({ service: "pathofmemories-web", status: "ok" });

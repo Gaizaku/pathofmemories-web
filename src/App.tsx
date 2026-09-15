@@ -300,6 +300,15 @@ function ActivitySchedulePage({ language, onLanguageChange }: { language: Langua
 
 function GuildWarPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const t = copy[language];
+  const [organizer, setOrganizer] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/discord/session", {credentials: "same-origin"})
+      .then(response => response.ok ? response.json() : {organizer: null})
+      .then(data => { if (!cancelled) setOrganizer(Boolean(data.organizer)); })
+      .catch(() => { if (!cancelled) setOrganizer(false); });
+    return () => { cancelled = true; };
+  }, []);
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
       <section className="manager-hero">
@@ -322,9 +331,9 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
         <a className="manager-action manager-action-primary" href="/games/where-winds-meet/guild-war/register">
           <span>02</span><strong>{t.openRegister}</strong><small>{t.registrationActionHint} <ExternalMark /></small>
         </a>
-        <a className="manager-action" href="/games/where-winds-meet/guild-war/teams">
+        {organizer && <a className="manager-action" href="/games/where-winds-meet/guild-war/teams">
           <span>03</span><strong>{t.openBuilder}</strong><small>{t.builderActionHint} <ExternalMark /></small>
-        </a>
+        </a>}
       </section>
       <p className="manager-note">✦ {t.managerNote}</p>
     </Shell>
@@ -453,6 +462,38 @@ function DiscordPage({ language, onLanguageChange }: { language: Language; onLan
   );
 }
 
+
+function OrganizerOnlyTeamBuilderPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+  const [state, setState] = useState<"loading" | "allowed" | "denied">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/discord/session", {credentials: "same-origin"})
+      .then(async response => {
+        const data = response.ok ? await response.json() : {organizer: null};
+        if (!cancelled) setState(data.organizer ? "allowed" : "denied");
+      })
+      .catch(() => { if (!cancelled) setState("denied"); });
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <Shell language={language} onLanguageChange={onLanguageChange}>
+      {state === "loading" && <section className="page-intro compact-intro"><p role="status">กำลังตรวจสอบสิทธิ์ผู้จัดทีม…</p></section>}
+      {state === "denied" && (
+        <section className="page-intro compact-intro">
+          <a className="back-link" href="/games/where-winds-meet/guild-war/">← กลับหน้า Guild War</a>
+          <p className="eyebrow">ORGANIZER ACCESS</p>
+          <h1>หน้านี้สำหรับผู้จัดทีมเท่านั้น</h1>
+          <p className="intro">กรุณาเข้าสู่ระบบ Discord ด้วยบัญชี Organizer ที่ได้รับสิทธิ์</p>
+          <a className="manager-action manager-action-primary" href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">เข้าสู่ระบบผู้จัดทีม <ExternalMark /></a>
+        </section>
+      )}
+      {state === "allowed" && <GuildWarTeamBuilder language={language} />}
+    </Shell>
+  );
+}
+
 export default function App() {
   const [language, setLanguage] = useLanguage();
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
@@ -467,7 +508,7 @@ export default function App() {
   if (path.startsWith("/games/where-winds-meet/guides/")) return <GuideDetailPage slug={path.split("/").filter(Boolean).pop() || ""} language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war/register") return <GuildWarRegistrationPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war/regulars") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarRegulars language={language} /></Shell>;
-  if (path === "/games/where-winds-meet/guild-war/teams") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarTeamBuilder language={language} /></Shell>;
+  if (path === "/games/where-winds-meet/guild-war/teams") return <OrganizerOnlyTeamBuilderPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war/players") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarPlayerManagement language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   return <HomePage language={language} onLanguageChange={setLanguage} />;

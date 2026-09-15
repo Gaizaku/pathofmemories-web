@@ -1,18 +1,13 @@
 import {activeOrganizer} from "./organizer-auth.mjs";
 import {validDraft} from "./team-draft-api.mjs";
 import {readApi} from "./read-api.mjs";
+import {buildRoundEmbed, loadPublishedRounds, sendDiscordRoundBundle, isValidAnnouncementEventIds, attachPublicationUrls} from "./discord-announcement.mjs";
 
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
 const discordTeams = [["ATTACK_1","🔴 ทีมบุก 1"],["ATTACK_2","🔴 ทีมบุก 2"],["ATTACK_3","🔴 ทีมบุก 3"],["DEFENSE_1","🔵 ทีมกัน 1"],["DEFENSE_2","🔵 ทีมกัน 2"],["FOREST","🟢 ป่า"],["STANDBY","⚪ สำรอง"]];
 const literal = value => String(value || "").replace(/@/g,"@\u200b").replace(/[\r\n]/g," ").slice(0,180);
 export function discordWebhookPayload(snapshot, publicationUrl) {
-  const fields=discordTeams.map(([team,name])=>{
-    const members=snapshot.members.filter(member=>member.team===team);
-    const value=members.length?members.map(member=>"• "+literal(member.name)+(member.role?" · "+literal(member.role):"")).join("\n"):"—";
-    return {name:name+" · "+members.length+(team!=="STANDBY"?"/5":""),value:value.slice(0,1024),inline:true};
-  });
-  const starts=new Date(snapshot.event.startsAt).getTime();
-  return {username:"Path of Memories",embeds:[{title:"⚔️ Guild War Team Ready",url:publicationUrl,description:(Number.isFinite(starts)?"<t:"+Math.floor(starts/1000)+":F>\n":"")+"[เปิดสรุปทีม]("+publicationUrl+")",color:0xC8A86B,fields,footer:{text:"Path of Memories · Guild War"}}]};
+  return {username: "Path of Memories", embeds: [buildRoundEmbed(snapshot, publicationUrl, 1)]};
 }
 async function sendDiscordWebhook(env,snapshot,publicationUrl) {
   if(!env.DISCORD_WEBHOOK_URL)return "unconfigured";
@@ -45,8 +40,33 @@ export function publicationSnapshot(board, source) {
     unassignedCount: source.registrations.filter(p => !Object.hasOwn(board, p.player_id)).length};
 }
 
+async function teamAnnouncementApi(request, env, url, game) {
+  if (request.method !== "POST") return json({error: "method_not_allowed"}, 405);
+  if (request.headers.get("Origin") !== url.origin) return json({error: "origin_required"}, 403);
+  const user = await activeOrganizer(env, request);
+  if (!user) return json({error: "organizer_required"}, 401);
+  const raw = await request.text();
+  if (raw.length > 2000) return json({error: "too_large"}, 413);
+  let data;
+  try { data = JSON.parse(raw); } catch { return json({error: "invalid_request"}, 400); }
+  if (!isValidAnnouncementEventIds(data?.eventIds)) return json({error: "four_rounds_required"}, 400);
+  try {
+    const loaded = await loadPublishedRounds(env.GUILD_WAR_DB, game, data.eventIds);
+    if (loaded.missing.length) return json({error: "publication_missing", eventIds: loaded.missing}, 409);
+    let origin = url.origin;
+    try { origin = new URL(env.PUBLIC_ORIGIN || url.origin).origin; } catch {}
+    const rounds = attachPublicationUrls(loaded.rounds, origin);
+    const webhook = await sendDiscordRoundBundle(env, rounds, origin);
+    return json({eventIds: data.eventIds, webhook});
+  } catch {
+    return json({error: "announcement_unavailable"}, 503);
+  }
+}
+
 export async function teamPublicationApi(request, env) {
   const url = new URL(request.url);
+  const announcementRoute = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/announcements$/.exec(url.pathname);
+  if (announcementRoute) return teamAnnouncementApi(request, env, url, announcementRoute[1]);
   const route = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/publications(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname);
   if (!route) return null;
   const [,game,event,id] = route;

@@ -58,6 +58,9 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [copyRounds,setCopyRounds] = useState<string[]>([]);
   const [copyPanel,setCopyPanel] = useState(false);
   const [copying,setCopying] = useState(false);
+  const [announcementRounds,setAnnouncementRounds] = useState<string[]>([]);
+  const [announcementPanel,setAnnouncementPanel] = useState(false);
+  const [announcing,setAnnouncing] = useState(false);
   const [revision,setRevision] = useState(0);
   const [quickName,setQuickName] = useState("");
   const [quickPlayerId,setQuickPlayerId] = useState("");
@@ -167,6 +170,31 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       }
     }catch(e){setError(e instanceof Error?e.message:"Publish failed");}
     finally{setPublishing(false);if(summaryWasOpen&&!summaryDialog.current?.open)summaryDialog.current?.showModal();}
+  }
+
+  async function announceFourRounds() {
+    const selected = announcementRounds.filter(id => rounds.some(item => item.id === id)).sort((left, right) => rounds.findIndex(item => item.id === left) - rounds.findIndex(item => item.id === right));
+    if (selected.length !== 4) {
+      setError(th ? "กรุณาเลือกให้ครบ 4 รอบ" : "Select exactly 4 rounds");
+      return;
+    }
+    if (!await confirm({title:th ? "ประกาศรอบวอร์ 4 รอบ" : "Announce four War rounds",message:th ? "ประกาศ 4 รอบที่เลือกเป็นข้อความ Discord เดียวพร้อมปุ่มเปลี่ยนรอบ?" : "Send the four selected rounds as one Discord message with round buttons?",confirmLabel:th ? "ประกาศ" : "Announce",cancelLabel:th ? "ยกเลิก" : "Cancel"})) return;
+    setAnnouncing(true);setError("");setCloudMessage("");
+    try {
+      const response = await fetch(base + "/war/announcements", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventIds:selected})});
+      const result = await response.json();
+      if (!response.ok) {
+        if (result.error === "publication_missing") throw new Error(th ? "ต้องประกาศทีมของทั้ง 4 รอบก่อน จึงจะส่งชุดประกาศได้" : "Publish all four round teams before sending the bundle");
+        if (result.error === "organizer_required") throw new Error(th ? "กรุณาเข้าสู่ระบบ Discord อีกครั้ง" : "Please sign in with Discord again");
+        throw new Error(th ? "ประกาศ 4 รอบไม่สำเร็จ" : "Could not announce the four rounds");
+      }
+      setAnnouncementPanel(false);setAnnouncementRounds([]);
+      setCloudMessage(result.webhook === "sent" ? (th ? "ส่งประกาศ 4 รอบไป Discord แล้ว" : "Four-round announcement sent to Discord") : result.webhook === "unconfigured" ? (th ? "เตรียมประกาศแล้ว · ยังไม่ตั้งค่า Discord Webhook" : "Prepared · Discord Webhook is not configured") : (th ? "เตรียมประกาศแล้ว แต่ส่ง Discord ไม่สำเร็จ" : "Prepared, but Discord delivery failed"));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : (th ? "ประกาศ 4 รอบไม่สำเร็จ" : "Could not announce the four rounds"));
+    } finally {
+      setAnnouncing(false);
+    }
   }
 
   async function copyBoardToRounds() {
@@ -432,10 +460,12 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={autoAssign}>{th?"จัดอัตโนมัติ":"Auto assign"}</button>
       <button disabled={!organizer||loading||loadedRound!==round||copying} onClick={()=>setCopyPanel(value=>!value)}>{th?`คัดลอกไปรอบอื่น${copyRounds.length?` (${copyRounds.length})`:""}`:`Copy to other rounds${copyRounds.length?` (${copyRounds.length})`:""}`}</button>
+      <button disabled={!organizer||loading||loadedRound!==round||announcing} onClick={()=>setAnnouncementPanel(value=>!value)}>{th?"ประกาศ 4 รอบ":"Announce 4 rounds"}{announcementRounds.length ? " (" + announcementRounds.length + "/4)" : ""}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>summaryDialog.current?.showModal()}>Team Summary</button>
       <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/players">{th?"จัดการรายชื่อ":"Manage players"}</a>
       <span className="gw-primary-actions"><button className="gw-save" disabled={!organizer||loading||loadedRound!==round} onClick={()=>void cloudDraft()}>{th?"บันทึก":"Save"}</button><button className="gw-clear-board" disabled={!organizer||loading} onClick={()=>void clearBoard()}>{th?"ล้างทีม":"Clear team"}</button></span></div></header>
     {copyPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"คัดลอกการจัดทีมไปยังรอบอื่น":"Copy team arrangement to other rounds"}</strong><p>{th?"เลือกรอบปลายทางได้หลายรอบพร้อมกัน รายชื่อที่ไม่ได้ลงในรอบนั้นจะถูกข้าม":"Choose multiple destination rounds. Players unavailable in a round will be skipped."}</p></div><button type="button" onClick={()=>setCopyPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.filter(item=>item.id!==round).map(item=>{const checked=copyRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={copying} onChange={()=>setCopyRounds(current=>checked?current.filter(id=>id!==item.id):[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setCopyRounds([])} disabled={!copyRounds.length||copying}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={!copyRounds.length||copying} onClick={()=>void copyBoardToRounds()}>{copying?(th?"กำลังคัดลอก…":"Copying…"):(th?`คัดลอกไป ${copyRounds.length} รอบ`:`Copy to ${copyRounds.length} rounds`)}</button></footer></section>}
+    {announcementPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"ประกาศรอบวอร์ 4 รอบ":"Announce four War rounds"}</strong><p>{th?"เลือก 4 รอบที่ประกาศทีมไว้แล้ว เพื่อส่งเป็นข้อความ Discord เดียวพร้อมปุ่มเปลี่ยนรอบ":"Choose four published rounds to send as one Discord message with round buttons."}</p></div><button type="button" onClick={()=>setAnnouncementPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.map(item=>{const checked=announcementRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={announcing||(!checked&&announcementRounds.length>=4)} onChange={()=>setAnnouncementRounds(current=>checked?current.filter(id=>id!==item.id):current.length>=4?current:[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setAnnouncementRounds([])} disabled={!announcementRounds.length||announcing}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={announcementRounds.length!==4||announcing} onClick={()=>void announceFourRounds()}>{announcing?(th?"กำลังส่ง…":"Sending…"):(th?"ประกาศ 4 รอบ":"Announce four rounds")}</button></footer></section>}
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     {cloudBusy&&<p role="status" aria-live="polite">{th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"}</p>}
     <section className="gw-quick-add">
