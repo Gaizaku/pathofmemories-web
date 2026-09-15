@@ -68,6 +68,12 @@ test("rejects the player directory without an organizer session", async () => {
   assert.equal((await readApi(request("/api/v2/games/wwm/players"), env, now)).status, 401);
 });
 
+test("returns registration player choices without loadout details", async () => {
+  const result = await readApi(request("/api/v2/games/wwm/registration-players"), env, now);
+  assert.equal(result.status, 200);
+  assert.deepEqual((await result.json()).players, [{id: "P001", character_name: "Golf", nickname: "กอล์ฟ"}]);
+});
+
 test("returns a round with registrations and chosen loadouts", async () => {
   const result = await readApi(request("/api/v2/games/wwm/war/events/one/registrations"), env, now);
   const body = await result.json();
