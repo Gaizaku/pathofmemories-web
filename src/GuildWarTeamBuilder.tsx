@@ -39,6 +39,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const summaryDialog = useRef<HTMLDialogElement>(null);
 
   const [rounds,setRounds] = useState<Round[]>([]);
+  const [unassignedByRound,setUnassignedByRound] = useState<Record<string,number>>({});
   const [round,setRound] = useState("");
   const [players,setPlayers] = useState<Player[]>([]);
   const [board,setBoard] = useState<Record<string,Placement>>({});
@@ -247,6 +248,11 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     if (!response.ok) throw new Error("request_failed");
     return response.json();
   }
+
+  // A standby placement counts as handled; only players absent from the board need attention.
+  function unassignedCount(roster:Player[], draft:Record<string,Placement>) {
+    return roster.filter(player=>!Object.prototype.hasOwnProperty.call(draft,player.player_id)).length;
+  }
   useEffect(()=>{
     const c = new AbortController();
     get(base+"/war/events",c.signal).then(d=>{
@@ -259,6 +265,27 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     get(base+"/players",c.signal).then(d=>setDirectoryPlayers(d.players||[])).catch(()=>{});
     return ()=>c.abort();
   },[]);
+  useEffect(()=>{
+    if(!rounds.length)return;
+    const c=new AbortController();
+    void Promise.all(rounds.map(async item=>{
+      try {
+        const response=await get(base+"/war/events/"+item.id+"/team-builder",c.signal);
+        const roster:Player[]=response.registrations||[];
+        const draft=response.revision>0?normalizeBoard(roster,response.board):{};
+        return [item.id,unassignedCount(roster,draft)] as const;
+      } catch { return null; }
+    })).then(items=>{
+      if(c.signal.aborted)return;
+      setUnassignedByRound(current=>{
+        const nextCounts={...current};
+        for(const item of items)if(item)nextCounts[item[0]]=item[1];
+        return nextCounts;
+      });
+    });
+    return ()=>c.abort();
+  },[rounds]);
+
   useEffect(()=>{
     if(!round)return;
     const c=new AbortController();
@@ -279,6 +306,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         const valid=normalizeBoard(roster,source);
         const next={players:roster,board:valid,organizer:response.organizer?.displayName||"",revision:onlineRevision,savedBoard:loadedOnline?JSON.stringify(valid):""};
         roundCache.current[round]=next;
+        setUnassignedByRound(current=>({...current,[round]:unassignedCount(roster,valid)}));
         setPlayers(next.players);setBoard(next.board);setOrganizer(next.organizer);setRevision(next.revision);setSavedBoard(next.savedBoard);setLoadedRound(round);setLoading(false);setSaved(true);
       }catch{if(!c.signal.aborted){setLoading(false);setError(th?"โหลดรายชื่อไม่สำเร็จ กด Refresh เพื่อลองใหม่":"Could not load roster. Refresh to retry.");}}
     })();
@@ -286,6 +314,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   },[round]);
   useEffect(()=>{
     if(!organizer||loadedRound!==round||!round)return;
+    setUnassignedByRound(current=>({...current,[round]:unassignedCount(players,board)}));
     const cached=roundCache.current[round];
     if(cached)roundCache.current[round]={...cached,board,organizer,revision,savedBoard};
     try{localStorage.setItem("pom-board-v2:"+round,JSON.stringify(board));setSaved(true);}
@@ -426,6 +455,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     </section>;
   }
   const pool=players.filter(p=>!board[p.player_id]);
+  const roundWarning=unassignedByRound[round]||0;
   const playerNotes=players.filter(p=>p.note?.trim()).sort((a,b)=>a.character_name.localeCompare(b.character_name));
   const warnings=teams.filter(t=>t!=="STANDBY").filter(t=>{
     const m=players.filter(p=>board[p.player_id]?.team===t);
@@ -457,7 +487,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }
   return <section className="gw-builder"><fieldset disabled={cloudBusy||publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
     <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากผู้เล่นไปทับอีกคนเพื่อสลับ · ทีมละ 5 คน":"Drag a player onto another to swap · 5 per team"}</p></div>
-      <div className="gw-toolbar"><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=><option key={r.id} value={r.id}>{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>)}</select>
+      <div className="gw-toolbar"><div className={"gw-round-picker "+(roundWarning>0?"has-unassigned":"")}><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=>{const count=unassignedByRound[r.id]||0;return <option key={r.id} value={r.id}>{count>0?`⚠ ${count} · `:""}{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>})}</select>{roundWarning>0&&<span className="gw-round-warning" title={th?`ยังมี ${roundWarning} คนที่ไม่ได้จัดทีม`:`${roundWarning} player(s) still unassigned`}>⚠ {roundWarning}</span>}</div>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={autoAssign}>{th?"จัดอัตโนมัติ":"Auto assign"}</button>
       <button disabled={!organizer||loading||loadedRound!==round||copying} onClick={()=>setCopyPanel(value=>!value)}>{th?`คัดลอกไปรอบอื่น${copyRounds.length?` (${copyRounds.length})`:""}`:`Copy to other rounds${copyRounds.length?` (${copyRounds.length})`:""}`}</button>
       <button disabled={!organizer||loading||loadedRound!==round||announcing} onClick={()=>setAnnouncementPanel(value=>!value)}>{th?"ประกาศ 4 รอบ":"Announce 4 rounds"}{announcementRounds.length ? " (" + announcementRounds.length + "/4)" : ""}</button>

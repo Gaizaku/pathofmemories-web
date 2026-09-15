@@ -1202,3 +1202,10 @@ h1 em {
   .organizer-login-copy > p:not(.eyebrow) { font-size: 13px; }
   .organizer-login-button { width: 100%; margin-top: 27px; }
 }
+
+
+/* Surface incomplete round rosters directly in the Team Builder round picker. */
+.gw-round-picker{position:relative;display:inline-flex;align-items:center}
+.gw-round-picker.has-unassigned select{min-width:250px;padding-right:68px;border-color:rgba(242,181,70,.72);box-shadow:0 0 0 1px rgba(242,181,70,.15),0 4px 16px rgba(0,0,0,.18)}
+.gw-round-warning{position:absolute;right:8px;display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid rgba(255,209,112,.48);border-radius:999px;color:#ffe3a1;background:#3d2c17;font:800 10px "DM Mono",monospace;pointer-events:none}
+@media(max-width:560px){.gw-round-picker,.gw-round-picker select{width:100%}.gw-round-picker.has-unassigned select{min-width:0}}
