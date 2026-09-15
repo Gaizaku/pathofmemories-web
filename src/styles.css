@@ -1209,3 +1209,23 @@ h1 em {
 .gw-round-picker.has-unassigned select{min-width:250px;padding-right:68px;border-color:rgba(242,181,70,.72);box-shadow:0 0 0 1px rgba(242,181,70,.15),0 4px 16px rgba(0,0,0,.18)}
 .gw-round-warning{position:absolute;right:8px;display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid rgba(255,209,112,.48);border-radius:999px;color:#ffe3a1;background:#3d2c17;font:800 10px "DM Mono",monospace;pointer-events:none}
 @media(max-width:560px){.gw-round-picker,.gw-round-picker select{width:100%}.gw-round-picker.has-unassigned select{min-width:0}}
+
+.gw-summary-round-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 1rem;
+}
+.gw-summary-round-nav button {
+  border: 1px solid rgba(200, 168, 107, 0.35);
+  border-radius: 999px;
+  background: rgba(200, 168, 107, 0.08);
+  color: inherit;
+  cursor: pointer;
+  padding: 0.45rem 0.8rem;
+}
+.gw-summary-round-nav button.active,
+.gw-summary-round-nav button:hover {
+  background: rgba(200, 168, 107, 0.28);
+  border-color: rgba(200, 168, 107, 0.85);
+}
