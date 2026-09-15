@@ -51,7 +51,23 @@ async function teamAnnouncementApi(request, env, url, game) {
   try { data = JSON.parse(raw); } catch { return json({error: "invalid_request"}, 400); }
   if (!isValidAnnouncementEventIds(data?.eventIds)) return json({error: "four_rounds_required"}, 400);
   try {
-    const loaded = await loadPublishedRounds(env.GUILD_WAR_DB, game, data.eventIds);
+    const db = env.GUILD_WAR_DB;
+    let loaded = await loadPublishedRounds(db, game, data.eventIds);
+    // The four-round announcement is the primary publication flow. Create missing
+    // publications from each organizer's latest saved draft before sending Discord.
+    for (const eventId of loaded.missing) {
+      const draft = await db.prepare("SELECT revision,board_json FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=? ORDER BY revision DESC LIMIT 1").bind(game, eventId, user.id).first();
+      if (!draft) continue;
+      const rosterResponse = await readApi(new Request(url.origin + "/api/v2/games/" + game + "/war/events/" + eventId + "/registrations"), env);
+      if (!rosterResponse.ok) continue;
+      const source = await rosterResponse.json();
+      if (source.event.status === "cancelled") continue;
+      let snapshot;
+      try { snapshot = publicationSnapshot(JSON.parse(draft.board_json), source); } catch { continue; }
+      const publicationId = crypto.randomUUID();
+      await db.prepare("INSERT INTO team_publications (id,game_id,event_id,organizer_id,draft_revision,snapshot_json,published_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(game_id,event_id,organizer_id,draft_revision) DO NOTHING").bind(publicationId, game, eventId, user.id, draft.revision, JSON.stringify(snapshot), new Date().toISOString()).run();
+    }
+    loaded = await loadPublishedRounds(db, game, data.eventIds);
     if (loaded.missing.length) return json({error: "publication_missing", eventIds: loaded.missing}, 409);
     let origin = url.origin;
     try { origin = new URL(env.PUBLIC_ORIGIN || url.origin).origin; } catch {}
@@ -62,7 +78,6 @@ async function teamAnnouncementApi(request, env, url, game) {
     return json({error: "announcement_unavailable"}, 503);
   }
 }
-
 export async function teamPublicationApi(request, env) {
   const url = new URL(request.url);
   const announcementRoute = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/announcements$/.exec(url.pathname);
