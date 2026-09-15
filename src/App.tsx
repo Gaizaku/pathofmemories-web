@@ -479,14 +479,35 @@ function OrganizerOnlyTeamBuilderPage({ language, onLanguageChange }: { language
 
   return (
     <Shell language={language} onLanguageChange={onLanguageChange}>
-      {state === "loading" && <section className="page-intro compact-intro"><p role="status">กำลังตรวจสอบสิทธิ์ผู้จัดทีม…</p></section>}
+      {state === "loading" && (
+        <section className="organizer-login organizer-login-loading" aria-live="polite">
+          <div className="organizer-login-spinner" aria-hidden="true" />
+          <p role="status">กำลังตรวจสอบสิทธิ์ผู้จัดทีม…</p>
+        </section>
+      )}
       {state === "denied" && (
-        <section className="page-intro compact-intro">
-          <a className="back-link" href="/games/where-winds-meet/guild-war/">← กลับหน้า Guild War</a>
-          <p className="eyebrow">ORGANIZER ACCESS</p>
-          <h1>หน้านี้สำหรับผู้จัดทีมเท่านั้น</h1>
-          <p className="intro">กรุณาเข้าสู่ระบบ Discord ด้วยบัญชี Organizer ที่ได้รับสิทธิ์</p>
-          <a className="manager-action manager-action-primary" href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">เข้าสู่ระบบผู้จัดทีม <ExternalMark /></a>
+        <section className="organizer-login">
+          <a className="organizer-login-back" href="/games/where-winds-meet/guild-war/">← กลับหน้า Guild War</a>
+          <div className="organizer-login-panel">
+            <div className="organizer-login-art" aria-hidden="true">
+              <span className="organizer-login-spark organizer-login-spark-one">✦</span>
+              <span className="organizer-login-spark organizer-login-spark-two">✦</span>
+              <span className="organizer-login-ring" />
+              <img src="/assets/pom-logo.png" alt="" />
+              <span className="organizer-login-status"><i /> ORGANIZER</span>
+            </div>
+            <div className="organizer-login-copy">
+              <p className="eyebrow">PATH OF MEMORIES · TEAM BUILDER</p>
+              <h1>พร้อมจัดทีม<br /><em>เริ่มที่นี่</em></h1>
+              <p>เข้าสู่ระบบด้วย Discord ของผู้จัดทีม เพื่อดูรายชื่อ วางตำแหน่ง และประกาศทีมวอร์</p>
+              <a className="organizer-login-button" href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">
+                <span className="organizer-login-discord" aria-hidden="true">◖◗</span>
+                <span>เข้าสู่ระบบด้วย Discord</span>
+                <ExternalMark />
+              </a>
+              <div className="organizer-login-note"><span aria-hidden="true">✦</span> ใช้บัญชี Discord เดิม · ไม่ต้องสร้างบัญชีใหม่</div>
+            </div>
+          </div>
         </section>
       )}
       {state === "allowed" && <GuildWarTeamBuilder language={language} />}

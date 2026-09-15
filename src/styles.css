@@ -980,3 +980,225 @@ h1 em {
 /* Keep the quick-player directory selector aligned with the on-site form. */
 .gw-quick-player-select{min-width:190px}
 @media(max-width:760px){.gw-quick-player-select{grid-column:1/-1;width:100%}}
+
+
+/* Organizer login keeps the Discord handoff clear and welcoming on every screen size. */
+.organizer-login {
+  min-height: min(690px, calc(100vh - 184px));
+  padding: 44px 0 72px;
+}
+
+.organizer-login-back {
+  display: inline-flex;
+  margin: 0 0 30px 4px;
+  color: #aaa4be;
+  font-size: 11px;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.organizer-login-back:hover { color: var(--gold); }
+
+.organizer-login-panel {
+  position: relative;
+  isolation: isolate;
+  max-width: 1030px;
+  min-height: 478px;
+  display: grid;
+  grid-template-columns: minmax(280px, .92fr) minmax(0, 1.08fr);
+  overflow: hidden;
+  border: 1px solid rgba(255, 215, 136, .2);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 5% 5%, rgba(128, 81, 255, .24), transparent 35%),
+    radial-gradient(circle at 92% 94%, rgba(255, 169, 60, .18), transparent 38%),
+    linear-gradient(135deg, rgba(26, 15, 66, .97), rgba(10, 7, 29, .98) 60%);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .32);
+}
+
+.organizer-login-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .35;
+  background-image: radial-gradient(rgba(255, 238, 206, .7) .55px, transparent .75px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(90deg, #000, transparent 70%);
+}
+
+.organizer-login-art {
+  position: relative;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 215, 136, .12);
+  background: linear-gradient(145deg, rgba(76, 42, 150, .3), rgba(13, 9, 39, .12));
+}
+
+.organizer-login-art::before,
+.organizer-login-art::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(255, 202, 110, .22);
+  border-radius: 50%;
+}
+
+.organizer-login-art::before { width: 74%; aspect-ratio: 1; }
+.organizer-login-art::after { width: 54%; aspect-ratio: 1; border-color: rgba(157, 104, 255, .32); }
+
+.organizer-login-art img {
+  position: relative;
+  z-index: 2;
+  width: clamp(106px, 15vw, 166px);
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid rgba(255, 221, 151, .55);
+  border-radius: 30%;
+  box-shadow: 0 0 0 12px rgba(255, 190, 80, .07), 0 22px 48px rgba(0, 0, 0, .48);
+}
+
+.organizer-login-ring {
+  position: absolute;
+  width: 39%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 223, 167, .46);
+  border-radius: 50%;
+  box-shadow: 0 0 40px rgba(238, 148, 49, .28);
+}
+
+.organizer-login-spark {
+  position: absolute;
+  z-index: 3;
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(255, 168, 61, .92);
+}
+
+.organizer-login-spark-one { top: 20%; right: 19%; font-size: 28px; }
+.organizer-login-spark-two { bottom: 20%; left: 20%; color: #c39dff; font-size: 18px; }
+
+.organizer-login-status {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  color: #e9e0ff;
+  font: 500 10px "DM Mono", monospace;
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+
+.organizer-login-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #75e2a0;
+  box-shadow: 0 0 10px #75e2a0;
+}
+
+.organizer-login-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(40px, 7vw, 86px);
+}
+
+.organizer-login-copy h1 {
+  margin: 16px 0 0;
+  font-size: clamp(3rem, 6vw, 5.2rem);
+  line-height: .98;
+}
+
+.organizer-login-copy > p:not(.eyebrow) {
+  max-width: 410px;
+  margin: 24px 0 0;
+  color: #beb7cc;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.organizer-login-button {
+  width: min(100%, 390px);
+  min-height: 60px;
+  margin-top: 35px;
+  padding: 11px 15px 11px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+  color: #fffaf1;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 17px;
+  background: linear-gradient(135deg, #6976d9, #5865f2 58%, #8059cf);
+  box-shadow: 0 14px 30px rgba(70, 79, 200, .28);
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.organizer-login-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 36px rgba(70, 79, 200, .4);
+  filter: brightness(1.07);
+}
+
+.organizer-login-button .external-mark { margin-left: auto; color: #fff; font-size: 18px; }
+
+.organizer-login-discord {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #5865f2;
+  background: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -5px;
+  text-indent: -3px;
+}
+
+.organizer-login-note {
+  margin-top: 16px;
+  color: #9c95ab;
+  font-size: 11px;
+}
+
+.organizer-login-note span { margin-right: 5px; color: var(--amber); }
+
+.organizer-login-loading {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  color: #bbb4cb;
+}
+
+.organizer-login-spinner {
+  width: 46px;
+  aspect-ratio: 1;
+  border: 2px solid rgba(255, 211, 131, .18);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: organizer-login-spin .8s linear infinite;
+}
+
+@keyframes organizer-login-spin { to { transform: rotate(1turn); } }
+
+@media (max-width: 760px) {
+  .organizer-login { min-height: auto; padding: 20px 0 42px; }
+  .organizer-login-back { margin-left: 2px; margin-bottom: 19px; }
+  .organizer-login-panel { grid-template-columns: 1fr; min-height: 0; border-radius: 22px; }
+  .organizer-login-art { min-height: 236px; border-right: 0; border-bottom: 1px solid rgba(255, 215, 136, .12); }
+  .organizer-login-art img { width: 104px; border-radius: 28%; }
+  .organizer-login-status { bottom: 19px; }
+  .organizer-login-copy { padding: 34px 25px 28px; }
+  .organizer-login-copy h1 { font-size: clamp(2.8rem, 14vw, 4rem); }
+  .organizer-login-copy > p:not(.eyebrow) { font-size: 13px; }
+  .organizer-login-button { width: 100%; margin-top: 27px; }
+}
