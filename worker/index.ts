@@ -1,3 +1,4 @@
+import {discordInteractionApi} from "../guild-war-v2/discord-interactions.mjs";
 import {teamPublicationApi} from "../guild-war-v2/team-publication-api.mjs";
 import {teamDraftApi} from "../guild-war-v2/team-draft-api.mjs";
 import { readApi } from "../guild-war-v2/read-api.mjs";
