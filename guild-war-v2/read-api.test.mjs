@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
 import {bangkokWeek, readApi} from "./read-api.mjs";
+import {sha256} from "./discord-oauth.mjs";
 
 const db = new DatabaseSync(":memory:");
 db.exec(readFileSync(new URL("./001_registration.sql", import.meta.url), "utf8"));
@@ -16,6 +17,12 @@ INSERT INTO events VALUES ('other','two','2026-09-05T12:30:00Z','2026-09-05','20
 INSERT INTO attendance_choices VALUES ('wwm','one','P001','attending','DPS','ready',1,'2026-09-01T00:00:00Z','test');
 INSERT INTO attendance_loadouts VALUES ('wwm','one','P001','L001');`);
 
+db.exec("CREATE TABLE organizers (discord_user_id TEXT PRIMARY KEY, display_name TEXT, enabled INTEGER); CREATE TABLE organizer_sessions (session_hash TEXT PRIMARY KEY, discord_user_id TEXT, expires_at TEXT, created_at TEXT);");
+const organizerSession = "test-organizer-session";
+const organizerHash = await sha256(organizerSession);
+db.prepare("INSERT INTO organizers VALUES (?, ?, 1)").run("ORG1", "Organizer");
+db.prepare("INSERT INTO organizer_sessions VALUES (?, ?, ?, ?)").run(organizerHash, "ORG1", "2099-01-01T00:00:00.000Z", "2026-09-01T00:00:00.000Z");
+
 const env = {
   GUILD_WAR_DB: {
     prepare(sql) {
@@ -25,13 +32,17 @@ const env = {
             async all() {
               return {success: true, results: db.prepare(sql).all(...args)};
             },
+            async first() {
+              return db.prepare(sql).get(...args) || null;
+            },
           };
         },
       };
     },
   },
 };
-const request = (path = "/api/v2/games/wwm/war/events", method = "GET") => new Request("https://test.invalid" + path, {method});
+const request = (path = "/api/v2/games/wwm/war/events", method = "GET", headers = {}) => new Request("https://test.invalid" + path, {method, headers});
+const organizerHeaders = {"Cookie": "pom_organizer_session=test-organizer-session"};
 const now = new Date("2026-09-05T12:00:00Z");
 
 test("Bangkok Monday boundary", () => {
@@ -45,12 +56,16 @@ test("only requested game and current week returned", async () => {
 });
 
 test("returns active players with their owned loadouts", async () => {
-  const result = await readApi(request("/api/v2/games/wwm/players"), env, now);
+  const result = await readApi(request("/api/v2/games/wwm/players", "GET", organizerHeaders), env, now);
   assert.equal(result.status, 200);
   assert.deepEqual((await result.json()).players, [{
     id: "P001", character_name: "Golf", nickname: "กอล์ฟ",
     loadouts: [{id: "L001", player_id: "P001", role: "DPS", main_weapon_id: "W001", main_weapon_name: "Sword", sub_weapon_id: "W002", sub_weapon_name: "Spear"}],
   }]);
+});
+
+test("rejects the player directory without an organizer session", async () => {
+  assert.equal((await readApi(request("/api/v2/games/wwm/players"), env, now)).status, 401);
 });
 
 test("returns a round with registrations and chosen loadouts", async () => {
