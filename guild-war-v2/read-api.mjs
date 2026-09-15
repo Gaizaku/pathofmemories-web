@@ -1,4 +1,5 @@
 import {GAME, ensureWeekend, slotOf, rows, eventWeekday} from './weekend.mjs';
+import {activeOrganizer} from './organizer-auth.mjs';
 export function bangkokWeek(now = new Date()) {
   const local = new Date(now.getTime() + 7 * 3600000);
   const daysSinceMonday = (local.getUTCDay() + 6) % 7;
@@ -24,6 +25,7 @@ export async function readApi(request, env, now = new Date()) {
   if (request.method !== "GET") return new Response(null, {status: 405, headers: {Allow: "GET"}});
   if (url.search) return json({error: "unsupported_query"}, 400);
   if (!env.GUILD_WAR_DB) return json({error: "database_not_configured"}, 503);
+  if (playerMatch && !(await activeOrganizer(env, request))) return json({error: "organizer_required"}, 401);
 
   try {
     if (eventMatch) {
