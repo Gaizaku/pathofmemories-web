@@ -19,9 +19,10 @@ export async function readApi(request, env, now = new Date()) {
   const url = new URL(request.url);
   const eventMatch = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events$/.exec(url.pathname);
   const playerMatch = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/players$/.exec(url.pathname);
+  const publicPlayerMatch = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/registration-players$/.exec(url.pathname);
   const registrationMatch = /^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/registrations$/.exec(url.pathname);
 
-  if (!eventMatch && !playerMatch && !registrationMatch) return json({error: "not_found"}, 404);
+  if (!eventMatch && !playerMatch && !publicPlayerMatch && !registrationMatch) return json({error: "not_found"}, 404);
   if (request.method !== "GET") return new Response(null, {status: 405, headers: {Allow: "GET"}});
   if (url.search) return json({error: "unsupported_query"}, 400);
   if (!env.GUILD_WAR_DB) return json({error: "database_not_configured"}, 503);
@@ -75,11 +76,13 @@ export async function readApi(request, env, now = new Date()) {
       return json({gameId, event, registrations: [...grouped.values()]});
     }
 
-    const gameId = playerMatch[1];
+    const gameId = (playerMatch || publicPlayerMatch)[1];
     const players = await query(env.GUILD_WAR_DB,
       "SELECT id, character_name, nickname FROM players WHERE game_id = ? AND active = 1 ORDER BY character_name COLLATE NOCASE, id LIMIT 200",
       gameId
     );
+    if (publicPlayerMatch) return json({gameId, players});
+
     const loadouts = await query(env.GUILD_WAR_DB,
       "SELECT l.id, l.player_id, l.role, l.main_weapon_id, main.name AS main_weapon_name, l.sub_weapon_id, sub.name AS sub_weapon_name FROM loadouts l JOIN weapons main ON main.game_id = l.game_id AND main.id = l.main_weapon_id JOIN weapons sub ON sub.game_id = l.game_id AND sub.id = l.sub_weapon_id WHERE l.game_id = ? AND l.active = 1 ORDER BY l.player_id, l.id LIMIT 500",
       gameId

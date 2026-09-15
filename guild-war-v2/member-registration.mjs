@@ -39,7 +39,7 @@ export async function memberRegistration(request,env,clock=new Date()) {
       await db.prepare('INSERT INTO member_preferences (game_id,player_id,token_hash,updated_at,operation_id) VALUES (?,?,?,?,?)').bind(GAME,data.playerId,await hashClaimToken(token),new Date().toISOString(),crypto.randomUUID()).run();
       return json({token,revision:0});
     }
-    const owned=await rows(db,'SELECT id,role FROM loadouts WHERE game_id=? AND player_id=? AND active=1',GAME,data.playerId);
+    const owned=await rows(db,'SELECT l.id,l.role,main.name AS main_weapon_name,sub.name AS sub_weapon_name FROM loadouts l JOIN weapons main ON main.game_id=l.game_id AND main.id=l.main_weapon_id JOIN weapons sub ON sub.game_id=l.game_id AND sub.id=l.sub_weapon_id WHERE l.game_id=? AND l.player_id=? AND l.active=1 ORDER BY l.id',GAME,data.playerId);
     if(action==='/loadout') {
       if(!['Tank','Heal','DPS'].includes(data.role)||!id(data.mainWeapon)||!id(data.subWeapon)||data.mainWeapon===data.subWeapon)return json({error:'invalid_loadout'},400);
       const weapons=await rows(db,'SELECT id FROM weapons WHERE game_id=? AND id IN (?,?)',GAME,data.mainWeapon,data.subWeapon);
@@ -71,7 +71,7 @@ export async function memberRegistration(request,env,clock=new Date()) {
       const preferredTeam=(organizerRule?.preferred_team||profile?.preferred_team||'');
       const organizerLoadouts=organizerRule?.default_loadout_id?[organizerRule.default_loadout_id]:[];
       // The old app stored "ANY"; the new API uses an empty value for it.
-      return json({revision:profile?.revision||0,regular:organizerRule?ruleIsActive:!!profile?.regular,regularSlots,selected,loadoutIds:(organizerRule?organizerLoadouts:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id))).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:choices[0]?.note||'',weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
+      return json({revision:profile?.revision||0,regular:organizerRule?ruleIsActive:!!profile?.regular,regularSlots,selected,loadoutIds:(organizerRule?organizerLoadouts:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id))).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:choices[0]?.note||'',loadouts:owned,weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
     }
     if(action!=='/save')return json({error:'not_found'},404);
     const {selected,loadoutIds,note='',regular,revision}=data;
