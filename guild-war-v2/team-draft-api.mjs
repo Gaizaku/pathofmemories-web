@@ -101,9 +101,10 @@ export async function teamDraftApi(request,env){
    return json({ok:true,playerId,eventId:event,draftRevision,draftBoard});
   }
   if(builderMatch){
+   if(!user)return json({error:"organizer_required"},401);
    const [rosterResponse,draft]=await Promise.all([
     readApi(new Request(url.origin+'/api/v2/games/'+game+'/war/events/'+event+'/registrations'),env),
-    user?db.prepare("SELECT revision,board_json,updated_at FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=?").bind(game,event,user.id).first():Promise.resolve(null)
+    db.prepare("SELECT revision,board_json,updated_at FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=?").bind(game,event,user.id).first()
    ]);
    if(!rosterResponse.ok)return rosterResponse;
    const roster=await rosterResponse.json();
