@@ -8,13 +8,8 @@ import { regularsApi } from "../guild-war-v2/regulars-api.mjs";
 import { memberRegistration } from "../guild-war-v2/member-registration.mjs";
 import { playerManagementApi } from "../guild-war-v2/player-management-api.mjs";
 import {teamCollaborationApi} from "../guild-war-v2/team-collaboration-api.mjs";
-import {TeamBuilderRoom} from "./team-builder-room";
-
-export {TeamBuilderRoom};
-
 export interface Env {
   GUILD_WAR_DB: D1Database;
-  TEAM_BUILDER_ROOM: DurableObjectNamespace;
   DISCORD_CLIENT_ID: string;
   DISCORD_CLIENT_SECRET: string;
   DISCORD_WEBHOOK_URL?: string;
