@@ -9,21 +9,7 @@
   },
   "vars": {
     "PUBLIC_ORIGIN": "https://pathofmemories.com"
-  },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "TEAM_BUILDER_ROOM",
-        "class_name": "TeamBuilderRoom"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["TeamBuilderRoom"]
-    }
-  ],
+  }
   "d1_databases": [
     {
       "binding": "GUILD_WAR_DB",
