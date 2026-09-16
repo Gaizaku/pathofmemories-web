@@ -86,43 +86,28 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   useEffect(()=>{if(error)notify(error,"error");},[error,notify]);
   useEffect(()=>{
     if(!organizer||loading||loadedRound!==round)return;
-    const protocol=window.location.protocol==="https:"?"wss:":"ws:";
-    const socket=new WebSocket(protocol+"//"+window.location.host+base+"/war/events/"+round+"/collaboration");
-    collaborationSocket.current=socket;
-    setLiveStatus("connecting");
-    socket.onopen=()=>setLiveStatus("connected");
-    socket.onmessage=event=>{
-      let message:CollaborationMessage;
-      try{message=JSON.parse(event.data);}catch{return;}
-      if(message.type==="room_state"){
-        if(message.board){
-          const incoming=JSON.stringify(message.board);
-          if(incoming!==JSON.stringify(boardRef.current)){
-            suppressCollaborationBroadcast.current=true;
-            setBoard(message.board);
-            setSavedBoard("");
-          }
-        }else if(socket.readyState===WebSocket.OPEN){
-          socket.send(JSON.stringify({type:"board_update",board:boardRef.current}));
+    let stopped=false;
+    const poll=async()=>{
+      try{
+        const response=await fetch(base+"/war/events/"+round+"/collaboration",{credentials:"include",cache:"no-store"});
+        if(!response.ok)return;
+        const message=await response.json() as {board?:Record<string,Placement>;organizerId?:string|null};
+        if(stopped||!message.board||message.organizerId===organizer)return;
+        const incoming=JSON.stringify(message.board);
+        if(incoming!==JSON.stringify(boardRef.current)){
+          setBoard(message.board);
+          setSavedBoard("");
         }
-        return;
-      }
-      if(message.type==="room_update"&&message.board&&JSON.stringify(message.board)!==JSON.stringify(boardRef.current)){
-        suppressCollaborationBroadcast.current=true;
-        setBoard(message.board);
-        setSavedBoard("");
+        setLiveStatus("connected");
+      }catch{
+        if(!stopped)setLiveStatus("offline");
       }
     };
-    socket.onclose=()=>{if(collaborationSocket.current===socket){collaborationSocket.current=null;setLiveStatus("offline");}};
-    socket.onerror=()=>setLiveStatus("offline");
-    return()=>{if(collaborationSocket.current===socket)collaborationSocket.current=null;socket.close();setLiveStatus("offline");};
+    setLiveStatus("connecting");
+    void poll();
+    const timer=window.setInterval(()=>void poll(),1500);
+    return()=>{stopped=true;window.clearInterval(timer);setLiveStatus("offline");};
   },[organizer,loading,loadedRound,round]);
-  useEffect(()=>{
-    const socket=collaborationSocket.current;
-    if(!socket||socket.readyState!==WebSocket.OPEN||loading||loadedRound!==round)return;
-    if(suppressCollaborationBroadcast.current){suppressCollaborationBroadcast.current=false;return;}
-    socket.send(JSON.stringify({type:"board_update",board}));
-  },[board,loading,loadedRound,round]);
   useEffect(()=>{
     const snapshot = JSON.stringify(board);
     if(!organizer||loading||loadedRound!==round||publishing||savedBoard===snapshot)return;
