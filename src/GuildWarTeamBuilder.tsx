@@ -7,6 +7,7 @@ type DirectoryPlayer = {id:string; character_name:string; nickname?:string; load
 type DropTarget = {team:string; playerId?:string; tower?:string; center?:boolean};
 type Round = {id:string;starts_at:string;war_type:string};
 type Placement = {team:string; loadout:string; jungle?:string; tower?:string; position?:number; towerPosition?:number};
+type CollaborationMessage = {type?:string;board?:Record<string,Placement>|null;updatedByName?:string|null};
 const jungles = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
 const lanes = ["TOP","MID","BOTTOM"];
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
@@ -53,6 +54,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [saved,setSaved] = useState(false);
   const [cloudBusy,setCloudBusy] = useState(false);
   const [autoSaving,setAutoSaving] = useState(false);
+  const [liveStatus,setLiveStatus] = useState<"offline"|"connecting"|"connected">("offline");
   const [cloudMessage,setCloudMessage] = useState("");
   const [savedBoard,setSavedBoard] = useState("");
   const [publishedLink,setPublishedLink] = useState("");
@@ -73,11 +75,39 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [cancellingPlayer,setCancellingPlayer] = useState("");
   const activeRound = useRef(round);
   const autoSaveTimer = useRef<number | null>(null);
+  const collaborationSocket = useRef<WebSocket | null>(null);
+  const suppressCollaborationBroadcast = useRef(false);
+  const boardRef = useRef(board);
+  boardRef.current = board;
   const roundCache = useRef<Record<string,{players:Player[];board:Record<string,Placement>;organizer:string;revision:number;savedBoard:string}>>({});
   activeRound.current = round;
   useEffect(()=>{setRevision(0);setSavedBoard("");setPublishedLink("");setCloudMessage("");},[round]);
   useEffect(()=>{if(cloudMessage)notify(cloudMessage,"success");},[cloudMessage,notify]);
   useEffect(()=>{if(error)notify(error,"error");},[error,notify]);
+  useEffect(()=>{
+    if(!organizer||loading||loadedRound!==round)return;
+    let stopped=false;
+    const poll=async()=>{
+      try{
+        const response=await fetch(base+"/war/events/"+round+"/collaboration",{credentials:"include",cache:"no-store"});
+        if(!response.ok)return;
+        const message=await response.json() as {board?:Record<string,Placement>;organizerId?:string|null};
+        if(stopped||!message.board||message.organizerId===organizer)return;
+        const incoming=JSON.stringify(message.board);
+        if(incoming!==JSON.stringify(boardRef.current)){
+          setBoard(message.board);
+          setSavedBoard("");
+        }
+        setLiveStatus("connected");
+      }catch{
+        if(!stopped)setLiveStatus("offline");
+      }
+    };
+    setLiveStatus("connecting");
+    void poll();
+    const timer=window.setInterval(()=>void poll(),1500);
+    return()=>{stopped=true;window.clearInterval(timer);setLiveStatus("offline");};
+  },[organizer,loading,loadedRound,round]);
   useEffect(()=>{
     const snapshot = JSON.stringify(board);
     if(!organizer||loading||loadedRound!==round||publishing||savedBoard===snapshot)return;
@@ -515,7 +545,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <span className="gw-primary-actions"><button className="gw-save" disabled={!organizer||loading||loadedRound!==round} onClick={()=>void cloudDraft()}>{th?"บันทึก":"Save"}</button><button className="gw-clear-board" disabled={!organizer||loading} onClick={()=>void clearBoard()}>{th?"ล้างทีม":"Clear team"}</button></span></div></header>
     {copyPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"คัดลอกการจัดทีมไปยังรอบอื่น":"Copy team arrangement to other rounds"}</strong><p>{th?"เลือกรอบปลายทางได้หลายรอบพร้อมกัน รายชื่อที่ไม่ได้ลงในรอบนั้นจะถูกข้าม":"Choose multiple destination rounds. Players unavailable in a round will be skipped."}</p></div><button type="button" onClick={()=>setCopyPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.filter(item=>item.id!==round).map(item=>{const checked=copyRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={copying} onChange={()=>setCopyRounds(current=>checked?current.filter(id=>id!==item.id):[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setCopyRounds([])} disabled={!copyRounds.length||copying}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={!copyRounds.length||copying} onClick={()=>void copyBoardToRounds()}>{copying?(th?"กำลังคัดลอก…":"Copying…"):(th?`คัดลอกไป ${copyRounds.length} รอบ`:`Copy to ${copyRounds.length} rounds`)}</button></footer></section>}
     {announcementPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"ประกาศรอบวอร์ 4 รอบ":"Announce four War rounds"}</strong><p>{th?"เลือก 4 รอบ ระบบจะสร้างประกาศจากฉบับร่างล่าสุดของแต่ละรอบ แล้วส่งเป็นข้อความ Discord เดียวพร้อมปุ่มเปลี่ยนรอบ":"Choose four published rounds to send as one Discord message with round buttons."}</p></div><button type="button" onClick={()=>setAnnouncementPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.map(item=>{const checked=announcementRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={announcing||(!checked&&announcementRounds.length>=4)} onChange={()=>setAnnouncementRounds(current=>checked?current.filter(id=>id!==item.id):current.length>=4?current:[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setAnnouncementRounds([])} disabled={!announcementRounds.length||announcing}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={announcementRounds.length!==4||announcing} onClick={()=>void announceFourRounds()}>{announcing?(th?"กำลังส่ง…":"Sending…"):(th?"ประกาศ 4 รอบ":"Announce four rounds")}</button></footer></section>}
-    <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
+    <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>}{liveStatus==="connected"?" · Live":""} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     <section className="gw-quick-add">
       <header><div><strong>{th?"เพิ่มผู้เล่นด่วน":"Quick add player"}</strong><p>{th?"เพิ่มคนหน้างานเข้ารอบนี้ทันที ไม่ต้องรีโหลดหน้า":"Add an on-site player to this round without reloading the page"}</p></div><span>{roundInfo?.war_type||""}</span></header>
       <form onSubmit={e=>{e.preventDefault();void quickAddPlayer();}}>
