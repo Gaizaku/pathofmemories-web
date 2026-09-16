@@ -18,12 +18,12 @@
       }
     ]
   },
-  "exports": {
-    "TeamBuilderRoom": {
-      "type": "durable-object",
-      "storage": "sqlite"
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["TeamBuilderRoom"]
     }
-  },
+  ],
   "d1_databases": [
     {
       "binding": "GUILD_WAR_DB",
