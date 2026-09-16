@@ -78,7 +78,9 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const collaborationSocket = useRef<WebSocket | null>(null);
   const suppressCollaborationBroadcast = useRef(false);
   const boardRef = useRef(board);
+  const savedBoardRef = useRef(savedBoard);
   boardRef.current = board;
+  savedBoardRef.current = savedBoard;
   const roundCache = useRef<Record<string,{players:Player[];board:Record<string,Placement>;organizer:string;revision:number;savedBoard:string}>>({});
   activeRound.current = round;
   useEffect(()=>{setRevision(0);setSavedBoard("");setPublishedLink("");setCloudMessage("");},[round]);
@@ -91,13 +93,21 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       try{
         const response=await fetch(base+"/war/events/"+round+"/collaboration",{credentials:"include",cache:"no-store"});
         if(!response.ok)return;
-        const message=await response.json() as {board?:Record<string,Placement>;organizerId?:string|null};
-        if(stopped||!message.board||message.organizerId===organizer)return;
+        const message=await response.json() as {board?:Record<string,Placement>;revision?:number;organizerId?:string|null};
+        if(stopped||!message.board)return;
         const incoming=JSON.stringify(message.board);
-        if(incoming!==JSON.stringify(boardRef.current)){
-          setBoard(message.board);
-          setSavedBoard("");
+        const localSnapshot=JSON.stringify(boardRef.current);
+        if(incoming===localSnapshot){
+          if(Number.isSafeInteger(message.revision))setRevision(current=>Math.max(current,message.revision||0));
+          setLiveStatus("connected");
+          return;
         }
+        // Keep a local edit in place until its debounced autosave completes.
+        if(savedBoardRef.current!==localSnapshot)return;
+        setBoard(message.board);
+        setSavedBoard(incoming);
+        if(Number.isSafeInteger(message.revision))setRevision(message.revision||0);
+        setSaved(true);
         setLiveStatus("connected");
       }catch{
         if(!stopped)setLiveStatus("offline");
