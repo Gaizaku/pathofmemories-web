@@ -10,6 +10,7 @@ import { playerManagementApi } from "../guild-war-v2/player-management-api.mjs";
 
 export interface Env {
   GUILD_WAR_DB: D1Database;
+  TEAM_BUILDER_ROOM: DurableObjectNamespace;
   DISCORD_CLIENT_ID: string;
   DISCORD_CLIENT_SECRET: string;
   DISCORD_WEBHOOK_URL?: string;
@@ -32,6 +33,9 @@ export default {
 
     const authResponse = await organizerAuthApi(request, env);
     if (authResponse) return authResponse;
+
+    const collaborationResponse = await teamCollaborationApi(request, env);
+    if (collaborationResponse) return collaborationResponse;
 
     const publicationResponse = await teamPublicationApi(request, env);
     if (publicationResponse) return publicationResponse;
