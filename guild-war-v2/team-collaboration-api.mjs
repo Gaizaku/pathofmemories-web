@@ -8,8 +8,6 @@ export async function teamCollaborationApi(request, env) {
   const match = routePattern.exec(url.pathname);
   if (!match) return null;
   if (request.method !== "GET") return json({error:"method_not_allowed"},405);
-  if (request.headers.get("Origin") !== url.origin) return json({error:"origin_required"},403);
-
   const user = await activeOrganizer(env, request);
   if (!user) return json({error:"organizer_required"},401);
 
