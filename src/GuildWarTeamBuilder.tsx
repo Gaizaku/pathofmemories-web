@@ -98,7 +98,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         const incoming=JSON.stringify(message.board);
         const localSnapshot=JSON.stringify(boardRef.current);
         if(incoming===localSnapshot){
-          if(Number.isSafeInteger(message.revision))setRevision(current=>Math.max(current,message.revision||0));
           setLiveStatus("connected");
           return;
         }
@@ -106,7 +105,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         if(savedBoardRef.current!==localSnapshot)return;
         setBoard(message.board);
         setSavedBoard(incoming);
-        if(Number.isSafeInteger(message.revision))setRevision(message.revision||0);
         setSaved(true);
         setLiveStatus("connected");
       }catch{
