@@ -9,7 +9,7 @@
   },
   "vars": {
     "PUBLIC_ORIGIN": "https://pathofmemories.com"
-  }
+  },
   "d1_databases": [
     {
       "binding": "GUILD_WAR_DB",
