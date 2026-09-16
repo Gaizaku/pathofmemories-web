@@ -52,6 +52,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [loadedRound,setLoadedRound] = useState("");
   const [saved,setSaved] = useState(false);
   const [cloudBusy,setCloudBusy] = useState(false);
+  const [autoSaving,setAutoSaving] = useState(false);
   const [cloudMessage,setCloudMessage] = useState("");
   const [savedBoard,setSavedBoard] = useState("");
   const [publishedLink,setPublishedLink] = useState("");
@@ -71,11 +72,23 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const [quickAdding,setQuickAdding] = useState(false);
   const [cancellingPlayer,setCancellingPlayer] = useState("");
   const activeRound = useRef(round);
+  const autoSaveTimer = useRef<number | null>(null);
   const roundCache = useRef<Record<string,{players:Player[];board:Record<string,Placement>;organizer:string;revision:number;savedBoard:string}>>({});
   activeRound.current = round;
   useEffect(()=>{setRevision(0);setSavedBoard("");setPublishedLink("");setCloudMessage("");},[round]);
   useEffect(()=>{if(cloudMessage)notify(cloudMessage,"success");},[cloudMessage,notify]);
   useEffect(()=>{if(error)notify(error,"error");},[error,notify]);
+  useEffect(()=>{
+    const snapshot = JSON.stringify(board);
+    if(!organizer||loading||loadedRound!==round||publishing||savedBoard===snapshot)return;
+    if(autoSaveTimer.current!==null)window.clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current=window.setTimeout(()=>{
+      if(!cloudBusy)void cloudDraft(true);
+    },700);
+    return ()=>{
+      if(autoSaveTimer.current!==null){window.clearTimeout(autoSaveTimer.current);autoSaveTimer.current=null;}
+    };
+  },[board,savedBoard,organizer,loading,loadedRound,round,cloudBusy,publishing]);
   async function quickAddPlayer() {
     const requestedRound=round,name=quickName.trim(),nickname=quickNickname.trim();
     if(!organizer||loading||loadedRound!==round||quickAdding||cancellingPlayer||!requestedRound)return;
@@ -128,10 +141,10 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     finally{setCancellingPlayer("");}
   }
 
-  async function cloudDraft() {
+  async function cloudDraft(silent = false) {
     if(!organizer||cloudBusy||loading||loadedRound!==round)return;
     const requestedRound=round;
-    setCloudBusy(true);setCloudMessage("");setError("");
+    setCloudBusy(true);if(silent)setAutoSaving(true);setCloudMessage("");setError("");
     try {
       const response=await fetch(base+"/war/events/"+requestedRound+"/draft",{
         method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision,board})
@@ -146,9 +159,9 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       }
       setSavedBoard(JSON.stringify(board));
       setRevision(data.revision);
-      setCloudMessage(th?"บันทึกออนไลน์แล้ว · ยังไม่ประกาศ":"Saved online · Not published");
+      if(!silent)setCloudMessage(th?"บันทึกออนไลน์แล้ว · ยังไม่ประกาศ":"Saved online · Not published");
     }catch(err){if(activeRound.current===requestedRound)setError(err instanceof Error?err.message:"Request failed");}
-    finally{setCloudBusy(false);}
+    finally{setCloudBusy(false);if(silent)setAutoSaving(false);}
   }
 
   async function publishTeam() {
@@ -504,6 +517,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     {announcementPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"ประกาศรอบวอร์ 4 รอบ":"Announce four War rounds"}</strong><p>{th?"เลือก 4 รอบ ระบบจะสร้างประกาศจากฉบับร่างล่าสุดของแต่ละรอบ แล้วส่งเป็นข้อความ Discord เดียวพร้อมปุ่มเปลี่ยนรอบ":"Choose four published rounds to send as one Discord message with round buttons."}</p></div><button type="button" onClick={()=>setAnnouncementPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.map(item=>{const checked=announcementRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={announcing||(!checked&&announcementRounds.length>=4)} onChange={()=>setAnnouncementRounds(current=>checked?current.filter(id=>id!==item.id):current.length>=4?current:[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setAnnouncementRounds([])} disabled={!announcementRounds.length||announcing}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={announcementRounds.length!==4||announcing} onClick={()=>void announceFourRounds()}>{announcing?(th?"กำลังส่ง…":"Sending…"):(th?"ประกาศ 4 รอบ":"Announce four rounds")}</button></footer></section>}
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     {cloudBusy&&<p role="status" aria-live="polite">{th?"กำลังติดต่อฉบับร่างออนไลน์…":"Updating online draft…"}</p>}
+    {autoSaving&&<p role="status" aria-live="polite">{th?"กำลังบันทึกอัตโนมัติ…":"Saving automatically…"}</p>}
     <section className="gw-quick-add">
       <header><div><strong>{th?"เพิ่มผู้เล่นด่วน":"Quick add player"}</strong><p>{th?"เพิ่มคนหน้างานเข้ารอบนี้ทันที ไม่ต้องรีโหลดหน้า":"Add an on-site player to this round without reloading the page"}</p></div><span>{roundInfo?.war_type||""}</span></header>
       <form onSubmit={e=>{e.preventDefault();void quickAddPlayer();}}>
