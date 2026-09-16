@@ -359,7 +359,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     return ordered(team,current).reduce((highest,player)=>Math.max(highest,positionOf(player.player_id,team,current)),-1)+1;
   }
   function move(id:string,team:string,target?:string){
-    if(!organizer||cloudBusy||publishing||loading||!players.some(p=>p.player_id===id)||id===target)return;
+    if(!organizer||publishing||loading||!players.some(p=>p.player_id===id)||id===target)return;
     if(destinationIsFull(team,id,target)){
       setError(th?"ทีมนี้เต็มแล้ว (สูงสุด 5 คน) · วางทับผู้เล่นเพื่อสลับทีมได้":"This team is full (maximum 5). Drop on a player to swap teams.");
       return;
@@ -386,7 +386,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     setError("");setDraggingPlayer("");setDropTarget(null);
   }
   function autoAssign(){
-    if(!organizer||cloudBusy||publishing||loading||loadedRound!==round)return;
+    if(!organizer||publishing||loading||loadedRound!==round)return;
     const result=autoAssignUnassigned(players,board);
     if(result.assigned===0&&result.standby===0){setCloudMessage(th?"ไม่มีผู้เล่นที่ยังไม่จัดทีม":"Everyone is already assigned");return;}
     setBoard(result.board);
@@ -416,7 +416,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     return {eligible,full:eligible&&memberCount>=3&&placement?.tower!==lane};
   }
   function setTower(id:string,lane:string,center=false) {
-    if(!organizer||cloudBusy||publishing||loading||!board[id]||board[id].team==="STANDBY")return;
+    if(!organizer||publishing||loading||!board[id]||board[id].team==="STANDBY")return;
     if(lane&&Object.entries(board).filter(([pid,p])=>pid!==id&&p.tower===lane).length>=3){
       setError(th?"Tower ตำแหน่งนี้ครบ 3 คนแล้ว":"This tower already has 3 players");return;
     }
@@ -436,7 +436,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     const place=board[p.player_id];
     const isSwapTarget=dropTarget?.playerId===p.player_id;
     return <article key={p.player_id} className={"gw-player gw-role-"+role(p)+(draggingPlayer===p.player_id?" gw-dragging":"")+(isSwapTarget?" gw-swap-target":"")}
-      draggable={!!organizer&&!loading&&!cloudBusy&&!publishing}
+      draggable={!!organizer&&!loading&&!publishing}
       onDragStart={e=>{e.dataTransfer.setData("application/x-pom-player",p.player_id);e.dataTransfer.setData("text/plain",p.player_id);e.dataTransfer.effectAllowed="move";setDraggingPlayer(p.player_id);setDropTarget(null);}}
       onDragEnd={()=>{setDraggingPlayer("");setDropTarget(null);}}
       onDragEnter={e=>{e.preventDefault();e.stopPropagation();if(draggingPlayer&&draggingPlayer!==p.player_id)setDropTarget({team:place?.team||"",playerId:p.player_id});}}
@@ -504,7 +504,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       {placement?.jungle&&<span className={"gw-summary-jungle gw-jungle-"+placement.jungle.toLowerCase()}>{jungleLabel(placement.jungle)}</span>}
     </div>;
   }
-  return <section className="gw-builder"><fieldset disabled={cloudBusy||publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
+  return <section className="gw-builder"><fieldset disabled={publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
     <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากผู้เล่นไปทับอีกคนเพื่อสลับ · ทีมละ 5 คน":"Drag a player onto another to swap · 5 per team"}</p></div>
       <div className="gw-toolbar"><div className={"gw-round-picker "+(roundWarning>0?"has-unassigned":"")}><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=>{const count=unassignedByRound[r.id]||0;return <option key={r.id} value={r.id}>{count>0?`⚠ ${count} · `:""}{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>})}</select>{roundWarning>0&&<span className="gw-round-warning" title={th?`ยังมี ${roundWarning} คนที่ไม่ได้จัดทีม`:`${roundWarning} player(s) still unassigned`}>⚠ {roundWarning}</span>}</div>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={autoAssign}>{th?"จัดอัตโนมัติ":"Auto assign"}</button>
