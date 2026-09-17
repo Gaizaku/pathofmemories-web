@@ -23,6 +23,13 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    if (url.pathname === "/discord-v6") {
+      return Response.redirect(
+        "https://pathofmemories.com/games/where-winds-meet/guild-war/register",
+        302,
+      );
+    }
+
     const discordInteractionResponse = await discordInteractionApi(request, env);
     if (discordInteractionResponse) return discordInteractionResponse;
 
