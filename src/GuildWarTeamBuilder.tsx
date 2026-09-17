@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {autoAssignUnassigned} from "./GuildWarAutoAssign";
+import {GuildWarRoundPicker} from "./GuildWarRoundPicker";
 import {useGuildWarOverlay} from "./GuildWarOverlay";
 import "./GuildWarInteractions.css";
 type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; note?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
@@ -512,7 +513,6 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     </section>;
   }
   const pool=players.filter(p=>!board[p.player_id]);
-  const roundWarning=unassignedByRound[round]||0;
   const playerNotes=players.filter(p=>p.note?.trim()).sort((a,b)=>a.character_name.localeCompare(b.character_name));
   const warnings=teams.filter(t=>t!=="STANDBY").filter(t=>{
     const m=players.filter(p=>board[p.player_id]?.team===t);
@@ -544,7 +544,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   }
   return <section className="gw-builder"><fieldset disabled={publishing} style={{border:0,padding:0,margin:0,minWidth:0}}>
     <header className="gw-top"><div><h1>Guild War Team Builder</h1><p>{th?"ลากผู้เล่นไปทับอีกคนเพื่อสลับ · ทีมละ 5 คน":"Drag a player onto another to swap · 5 per team"}</p></div>
-      <div className="gw-toolbar"><div className={"gw-round-picker "+(roundWarning>0?"has-unassigned":"")}><select aria-label="War round" value={round} onChange={e=>setRound(e.target.value)}>{rounds.map(r=>{const count=unassignedByRound[r.id]||0;return <option key={r.id} value={r.id}>{count>0?`⚠ ${count} · `:""}{new Date(r.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"short"})} · {r.war_type}</option>})}</select>{roundWarning>0&&<span className="gw-round-warning" title={th?`ยังมี ${roundWarning} คนที่ไม่ได้จัดทีม`:`${roundWarning} player(s) still unassigned`}>⚠ {roundWarning}</span>}</div>
+      <div className="gw-toolbar"><GuildWarRoundPicker rounds={rounds} selectedId={round} warningByRound={unassignedByRound} language={language} disabled={loading} onChange={setRound}/>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={autoAssign}>{th?"จัดอัตโนมัติ":"Auto assign"}</button>
       <button disabled={!organizer||loading||loadedRound!==round||copying} onClick={()=>setCopyPanel(value=>!value)}>{th?`คัดลอกไปรอบอื่น${copyRounds.length?` (${copyRounds.length})`:""}`:`Copy to other rounds${copyRounds.length?` (${copyRounds.length})`:""}`}</button>
       <button disabled={!organizer||loading||loadedRound!==round||announcing} onClick={()=>setAnnouncementPanel(value=>!value)}>{th?"ประกาศ 4 รอบ":"Announce 4 rounds"}{announcementRounds.length ? " (" + announcementRounds.length + "/4)" : ""}</button>
