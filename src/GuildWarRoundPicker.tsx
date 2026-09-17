@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import type {KeyboardEvent} from "react";
 
 type Round = {id:string;starts_at:string;war_type:string};
 
@@ -48,7 +49,7 @@ export function GuildWarRoundPicker({
     setOpen(false);
   }
 
-  function handleTriggerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+  function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key === "ArrowDown" || event.key === "ArrowRight") {
       event.preventDefault();
       setOpen(true);
