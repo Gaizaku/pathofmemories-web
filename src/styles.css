@@ -1205,10 +1205,19 @@ h1 em {
 
 
 /* Surface incomplete round rosters directly in the Team Builder round picker. */
-.gw-round-picker{position:relative;display:inline-flex;align-items:center}
-.gw-round-picker.has-unassigned select{min-width:250px;padding-right:68px;border-color:rgba(242,181,70,.72);box-shadow:0 0 0 1px rgba(242,181,70,.15),0 4px 16px rgba(0,0,0,.18)}
-.gw-round-warning{position:absolute;right:8px;display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid rgba(255,209,112,.48);border-radius:999px;color:#ffe3a1;background:#3d2c17;font:800 10px "DM Mono",monospace;pointer-events:none}
-@media(max-width:560px){.gw-round-picker,.gw-round-picker select{width:100%}.gw-round-picker.has-unassigned select{min-width:0}}
+.gw-round-picker{position:relative;display:inline-flex;align-items:center;min-width:250px}
+.gw-round-picker-trigger{display:flex;align-items:center;gap:8px;width:100%;min-width:250px;text-align:left}
+.gw-round-picker-trigger .gw-round-picker-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gw-round-picker-trigger .gw-round-warning{margin-left:auto}
+.gw-round-picker-chevron{margin-left:2px;color:var(--muted);font-size:12px;line-height:1}
+.gw-round-picker.has-unassigned .gw-round-picker-trigger{border-color:rgba(242,181,70,.72);box-shadow:0 0 0 1px rgba(242,181,70,.15),0 4px 16px rgba(0,0,0,.18)}
+.gw-round-picker-menu{position:absolute;top:calc(100% + 6px);right:0;z-index:120;display:grid;gap:3px;width:max-content;min-width:100%;max-width:min(420px,calc(100vw - 2rem));max-height:320px;overflow-y:auto;padding:4px;border:1px solid #4a5260;border-radius:7px;background:#20242d;box-shadow:0 14px 34px rgba(0,0,0,.4)}
+.gw-round-picker-option{display:flex;align-items:center;gap:10px;width:100%;min-width:250px;border:1px solid transparent;border-radius:4px;background:transparent;color:#f4f6f8;cursor:pointer;text-align:left;white-space:nowrap}
+.gw-round-picker-option:hover,.gw-round-picker-option.selected{background:#3168c9;border-color:#5d8be0}
+.gw-round-picker-option .gw-round-picker-label{overflow:hidden;text-overflow:ellipsis}
+.gw-round-picker-option .gw-round-warning{margin-left:auto;flex:none}
+.gw-round-warning{display:inline-flex;align-items:center;justify-content:center;gap:3px;flex:none;padding:3px 6px;border:1px solid rgba(255,209,112,.48);border-radius:999px;color:#ffe3a1;background:#3d2c17;font:800 10px "DM Mono",monospace;pointer-events:none}
+@media(max-width:560px){.gw-round-picker,.gw-round-picker-trigger{width:100%;min-width:0}.gw-round-picker-menu{width:100%;max-width:none}.gw-round-picker-option{min-width:0}}
 
 .gw-summary-round-nav {
   display: flex;
