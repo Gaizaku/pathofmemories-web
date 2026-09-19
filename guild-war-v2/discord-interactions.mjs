@@ -27,6 +27,28 @@ function interactionError(message) {
   return json({type: 4, data: {content: message, flags: 64}});
 }
 
+function sameEventIds(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+  return [...left].sort().every((eventId, index) => eventId === [...right].sort()[index]);
+}
+
+export async function findAnnouncementOwner(db, gameId, interaction, eventIds) {
+  const messageId = interaction?.message?.id;
+  const channelId = interaction?.channel_id || interaction?.message?.channel_id;
+  if (typeof messageId !== "string" || typeof channelId !== "string") return "";
+  const result = await db.prepare(
+    "SELECT organizer_id, event_ids_json FROM discord_announcements WHERE game_id = ? AND channel_id = ? AND message_id = ?"
+  ).bind(gameId, channelId, messageId).all();
+  for (const announcement of result.results || []) {
+    try {
+      if (sameEventIds(JSON.parse(announcement.event_ids_json), eventIds)) return announcement.organizer_id;
+    } catch {
+      // Ignore malformed legacy announcement rows.
+    }
+  }
+  return "";
+}
+
 export async function discordInteractionApi(request, env) {
   const url = new URL(request.url);
   if (url.pathname !== "/api/discord/interactions") return null;
@@ -40,7 +62,9 @@ export async function discordInteractionApi(request, env) {
   const parsed = parseAnnouncementCustomId(interaction.data?.custom_id);
   if (!parsed) return interactionError("ปุ่มประกาศนี้หมดอายุหรือไม่ถูกต้อง");
   try {
-    const loaded = await loadPublishedRounds(env.GUILD_WAR_DB, "where-winds-meet", parsed.eventIds);
+    const organizerId = await findAnnouncementOwner(env.GUILD_WAR_DB, "where-winds-meet", interaction, parsed.eventIds);
+    if (!organizerId) return interactionError("ไม่พบข้อมูลของประกาศนี้แล้ว กรุณาประกาศ 4 รอบใหม่จากหน้า Team Summary");
+    const loaded = await loadPublishedRounds(env.GUILD_WAR_DB, "where-winds-meet", parsed.eventIds, organizerId);
     if (loaded.missing.length) return interactionError("ไม่พบข้อมูลประกาศของบางรอบแล้ว");
     const origin = (() => {
       try { return new URL(env.PUBLIC_ORIGIN || url.origin).origin; } catch { return url.origin; }
