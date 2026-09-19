@@ -377,10 +377,20 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         let source:Record<string,Placement>|undefined;
         try{source=JSON.parse(localStorage.getItem("pom-board-v2:"+round)||"{}");}catch{source={};}
         const onlineRevision=response.revision||0,loadedOnline=onlineRevision>0;
+        let sharedLoaded=false,hasSharedDraft=false;
         if(loadedOnline)source=response.board;
+        else {
+          // A first-time organizer must hydrate from the shared board before autosave;
+          // otherwise the empty local board can become the newest draft and erase it.
+          const shared=await get(base+"/war/events/"+round+"/collaboration",c.signal).catch(()=>null);
+          sharedLoaded=!!shared;
+          hasSharedDraft=!!shared?.organizerId;
+          if(hasSharedDraft)source=shared.board;
+        }
         if(c.signal.aborted)return;
         const valid=normalizeBoard(roster,source);
-        const next={players:roster,board:valid,organizer:response.organizer?.displayName||"",revision:onlineRevision,savedBoard:loadedOnline?JSON.stringify(valid):""};
+        const shouldMigrateLocal= !loadedOnline&&sharedLoaded&&!hasSharedDraft&&Object.keys(valid).length>0;
+        const next={players:roster,board:valid,organizer:response.organizer?.displayName||"",revision:onlineRevision,savedBoard:shouldMigrateLocal?"":JSON.stringify(valid)};
         roundCache.current[round]=next;
         setUnassignedByRound(current=>({...current,[round]:unassignedCount(roster,valid)}));
         setPlayers(next.players);setBoard(next.board);setOrganizer(next.organizer);setRevision(next.revision);setSavedBoard(next.savedBoard);setLoadedRound(round);setLoading(false);setSaved(true);
