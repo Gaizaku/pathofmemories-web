@@ -26,25 +26,6 @@ export function buildRoundEmbed(snapshot, publicationUrl, roundNumber) {
       : "—";
     return {name: name + " · " + members.length + (team !== "STANDBY" ? "/5" : ""), value: value.slice(0, 1024), inline: true};
   });
-  const towerOrder = ["TOP", "MID", "BOTTOM"];
-  const towerFields = towerOrder.map(tower => {
-    const names = (snapshot.members || [])
-      .filter(member => member.tower === tower)
-      .sort((left, right) => (left.towerPosition ?? Number.MAX_SAFE_INTEGER) - (right.towerPosition ?? Number.MAX_SAFE_INTEGER))
-      .map(member => literal(member.name))
-      .join(", ");
-    return {
-      name: tower,
-      value: (names || "—").slice(0, 1024),
-      inline: true,
-    };
-  });
-  const fields = [
-    ...teamFields.slice(0, -1),
-    {name: "🗼 คนขึ้นป้อม", value: "\u200b", inline: false},
-    ...towerFields,
-    ...teamFields.slice(-1),
-  ];
   const detail = info.time
     ? "รอบ " + info.round + " " + literal(snapshot.event?.warType) + " " + info.time + " " + info.date + " (" + info.weekday + ")"
     : "รอบ " + info.round + " " + literal(snapshot.event?.warType);
@@ -53,8 +34,29 @@ export function buildRoundEmbed(snapshot, publicationUrl, roundNumber) {
     url: publicationUrl,
     description: detail + "\n[เปิดดูรายชื่อทีม](" + publicationUrl + ")",
     color: 0xC8A86B,
-    fields,
+    fields: teamFields,
     footer: {text: "Path of Memories · กดปุ่มด้านล่างเพื่อดูรอบอื่น"},
+  };
+}
+
+export function buildTowerEmbed(snapshot) {
+  const towerOrder = ["TOP", "MID", "BOTTOM"];
+  const towerFields = towerOrder.map(tower => {
+    const names = (snapshot.members || [])
+      .filter(member => member.tower === tower)
+      .sort((left, right) => (left.towerPosition ?? Number.MAX_SAFE_INTEGER) - (right.towerPosition ?? Number.MAX_SAFE_INTEGER))
+      .map(member => "• " + literal(member.name) + (member.towerPosition === 0 ? " กลางป้อม" : ""))
+      .join("\n");
+    return {
+      name: tower,
+      value: (names || "—").slice(0, 1024),
+      inline: true,
+    };
+  });
+  return {
+    title: "🗼 คนขึ้นป้อม",
+    color: 0xC8A86B,
+    fields: towerFields,
   };
 }
 
@@ -95,7 +97,10 @@ export function buildAnnouncementPayload(rounds, selectedIndex = 0) {
   const selected = rounds[selectedIndex];
   return {
     username: "Path of Memories",
-    embeds: [buildRoundEmbed(selected.snapshot, selected.publicationUrl, selectedIndex + 1)],
+    embeds: [
+      buildRoundEmbed(selected.snapshot, selected.publicationUrl, selectedIndex + 1),
+      buildTowerEmbed(selected.snapshot),
+    ],
     components: announcementComponents(rounds, selectedIndex),
   };
 }
