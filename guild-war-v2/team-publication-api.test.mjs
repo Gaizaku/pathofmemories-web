@@ -44,7 +44,7 @@ test("publishes immutable public snapshots and retries return the same link",asy
 test("builds a compact Discord payload without private registration data",()=>{
  const snapshot={event:{startsAt:"2026-09-06T12:00:00Z",warType:"League"},members:[{name:"@Hero",team:"ATTACK_1",role:"Tank"}],unassignedCount:0};
  const payload=discordWebhookPayload(snapshot,"https://pathofmemories.com/published/example");
- assert.equal(payload.embeds[0].fields.length,8);
+ assert.equal(payload.embeds[0].fields.length,10);
  assert.match(payload.embeds[0].fields[0].value,/@\u200bHero/);
  assert.match(payload.embeds[0].description,/pathofmemories\.com/);
  assert.doesNotMatch(JSON.stringify(payload),/PRIVATE|player_id/);

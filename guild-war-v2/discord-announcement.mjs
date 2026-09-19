@@ -19,7 +19,7 @@ function roundInfo(startsAt, roundNumber) {
 
 export function buildRoundEmbed(snapshot, publicationUrl, roundNumber) {
   const info = roundInfo(snapshot.event?.startsAt, roundNumber);
-  const fields = discordTeams.map(([team, name]) => {
+  const teamFields = discordTeams.map(([team, name]) => {
     const members = (snapshot.members || []).filter(member => member.team === team);
     const value = members.length
       ? members.map(member => "• " + literal(member.name) + (member.role ? " · " + literal(member.role) : "")).join("\n")
@@ -27,15 +27,19 @@ export function buildRoundEmbed(snapshot, publicationUrl, roundNumber) {
     return {name: name + " · " + members.length + (team !== "STANDBY" ? "/5" : ""), value: value.slice(0, 1024), inline: true};
   });
   const towerOrder = ["TOP", "MID", "BOTTOM"];
-  const towerAssignments = towerOrder.map(tower => {
+  const towerFields = towerOrder.map((tower, index) => {
     const names = (snapshot.members || [])
       .filter(member => member.tower === tower)
       .sort((left, right) => (left.towerPosition ?? Number.MAX_SAFE_INTEGER) - (right.towerPosition ?? Number.MAX_SAFE_INTEGER))
       .map(member => literal(member.name))
       .join(", ");
-    return names ? tower + ": " + names : "";
-  }).filter(Boolean).join("\n") || "—";
-  fields.push({name: "🗼 คนขึ้นป้อม", value: towerAssignments.slice(0, 1024), inline: false});
+    return {
+      name: (index === 0 ? "🗼 คนขึ้นป้อม · " : "") + tower,
+      value: (names || "—").slice(0, 1024),
+      inline: true,
+    };
+  });
+  const fields = [...teamFields.slice(0, -1), ...towerFields, ...teamFields.slice(-1)];
   const detail = info.time
     ? "รอบ " + info.round + " " + literal(snapshot.event?.warType) + " " + info.time + " " + info.date + " (" + info.weekday + ")"
     : "รอบ " + info.round + " " + literal(snapshot.event?.warType);
