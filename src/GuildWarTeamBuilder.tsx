@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 15115)
-Total output lines: 616
-
 import {useEffect, useRef, useState} from "react";
 import {autoAssignUnassigned} from "./GuildWarAutoAssign";
 import {GuildWarRoundPicker} from "./GuildWarRoundPicker";
@@ -290,7 +287,190 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         fetch(base+"/war/events/"+destination+"/draft")
       ]);
       const rosterData=await rosterResponse.json(),draftData=await draftResponse.json();
-      if(!rosterResponse.ok||!draftResponse.ok)throw new E…3115 tokens truncated…ligible,full:eligible&&memberCount>=3&&placement?.tower!==lane};
+      if(!rosterResponse.ok||!draftResponse.ok)throw new Error(th?"โหลดข้อมูลรอบปลายทางไม่สำเร็จ":"Could not load the destination round");
+      const roster:Player[]=rosterData.registrations||[];
+      const rosterById=new Map(roster.map(player=>[player.player_id,player]));
+      const next:Record<string,Placement>={},teamCounts:Record<string,number>={},towerCounts:Record<string,number>={};
+      for(const [playerId,placement] of Object.entries(board).sort(([,a],[,b])=>(a.position??0)-(b.position??0))) {
+        const player=rosterById.get(playerId);
+        if(!player||!teams.includes(placement.team))continue;
+        if(placement.team!=="STANDBY"&&(teamCounts[placement.team]||0)>=5)continue;
+        const loadout=player.loadouts.some(item=>item.id===placement.loadout)?placement.loadout:player.loadouts[0]?.id||"";
+        const copied:Placement={team:placement.team,loadout,position:placement.position};
+        if(placement.team!=="STANDBY"&&placement.jungle&&jungles.includes(placement.jungle))copied.jungle=placement.jungle;
+        if(placement.team!=="STANDBY"&&placement.tower&&lanes.includes(placement.tower)&&(towerCounts[placement.tower]||0)<3){copied.tower=placement.tower;copied.towerPosition=placement.towerPosition??(towerCounts[placement.tower]||0);towerCounts[placement.tower]=(towerCounts[placement.tower]||0)+1;}
+        next[playerId]=copied;
+        if(placement.team!=="STANDBY")teamCounts[placement.team]=(teamCounts[placement.team]||0)+1;
+      }
+      const response=await fetch(base+"/war/events/"+destination+"/draft",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision:draftData.revision||0,board:next})});
+      const result=await response.json();
+      if(!response.ok){
+        if(result.error==="draft_conflict")throw new Error(th?"ฉบับร่างเปลี่ยนแล้ว":"The draft changed");
+        if(result.error==="roster_changed")throw new Error(th?"รายชื่อเปลี่ยนแล้ว":"The roster changed");
+        throw new Error(th?"คัดลอกไม่สำเร็จ":"Copy failed");
+      }
+      return {destination,count:Object.keys(next).length};
+      } catch(error) {return {destination,error:error instanceof Error?error.message:"Copy failed"};}
+    }));
+    const done=outcomes.filter((outcome):outcome is {destination:string;count:number}=>"count" in outcome);
+    const failed=outcomes.filter((outcome):outcome is {destination:string;error:string}=>"error" in outcome);
+    if(done.length){setCloudMessage(th?`คัดลอกทีมไป ${done.length} รอบแล้ว · เปลี่ยนรอบปลายทางเพื่อตรวจ`:`Copied the team to ${done.length} rounds · Switch to a destination to review`);setCopyRounds([]);setCopyPanel(false);}
+    if(failed.length)setError(th?`คัดลอกไม่สำเร็จ ${failed.length} รอบ: ${failed.map(outcome=>rounds.find(item=>item.id===outcome.destination)?.war_type||outcome.destination).join(", ")}`:`Could not copy ${failed.length} rounds: ${failed.map(outcome=>outcome.error).join(", ")}`);
+    setCopying(false);
+  }
+
+  async function get(url:string,signal:AbortSignal) {
+    const response = await fetch(url,{signal});
+    if (!response.ok) throw new Error("request_failed");
+    return response.json();
+  }
+
+  // A standby placement counts as handled; only players absent from the board need attention.
+  function unassignedCount(roster:Player[], draft:Record<string,Placement>) {
+    return roster.filter(player=>!Object.prototype.hasOwnProperty.call(draft,player.player_id)).length;
+  }
+  useEffect(()=>{
+    const c = new AbortController();
+    get(base+"/war/events",c.signal).then(d=>{
+      setRounds(d.events||[]); setRound(r=>r||d.events?.[0]?.id||"");setLoading(false);
+    }).catch(()=>{if(!c.signal.aborted){setError(th?"โหลดรอบ War ไม่สำเร็จ":"Could not load rounds");setLoading(false);}});
+    return ()=>c.abort();
+  },[]);
+  useEffect(()=>{
+    const c=new AbortController();
+    get(base+"/players",c.signal).then(d=>setDirectoryPlayers(d.players||[])).catch(()=>{});
+    return ()=>c.abort();
+  },[]);
+  useEffect(()=>{
+    if(!rounds.length)return;
+    const c=new AbortController();
+    void Promise.all(rounds.map(async item=>{
+      try {
+        const response=await get(base+"/war/events/"+item.id+"/team-builder",c.signal);
+        const roster:Player[]=response.registrations||[];
+        const draft=response.revision>0?normalizeBoard(roster,response.board):{};
+        return [item.id,unassignedCount(roster,draft)] as const;
+      } catch { return null; }
+    })).then(items=>{
+      if(c.signal.aborted)return;
+      setUnassignedByRound(current=>{
+        const nextCounts={...current};
+        for(const item of items)if(item)nextCounts[item[0]]=item[1];
+        return nextCounts;
+      });
+    });
+    return ()=>c.abort();
+  },[rounds]);
+
+  useEffect(()=>{
+    if(!round)return;
+    const c=new AbortController();
+    const cached=roundCache.current[round];
+    setLoading(!cached);setError("");setLoadedRound(cached?round:"");setDraggingPlayer("");setDropTarget(null);
+    if(cached){
+      setPlayers(cached.players);setBoard(cached.board);setOrganizer(cached.organizer);setRevision(cached.revision);setSavedBoard(cached.savedBoard);setSaved(true);
+    }
+    void (async()=>{
+      try {
+        const response=await get(base+"/war/events/"+round+"/team-builder",c.signal);
+        const roster:Player[]=response.registrations||[];
+        let source:Record<string,Placement>|undefined;
+        try{source=JSON.parse(localStorage.getItem("pom-board-v2:"+round)||"{}");}catch{source={};}
+        const onlineRevision=response.revision||0,loadedOnline=onlineRevision>0;
+        if(loadedOnline)source=response.board;
+        if(c.signal.aborted)return;
+        const valid=normalizeBoard(roster,source);
+        const next={players:roster,board:valid,organizer:response.organizer?.displayName||"",revision:onlineRevision,savedBoard:loadedOnline?JSON.stringify(valid):""};
+        roundCache.current[round]=next;
+        setUnassignedByRound(current=>({...current,[round]:unassignedCount(roster,valid)}));
+        setPlayers(next.players);setBoard(next.board);setOrganizer(next.organizer);setRevision(next.revision);setSavedBoard(next.savedBoard);setLoadedRound(round);setLoading(false);setSaved(true);
+      }catch{if(!c.signal.aborted){setLoading(false);setError(th?"โหลดรายชื่อไม่สำเร็จ กด Refresh เพื่อลองใหม่":"Could not load roster. Refresh to retry.");}}
+    })();
+    return ()=>c.abort();
+  },[round]);
+  useEffect(()=>{
+    if(!organizer||loadedRound!==round||!round)return;
+    setUnassignedByRound(current=>({...current,[round]:unassignedCount(players,board)}));
+    const cached=roundCache.current[round];
+    if(cached)roundCache.current[round]={...cached,board,organizer,revision,savedBoard};
+    try{localStorage.setItem("pom-board-v2:"+round,JSON.stringify(board));setSaved(true);}
+    catch{setSaved(false);setError(th?"บันทึกฉบับร่างในเครื่องไม่ได้":"Could not save local draft");}
+  },[board,loadedRound,round,organizer,revision,savedBoard]);
+  function limitedTeam(team:string){return !!team&&team!=="STANDBY";}
+  function teamMemberCount(team:string){return players.filter(p=>board[p.player_id]?.team===team).length;}
+  function destinationIsFull(team:string,id:string,target?:string){
+    return limitedTeam(team)&&!target&&board[id]?.team!==team&&teamMemberCount(team)>=5;
+  }
+  function ordered(team:string,current:Record<string,Placement>=board){
+    return players.filter(p=>current[p.player_id]?.team===team).sort((a,b)=>{
+      const aPosition=current[a.player_id].position??Number.MAX_SAFE_INTEGER;
+      const bPosition=current[b.player_id].position??Number.MAX_SAFE_INTEGER;
+      return aPosition-bPosition||a.character_name.localeCompare(b.character_name);
+    });
+  }
+  function positionOf(id:string,team:string,current:Record<string,Placement>){
+    const saved=current[id]?.position;
+    return Number.isSafeInteger(saved)&&saved!==undefined&&saved>=0?saved:ordered(team,current).findIndex(player=>player.player_id===id);
+  }
+  function nextPosition(team:string,current:Record<string,Placement>){
+    return ordered(team,current).reduce((highest,player)=>Math.max(highest,positionOf(player.player_id,team,current)),-1)+1;
+  }
+  function move(id:string,team:string,target?:string){
+    if(!organizer||publishing||loading||!players.some(p=>p.player_id===id)||id===target)return;
+    if(destinationIsFull(team,id,target)){
+      setError(th?"ทีมนี้เต็มแล้ว (สูงสุด 5 คน) · วางทับผู้เล่นเพื่อสลับทีมได้":"This team is full (maximum 5). Drop on a player to swap teams.");
+      return;
+    }
+    setBoard(previous=>{
+      const next={...previous};const source=next[id];
+      const targetPlacement=target?next[target]:undefined;
+      if(target&&targetPlacement){
+        const targetPosition=positionOf(target,targetPlacement.team,next);
+        if(source)next[target]={...targetPlacement,team:source.team,position:positionOf(id,source.team,next)};else delete next[target];
+        if(team)next[id]={...source,team,position:targetPosition,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
+        else delete next[id];
+      } else if(team) {
+        const keepPosition=source?.team===team?positionOf(id,team,next):nextPosition(team,next);
+        next[id]={...source,team,position:keepPosition,loadout:source?.loadout||players.find(p=>p.player_id===id)?.loadouts[0]?.id||""};
+      } else {
+        delete next[id];
+      }
+      for(const playerId of Object.keys(next))if(next[playerId].team==="STANDBY"){
+        next[playerId]={...next[playerId],jungle:undefined,tower:undefined,towerPosition:undefined};
+      }
+      return next;
+    });
+    setError("");setDraggingPlayer("");setDropTarget(null);
+  }
+  function autoAssign(){
+    if(!organizer||publishing||loading||loadedRound!==round)return;
+    const result=autoAssignUnassigned(players,board);
+    if(result.assigned===0&&result.standby===0){setCloudMessage(th?"ไม่มีผู้เล่นที่ยังไม่จัดทีม":"Everyone is already assigned");return;}
+    setBoard(result.board);
+    setError("");
+    setCloudMessage(th?`จัดผู้เล่นเพิ่ม ${result.assigned} คน${result.standby?` · สำรอง ${result.standby} คน`:""} · ตรวจทีมก่อนบันทึก`:`Assigned ${result.assigned} players${result.standby?` · ${result.standby} standby`:""} · Review before saving`);
+  }
+  async function clearBoard(){
+    if(!await confirm({title:th?"ล้างทีม":"Clear team",message:th?"ล้างทีมของรอบนี้? การจัดทีมในเครื่องจะถูกลบ และต้องกดบันทึกเพื่ออัปเดตฉบับร่างออนไลน์":"Clear this round's team? The local board will be cleared; save afterwards to update the online draft.",confirmLabel:th?"ล้างทีม":"Clear",cancelLabel:th?"ยกเลิก":"Cancel",danger:true}))return;
+    setBoard({});
+  }
+  function drop(e:React.DragEvent,team:string,target?:string){
+    e.preventDefault();e.stopPropagation();
+    move(e.dataTransfer.getData("application/x-pom-player")||e.dataTransfer.getData("text/plain")||draggingPlayer,team,target);
+  }
+
+  function towerMembers(lane:string,current:Record<string,Placement>=board){
+    return players.filter(player=>current[player.player_id]?.tower===lane).sort((a,b)=>{
+      const aPosition=current[a.player_id].towerPosition??Number.MAX_SAFE_INTEGER;
+      const bPosition=current[b.player_id].towerPosition??Number.MAX_SAFE_INTEGER;
+      return aPosition-bPosition||positionOf(a.player_id,current[a.player_id].team,current)-positionOf(b.player_id,current[b.player_id].team,current);
+    });
+  }
+  function towerDropStatus(lane:string){
+    const placement=draggingPlayer?board[draggingPlayer]:undefined;
+    const memberCount=Object.values(board).filter(item=>item.tower===lane).length;
+    const eligible=!!placement&&placement.team!=="STANDBY";
+    return {eligible,full:eligible&&memberCount>=3&&placement?.tower!==lane};
   }
   function setTower(id:string,lane:string,center=false) {
     if(!organizer||publishing||loading||!board[id]||board[id].team==="STANDBY")return;
