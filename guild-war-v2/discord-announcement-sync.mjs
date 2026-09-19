@@ -65,13 +65,15 @@ async function loadCurrentSnapshot({db, env, game, eventId, organizerId, origin}
   }
 }
 
-async function updatePublicationSnapshot(db, game, eventId, current) {
+async function updatePublicationSnapshot(db, game, eventId, current, announcementOrganizerId) {
   if (!current) return false;
-  const row = await db.prepare("SELECT id,organizer_id,draft_revision,snapshot_json FROM team_publications WHERE game_id=? AND event_id=? ORDER BY published_at DESC LIMIT 1").bind(game, eventId).first();
+  const row = await db.prepare("SELECT id,snapshot_json FROM team_publications WHERE game_id=? AND event_id=? AND organizer_id=? ORDER BY published_at DESC LIMIT 1").bind(game, eventId, announcementOrganizerId).first();
   const nextSnapshot = JSON.stringify(current.snapshot);
-  if (!row || (row.organizer_id === current.organizerId && Number(row.draft_revision) >= Number(current.revision) && row.snapshot_json === nextSnapshot)) return false;
-  await db.prepare("UPDATE team_publications SET organizer_id=?,draft_revision=?,snapshot_json=? WHERE id=?")
-    .bind(current.organizerId, current.revision, nextSnapshot, row.id).run();
+  if (!row || row.snapshot_json === nextSnapshot) return false;
+  // Keep the publication owned by the organizer who sent the Discord message.
+  // A collaborator's local draft supplies the snapshot, not a new ownership record.
+  await db.prepare("UPDATE team_publications SET snapshot_json=? WHERE id=?")
+    .bind(nextSnapshot, row.id).run();
   return true;
 }
 
@@ -91,8 +93,8 @@ async function syncAnnouncement({db, env, game, announcement, eventId, organizer
   const claim = await db.prepare("UPDATE discord_announcements SET claimed_version=change_version WHERE announcement_key=? AND claimed_version<change_version").bind(announcement.announcement_key).run();
   if (claim.meta?.changes !== 1) return;
   const current = await loadCurrentSnapshot({db, env, game, eventId, organizerId: organizerId || announcement.organizer_id, origin});
-  if (current) await updatePublicationSnapshot(db, game, eventId, current);
-  const loaded = await loadPublishedRounds(db, game, parseEventIds(announcement));
+  if (current) await updatePublicationSnapshot(db, game, eventId, current, announcement.organizer_id);
+  const loaded = await loadPublishedRounds(db, game, parseEventIds(announcement), announcement.organizer_id);
   if (loaded.missing.length) return;
   const result = await editAnnouncement(env, announcement, loaded.rounds);
   await db.prepare("UPDATE discord_announcements SET synced_version=claimed_version,last_sync_status=?,updated_at=? WHERE announcement_key=?")

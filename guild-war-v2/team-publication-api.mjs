@@ -53,10 +53,9 @@ async function teamAnnouncementApi(request, env, url, game) {
   if (!isValidAnnouncementEventIds(data?.eventIds)) return json({error: "four_rounds_required"}, 400);
   try {
     const db = env.GUILD_WAR_DB;
-    let loaded = await loadPublishedRounds(db, game, data.eventIds);
-    // The four-round announcement is the primary publication flow. Create missing
-    // publications from each organizer's latest saved draft before sending Discord.
-    for (const eventId of loaded.missing) {
+    // Always publish the organizer's current saved draft for every selected round.
+    // Previous organizers' publications are historical and must never be used here.
+    for (const eventId of data.eventIds) {
       const draft = await db.prepare("SELECT revision,board_json FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=? ORDER BY revision DESC LIMIT 1").bind(game, eventId, user.id).first();
       if (!draft) continue;
       const rosterResponse = await readApi(new Request(url.origin + "/api/v2/games/" + game + "/war/events/" + eventId + "/registrations"), env);
@@ -68,7 +67,7 @@ async function teamAnnouncementApi(request, env, url, game) {
       const publicationId = crypto.randomUUID();
       await db.prepare("INSERT INTO team_publications (id,game_id,event_id,organizer_id,draft_revision,snapshot_json,published_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(game_id,event_id,organizer_id,draft_revision) DO NOTHING").bind(publicationId, game, eventId, user.id, draft.revision, JSON.stringify(snapshot), new Date().toISOString()).run();
     }
-    loaded = await loadPublishedRounds(db, game, data.eventIds);
+    const loaded = await loadPublishedRounds(db, game, data.eventIds, user.id);
     if (loaded.missing.length) return json({error: "publication_missing", eventIds: loaded.missing}, 409);
     let origin = url.origin;
     try { origin = new URL(env.PUBLIC_ORIGIN || url.origin).origin; } catch {}

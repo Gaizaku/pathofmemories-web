@@ -81,10 +81,10 @@ export function buildAnnouncementPayload(rounds, selectedIndex = 0) {
   };
 }
 
-export async function loadPublishedRounds(db, game, eventIds) {
+export async function loadPublishedRounds(db, game, eventIds, organizerId = "") {
   const rows = await Promise.all(eventIds.map(eventId =>
-    db.prepare("SELECT id,event_id,snapshot_json,published_at FROM team_publications WHERE game_id=? AND event_id=? ORDER BY published_at DESC LIMIT 1")
-      .bind(game, eventId).first()
+    db.prepare("SELECT id,event_id,snapshot_json,published_at FROM team_publications WHERE game_id=? AND event_id=?" + (organizerId ? " AND organizer_id=?" : "") + " ORDER BY published_at DESC LIMIT 1")
+      .bind(...(organizerId ? [game, eventId, organizerId] : [game, eventId])).first()
   ));
   const missing = [];
   const rounds = [];
