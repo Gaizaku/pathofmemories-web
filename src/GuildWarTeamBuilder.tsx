@@ -253,6 +253,9 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       const result = await response.json();
       if (!response.ok) {
         if (result.error === "publication_missing") throw new Error(th ? "กรุณาเปิดแต่ละรอบและกดบันทึกออนไลน์ให้ครบ 4 รอบก่อน จึงจะประกาศชุดนี้ได้" : "Publish all four round teams before sending the bundle");
+        if (result.error === "draft_missing") throw new Error(th ? "ยังไม่มีฉบับร่างออนไลน์ของรอบหนึ่งในชุดนี้ กรุณาเปิดรอบนั้น จัดทีมและบันทึกก่อน" : "One selected round has no online draft. Open that round, arrange the team and save it first.");
+        if (result.error === "draft_invalid") throw new Error(th ? "ฉบับร่างของรอบหนึ่งไม่ตรงกับรายชื่อปัจจุบัน กรุณา Refresh ตรวจทีม และบันทึกใหม่" : "A selected round draft no longer matches its roster. Refresh, review the team and save it again.");
+        if (result.error === "roster_unavailable") throw new Error(th ? "โหลดรายชื่อของรอบหนึ่งไม่สำเร็จ กรุณาลองใหม่" : "Could not load one round's roster. Please retry.");
         if (result.error === "organizer_required") throw new Error(th ? "กรุณาเข้าสู่ระบบ Discord อีกครั้ง" : "Please sign in with Discord again");
         throw new Error(th ? "ประกาศ 4 รอบไม่สำเร็จ" : "Could not announce the four rounds");
       }

@@ -1,7 +1,7 @@
 import {activeOrganizer} from "./organizer-auth.mjs";
 import {validDraft} from "./team-draft-api.mjs";
 import {readApi} from "./read-api.mjs";
-import {buildRoundEmbed, loadPublishedRounds, sendDiscordRoundBundle, isValidAnnouncementEventIds, attachPublicationUrls} from "./discord-announcement.mjs";
+import {buildRoundEmbed, sendDiscordRoundBundle, isValidAnnouncementEventIds, attachPublicationUrls} from "./discord-announcement.mjs";
 import {rememberDiscordAnnouncement} from "./discord-announcement-sync.mjs";
 
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
@@ -53,25 +53,35 @@ async function teamAnnouncementApi(request, env, url, game) {
   if (!isValidAnnouncementEventIds(data?.eventIds)) return json({error: "four_rounds_required"}, 400);
   try {
     const db = env.GUILD_WAR_DB;
-    // Always publish the organizer's current saved draft for every selected round.
-    // Previous organizers' publications are historical and must never be used here.
+    // Use the latest shared draft, matching the board shown to collaborators.
+    // Never fall back to an older publication when a round has no current draft.
+    const currentRounds = [];
     for (const eventId of data.eventIds) {
-      const draft = await db.prepare("SELECT revision,board_json FROM team_drafts WHERE game_id=? AND event_id=? AND organizer_id=? ORDER BY revision DESC LIMIT 1").bind(game, eventId, user.id).first();
-      if (!draft) continue;
+      const draft = await db.prepare("SELECT revision,board_json FROM team_drafts WHERE game_id=? AND event_id=? ORDER BY updated_at DESC,revision DESC,organizer_id DESC LIMIT 1").bind(game, eventId).first();
+      if (!draft) return json({error: "draft_missing", eventId}, 409);
       const rosterResponse = await readApi(new Request(url.origin + "/api/v2/games/" + game + "/war/events/" + eventId + "/registrations"), env);
-      if (!rosterResponse.ok) continue;
+      if (!rosterResponse.ok) return json({error: "roster_unavailable", eventId}, 503);
       const source = await rosterResponse.json();
-      if (source.event.status === "cancelled") continue;
+      if (source.event.status === "cancelled") return json({error: "event_cancelled", eventId}, 409);
       let snapshot;
-      try { snapshot = publicationSnapshot(JSON.parse(draft.board_json), source); } catch { continue; }
+      try { snapshot = publicationSnapshot(JSON.parse(draft.board_json), source); }
+      catch { return json({error: "draft_invalid", eventId}, 409); }
       const publicationId = crypto.randomUUID();
-      await db.prepare("INSERT INTO team_publications (id,game_id,event_id,organizer_id,draft_revision,snapshot_json,published_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(game_id,event_id,organizer_id,draft_revision) DO NOTHING").bind(publicationId, game, eventId, user.id, draft.revision, JSON.stringify(snapshot), new Date().toISOString()).run();
+      const publishedAt = new Date().toISOString();
+      await db.prepare("INSERT INTO team_publications (id,game_id,event_id,organizer_id,draft_revision,snapshot_json,published_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(game_id,event_id,organizer_id,draft_revision) DO UPDATE SET snapshot_json=excluded.snapshot_json,published_at=excluded.published_at").bind(publicationId, game, eventId, user.id, draft.revision, JSON.stringify(snapshot), publishedAt).run();
+      const publication = await db.prepare("SELECT id,snapshot_json,published_at FROM team_publications WHERE game_id=? AND event_id=? AND organizer_id=? AND draft_revision=?").bind(game, eventId, user.id, draft.revision).first();
+      if (!publication) return json({error: "publication_missing", eventIds: [eventId]}, 409);
+      currentRounds.push({
+        eventId,
+        publicationId: publication.id,
+        publishedAt: publication.published_at,
+        snapshot: JSON.parse(publication.snapshot_json),
+        publicationUrl: "",
+      });
     }
-    const loaded = await loadPublishedRounds(db, game, data.eventIds, user.id);
-    if (loaded.missing.length) return json({error: "publication_missing", eventIds: loaded.missing}, 409);
     let origin = url.origin;
     try { origin = new URL(env.PUBLIC_ORIGIN || url.origin).origin; } catch {}
-    const rounds = attachPublicationUrls(loaded.rounds, origin);
+    const rounds = attachPublicationUrls(currentRounds, origin);
     const delivery = await sendDiscordRoundBundle(env, rounds, origin);
     const webhook = typeof delivery === "string" ? delivery : delivery.status;
     if (typeof delivery === "object" && delivery.messageId && env.DISCORD_CHANNEL_ID) {
