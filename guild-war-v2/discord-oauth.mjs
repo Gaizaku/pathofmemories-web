@@ -18,6 +18,5 @@ export function discordAuthorizeUrl({clientId, redirectUri, state}) {
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("scope", "identify");
   url.searchParams.set("state", state);
-  url.searchParams.set("prompt", "consent");
   return url.toString();
 }
