@@ -1,14 +1,14 @@
 import {activeOrganizer} from "./organizer-auth.mjs";
 import {validDraft} from "./team-draft-api.mjs";
 import {readApi} from "./read-api.mjs";
-import {buildRoundEmbed, sendDiscordRoundBundle, isValidAnnouncementEventIds, attachPublicationUrls} from "./discord-announcement.mjs";
+import {buildRoundEmbed, buildTowerEmbed, sendDiscordRoundBundle, isValidAnnouncementEventIds, attachPublicationUrls} from "./discord-announcement.mjs";
 import {rememberDiscordAnnouncement} from "./discord-announcement-sync.mjs";
 
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
 const discordTeams = [["ATTACK_1","🔴 ทีมบุก 1"],["ATTACK_2","🔴 ทีมบุก 2"],["ATTACK_3","🔴 ทีมบุก 3"],["DEFENSE_1","🔵 ทีมกัน 1"],["DEFENSE_2","🔵 ทีมกัน 2"],["FOREST","🟢 ป่า"],["STANDBY","⚪ สำรอง"]];
 const literal = value => String(value || "").replace(/@/g,"@\u200b").replace(/[\r\n]/g," ").slice(0,180);
 export function discordWebhookPayload(snapshot, publicationUrl) {
-  return {username: "Path of Memories", embeds: [buildRoundEmbed(snapshot, publicationUrl, 1)]};
+  return {username: "Path of Memories", embeds: [buildRoundEmbed(snapshot, publicationUrl, 1), buildTowerEmbed(snapshot)]};
 }
 async function sendDiscordWebhook(env,snapshot,publicationUrl) {
   if(!env.DISCORD_WEBHOOK_URL)return "unconfigured";
