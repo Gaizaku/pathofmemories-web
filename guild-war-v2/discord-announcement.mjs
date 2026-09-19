@@ -26,6 +26,16 @@ export function buildRoundEmbed(snapshot, publicationUrl, roundNumber) {
       : "—";
     return {name: name + " · " + members.length + (team !== "STANDBY" ? "/5" : ""), value: value.slice(0, 1024), inline: true};
   });
+  const towerOrder = ["TOP", "MID", "BOTTOM"];
+  const towerAssignments = towerOrder.map(tower => {
+    const names = (snapshot.members || [])
+      .filter(member => member.tower === tower)
+      .sort((left, right) => (left.towerPosition ?? Number.MAX_SAFE_INTEGER) - (right.towerPosition ?? Number.MAX_SAFE_INTEGER))
+      .map(member => literal(member.name))
+      .join(", ");
+    return names ? tower + ": " + names : "";
+  }).filter(Boolean).join("\n") || "—";
+  fields.push({name: "🗼 คนขึ้นป้อม", value: towerAssignments.slice(0, 1024), inline: false});
   const detail = info.time
     ? "รอบ " + info.round + " " + literal(snapshot.event?.warType) + " " + info.time + " " + info.date + " (" + info.weekday + ")"
     : "รอบ " + info.round + " " + literal(snapshot.event?.warType);
