@@ -1,4 +1,5 @@
--- Immutable publications are separate from private editable drafts.
+-- Stable public links are separate from private editable drafts. The latest
+-- linked publication may be refreshed in place for live Discord announcements.
 CREATE TABLE IF NOT EXISTS team_publications (
  id TEXT PRIMARY KEY,
  game_id TEXT NOT NULL,

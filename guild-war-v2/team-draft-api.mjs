@@ -1,5 +1,6 @@
 import {activeOrganizer} from "./organizer-auth.mjs";
 import {readApi} from './read-api.mjs';
+import {scheduleDiscordAnnouncementSync} from './discord-announcement-sync.mjs';
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
 const jungle = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
 const lanes = ["TOP","MID","BOTTOM"];
@@ -21,7 +22,7 @@ export function validDraft(value) {
  }
  return true;
 }
-export async function teamDraftApi(request,env){
+export async function teamDraftApi(request,env,executionContext){
  const url=new URL(request.url),draftMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/draft$/.exec(url.pathname),builderMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/team-builder$/.exec(url.pathname),quickMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/quick-player$/.exec(url.pathname),cancelMatch=/^\/api\/v2\/games\/([a-z0-9-]{1,64})\/war\/events\/([A-Za-z0-9-]{1,64})\/registrations\/([A-Za-z0-9-]{1,64})$/.exec(url.pathname),match=draftMatch||builderMatch||quickMatch||cancelMatch;
  if(!match)return null;
  if(builderMatch&&request.method!=="GET")return json({error:"method_not_allowed"},405);
@@ -58,6 +59,7 @@ export async function teamDraftApi(request,env){
      db.prepare("INSERT INTO audit_log (id,game_id,actor_id,action,entity_id,created_at) VALUES (lower(hex(randomblob(16))),?,?,?,?,?)").bind(game,user.id,"quick_player_registered",requestedPlayerId+":"+event,now)
     ]);
     const loadouts=await db.prepare("SELECT l.id,l.role,main.name AS main_weapon_name,sub.name AS sub_weapon_name FROM loadouts l JOIN weapons main ON main.game_id=l.game_id AND main.id=l.main_weapon_id JOIN weapons sub ON sub.game_id=l.game_id AND sub.id=l.sub_weapon_id WHERE l.game_id=? AND l.player_id=? AND l.active=1 ORDER BY l.id").bind(game,requestedPlayerId).all();
+    scheduleDiscordAnnouncementSync({db,env,game,eventId:event,organizerId:user.id,origin:url.origin,executionContext});
     return json({player:{player_id:existing.id,character_name:existing.character_name,nickname:existing.nickname||"",preferred_role:effectiveRole,note:"",preferred_team:existing.preferred_team||"",loadouts:loadouts.results||[]},eventId:event});
    }
    if(!name||name.length>64||nickname.length>64)return json({error:"invalid_player"},400);
@@ -69,6 +71,7 @@ export async function teamDraftApi(request,env){
     db.prepare("INSERT INTO attendance_choices (game_id,event_id,player_id,status,preferred_role,note,updated_at,updated_by) VALUES (?,?,?,'attending',?,?,?,'organizer')").bind(game,event,playerId,preferredRole,"",now),
     db.prepare("INSERT INTO audit_log (id,game_id,actor_id,action,entity_id,created_at) VALUES (lower(hex(randomblob(16))),?,?,?,?,?)").bind(game,user.id,"quick_player_added",playerId,now)
    ]);
+   scheduleDiscordAnnouncementSync({db,env,game,eventId:event,organizerId:user.id,origin:url.origin,executionContext});
    return json({player:{player_id:playerId,character_name:name,nickname,preferred_role:preferredRole,note:"",preferred_team:"",loadouts:[]},eventId:event},201);
   }
   if(cancelMatch){
@@ -98,6 +101,7 @@ export async function teamDraftApi(request,env){
    ];
    if(draftUpdate)statements.push(draftUpdate);
    await db.batch(statements);
+   scheduleDiscordAnnouncementSync({db,env,game,eventId:event,organizerId:user.id,origin:url.origin,executionContext});
    return json({ok:true,playerId,eventId:event,draftRevision,draftBoard});
   }
   if(builderMatch){
@@ -131,6 +135,7 @@ export async function teamDraftApi(request,env){
    ?await db.prepare("INSERT INTO team_drafts VALUES (?,?,?,1,?,?) ON CONFLICT(game_id,event_id,organizer_id) DO NOTHING").bind(game,event,user.id,board,now).run()
    :await db.prepare("UPDATE team_drafts SET revision=revision+1,board_json=?,updated_at=? WHERE game_id=? AND event_id=? AND organizer_id=? AND revision=?").bind(board,now,game,event,user.id,data.revision).run();
   if(result.meta.changes!==1)return json({error:"draft_conflict"},409);
+  scheduleDiscordAnnouncementSync({db,env,game,eventId:event,organizerId:user.id,origin:url.origin,executionContext});
   return json({revision:data.revision+1,updatedAt:now});
  }catch{return json({error:"temporarily_unavailable"},503);}
 }
