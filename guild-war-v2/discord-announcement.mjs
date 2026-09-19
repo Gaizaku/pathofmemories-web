@@ -126,7 +126,9 @@ export async function sendDiscordRoundBundle(env, rounds, origin) {
         headers: {"Authorization": "Bot " + env.DISCORD_BOT_TOKEN, "Content-Type": "application/json"},
         body: JSON.stringify(payload),
       });
-      return response.ok ? "sent" : "failed";
+      if (!response.ok) return "failed";
+      const message = await response.json();
+      return {status: "sent", messageId: message?.id || ""};
     } catch {
       return "failed";
     }

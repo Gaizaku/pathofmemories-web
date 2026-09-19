@@ -20,7 +20,7 @@ export interface Env {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname === "/discord-v6") {
@@ -46,7 +46,7 @@ export default {
     const publicationResponse = await teamPublicationApi(request, env);
     if (publicationResponse) return publicationResponse;
 
-    const draftResponse = await teamDraftApi(request, env);
+    const draftResponse = await teamDraftApi(request, env, ctx);
     if (draftResponse) return draftResponse;
 
     const regularsResponse = await regularsApi(request, env);

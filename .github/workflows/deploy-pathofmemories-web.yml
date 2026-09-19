@@ -25,6 +25,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Update Discord announcement sync schema
+        run: npx wrangler d1 execute pathofmemories-guild-war --remote --file=guild-war-v2/012_discord_announcements.sql
       - run: npm run build
       - name: Deploy Worker and assets
         run: npx wrangler deploy

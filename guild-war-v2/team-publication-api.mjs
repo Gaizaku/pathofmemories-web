@@ -2,6 +2,7 @@ import {activeOrganizer} from "./organizer-auth.mjs";
 import {validDraft} from "./team-draft-api.mjs";
 import {readApi} from "./read-api.mjs";
 import {buildRoundEmbed, loadPublishedRounds, sendDiscordRoundBundle, isValidAnnouncementEventIds, attachPublicationUrls} from "./discord-announcement.mjs";
+import {rememberDiscordAnnouncement} from "./discord-announcement-sync.mjs";
 
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
 const discordTeams = [["ATTACK_1","🔴 ทีมบุก 1"],["ATTACK_2","🔴 ทีมบุก 2"],["ATTACK_3","🔴 ทีมบุก 3"],["DEFENSE_1","🔵 ทีมกัน 1"],["DEFENSE_2","🔵 ทีมกัน 2"],["FOREST","🟢 ป่า"],["STANDBY","⚪ สำรอง"]];
@@ -72,7 +73,17 @@ async function teamAnnouncementApi(request, env, url, game) {
     let origin = url.origin;
     try { origin = new URL(env.PUBLIC_ORIGIN || url.origin).origin; } catch {}
     const rounds = attachPublicationUrls(loaded.rounds, origin);
-    const webhook = await sendDiscordRoundBundle(env, rounds, origin);
+    const delivery = await sendDiscordRoundBundle(env, rounds, origin);
+    const webhook = typeof delivery === "string" ? delivery : delivery.status;
+    if (typeof delivery === "object" && delivery.messageId && env.DISCORD_CHANNEL_ID) {
+      await rememberDiscordAnnouncement(db, {
+        game,
+        organizerId: user.id,
+        eventIds: data.eventIds,
+        channelId: env.DISCORD_CHANNEL_ID,
+        messageId: delivery.messageId,
+      });
+    }
     return json({eventIds: data.eventIds, webhook});
   } catch {
     return json({error: "announcement_unavailable"}, 503);
