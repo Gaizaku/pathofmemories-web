@@ -27,19 +27,24 @@ export function buildRoundEmbed(snapshot, publicationUrl, roundNumber) {
     return {name: name + " · " + members.length + (team !== "STANDBY" ? "/5" : ""), value: value.slice(0, 1024), inline: true};
   });
   const towerOrder = ["TOP", "MID", "BOTTOM"];
-  const towerFields = towerOrder.map((tower, index) => {
+  const towerFields = towerOrder.map(tower => {
     const names = (snapshot.members || [])
       .filter(member => member.tower === tower)
       .sort((left, right) => (left.towerPosition ?? Number.MAX_SAFE_INTEGER) - (right.towerPosition ?? Number.MAX_SAFE_INTEGER))
       .map(member => literal(member.name))
       .join(", ");
     return {
-      name: (index === 0 ? "🗼 คนขึ้นป้อม · " : "") + tower,
+      name: tower,
       value: (names || "—").slice(0, 1024),
       inline: true,
     };
   });
-  const fields = [...teamFields.slice(0, -1), ...towerFields, ...teamFields.slice(-1)];
+  const fields = [
+    ...teamFields.slice(0, -1),
+    {name: "🗼 คนขึ้นป้อม", value: "\u200b", inline: false},
+    ...towerFields,
+    ...teamFields.slice(-1),
+  ];
   const detail = info.time
     ? "รอบ " + info.round + " " + literal(snapshot.event?.warType) + " " + info.time + " " + info.date + " (" + info.weekday + ")"
     : "รอบ " + info.round + " " + literal(snapshot.event?.warType);
