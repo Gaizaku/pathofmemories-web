@@ -80,6 +80,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const suppressCollaborationBroadcast = useRef(false);
   const boardRef = useRef(board);
   const savedBoardRef = useRef(savedBoard);
+  const failedAutoSaveSnapshot = useRef("");
   boardRef.current = board;
   savedBoardRef.current = savedBoard;
   const roundCache = useRef<Record<string,{players:Player[];board:Record<string,Placement>;organizer:string;revision:number;savedBoard:string}>>({});
@@ -93,7 +94,11 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     const poll=async()=>{
       try{
         const response=await fetch(base+"/war/events/"+round+"/collaboration",{credentials:"include",cache:"no-store"});
-        if(!response.ok)return;
+        if(response.status===401){
+          if(!stopped){setOrganizer("");setLiveStatus("offline");}
+          return;
+        }
+        if(!response.ok){if(!stopped)setLiveStatus("offline");return;}
         const message=await response.json() as {board?:Record<string,Placement>;revision?:number;organizerId?:string|null};
         if(stopped||!message.board)return;
         const incoming=JSON.stringify(message.board);
@@ -119,7 +124,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   },[organizer,loading,loadedRound,round]);
   useEffect(()=>{
     const snapshot = JSON.stringify(board);
-    if(!organizer||loading||loadedRound!==round||publishing||savedBoard===snapshot)return;
+    if(!organizer||loading||loadedRound!==round||publishing||savedBoard===snapshot||failedAutoSaveSnapshot.current===snapshot)return;
     if(autoSaveTimer.current!==null)window.clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current=window.setTimeout(()=>{
       if(!cloudBusy)void cloudDraft(true);
@@ -183,23 +188,33 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   async function cloudDraft(silent = false) {
     if(!organizer||cloudBusy||loading||loadedRound!==round)return;
     const requestedRound=round;
+    if(!silent)failedAutoSaveSnapshot.current="";
     setCloudBusy(true);if(silent)setAutoSaving(true);setCloudMessage("");setError("");
     try {
       const response=await fetch(base+"/war/events/"+requestedRound+"/draft",{
-        method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision,board})
+        method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision,board})
       });
       const data=await response.json();
       if(activeRound.current!==requestedRound)return;
       if(!response.ok){
         if(data.error==="draft_conflict")throw new Error(th?"มีฉบับร่างออนไลน์ใหม่กว่า เปลี่ยนรอบแล้วกลับมาอีกครั้งเพื่อโหลดล่าสุด":"A newer online draft exists. Switch rounds and return to load the latest draft.");
         if(data.error==="roster_changed")throw new Error(th?"รายชื่อหรือ Loadout เปลี่ยนแล้ว กรุณา Refresh และตรวจทีม":"Roster or loadouts changed. Refresh and review your team.");
-        if(response.status===401)throw new Error(th?"กรุณาเข้าสู่ระบบ Discord อีกครั้ง":"Please sign in with Discord again.");
+        if(response.status===401){
+          setOrganizer("");
+          throw new Error(th?"การเข้าสู่ระบบ Discord หมดอายุแล้ว กรุณาเข้าสู่ระบบอีกครั้ง":"Your Discord session has expired. Please sign in again.");
+        }
         throw new Error(th?"ติดต่อฉบับร่างออนไลน์ไม่สำเร็จ ลองใหม่ได้โดยทีมในเครื่องยังอยู่":"Online draft request failed. Your local board is retained.");
       }
       setSavedBoard(JSON.stringify(board));
       setRevision(data.revision);
+      failedAutoSaveSnapshot.current="";
       if(!silent)setCloudMessage(th?"บันทึกออนไลน์แล้ว · ยังไม่ประกาศ":"Saved online · Not published");
-    }catch(err){if(activeRound.current===requestedRound)setError(err instanceof Error?err.message:"Request failed");}
+    }catch(err){
+      if(activeRound.current===requestedRound){
+        if(silent)failedAutoSaveSnapshot.current=JSON.stringify(boardRef.current);
+        setError(err instanceof Error?err.message:"Request failed");
+      }
+    }
     finally{setCloudBusy(false);if(silent)setAutoSaving(false);}
   }
 
