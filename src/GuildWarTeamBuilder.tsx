@@ -346,9 +346,13 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     const c=new AbortController();
     void Promise.all(rounds.map(async item=>{
       try {
-        const response=await get(base+"/war/events/"+item.id+"/team-builder",c.signal);
+        const [response,shared]=await Promise.all([
+          get(base+"/war/events/"+item.id+"/team-builder",c.signal),
+          get(base+"/war/events/"+item.id+"/collaboration",c.signal).catch(()=>null),
+        ]);
         const roster:Player[]=response.registrations||[];
-        const draft=response.revision>0?normalizeBoard(roster,response.board):{};
+        const source=shared?.organizerId?shared.board:response.revision>0?response.board:{};
+        const draft=normalizeBoard(roster,source);
         return [item.id,unassignedCount(roster,draft)] as const;
       } catch { return null; }
     })).then(items=>{
@@ -360,7 +364,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       });
     });
     return ()=>c.abort();
-  },[rounds]);
+  },[rounds,round]);
 
   useEffect(()=>{
     if(!round)return;
