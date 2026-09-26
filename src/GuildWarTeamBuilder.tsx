@@ -79,9 +79,11 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
   const collaborationSocket = useRef<WebSocket | null>(null);
   const suppressCollaborationBroadcast = useRef(false);
   const boardRef = useRef(board);
+  const playersRef = useRef(players);
   const savedBoardRef = useRef(savedBoard);
   const failedAutoSaveSnapshot = useRef("");
   boardRef.current = board;
+  playersRef.current = players;
   savedBoardRef.current = savedBoard;
   const roundCache = useRef<Record<string,{players:Player[];board:Record<string,Placement>;organizer:string;revision:number;savedBoard:string}>>({});
   activeRound.current = round;
@@ -101,7 +103,8 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         if(!response.ok){if(!stopped)setLiveStatus("offline");return;}
         const message=await response.json() as {board?:Record<string,Placement>;revision?:number;organizerId?:string|null};
         if(stopped||!message.board)return;
-        const incoming=JSON.stringify(message.board);
+        const normalizedBoard=normalizeBoard(playersRef.current,message.board);
+        const incoming=JSON.stringify(normalizedBoard);
         const localSnapshot=JSON.stringify(boardRef.current);
         if(incoming===localSnapshot){
           setLiveStatus("connected");
@@ -109,7 +112,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
         }
         // Keep a local edit in place until its debounced autosave completes.
         if(savedBoardRef.current!==localSnapshot)return;
-        setBoard(message.board);
+        setBoard(normalizedBoard);
         setSavedBoard(incoming);
         setSaved(true);
         setLiveStatus("connected");
