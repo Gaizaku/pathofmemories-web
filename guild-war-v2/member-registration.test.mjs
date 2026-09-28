@@ -73,6 +73,19 @@ test('allows a member to be opened and updated from another device',async()=>{
   assert.equal((await f.post('save',{...body,selected:[],revision:profile.revision})).status,200);
  }finally{f.sql.close();}
 });
+test('carries a member note into a new week without overriding a current-week cleared note',async()=>{
+ const f=fixture();try{
+  const {events}=await ensureWeekend(f.db,clock);
+  f.sql.prepare('INSERT INTO events (game_id,id,starts_at,local_date,week_start,war_type,status,capacity) VALUES (?,?,?,?,?,?,?,?)').run(GAME,'previous-week','2026-09-05T19:30:00+07:00','2026-09-05','2026-08-31','League','closed',30);
+  f.sql.prepare('INSERT INTO attendance_choices (game_id,event_id,player_id,status,note,updated_at,updated_by) VALUES (?,?,?,?,?,?,?)').run(GAME,'previous-week','p1','attending','Please keep me in mind','2026-09-05T12:00:00.000Z','member');
+  f.sql.prepare('INSERT INTO attendance_choices (game_id,event_id,player_id,status,note,updated_at,updated_by) VALUES (?,?,?,?,?,?,?)').run(GAME,events[0].id,'p1','attending','','2026-09-08T10:00:00.000Z','organizer');
+  const initial=await (await f.post('lookup',{playerId:'p1'})).json();
+  assert.equal(initial.note,'Please keep me in mind');
+  f.sql.prepare('INSERT INTO attendance_choices (game_id,event_id,player_id,status,note,updated_at,updated_by) VALUES (?,?,?,?,?,?,?)').run(GAME,events[1].id,'p1','attending','','2026-09-08T11:00:00.000Z','member');
+  const cleared=await (await f.post('lookup',{playerId:'p1'})).json();
+  assert.equal(cleared.note,'');
+ }finally{f.sql.close();}
+});
 test('adds a loadout for an imported player before any registration profile exists',async()=>{
  const f=fixture();try{
   const created=await f.post('loadout',{playerId:'p1',role:'Tank',mainWeapon:'w1',subWeapon:'w2'});
