@@ -57,7 +57,9 @@ export async function memberRegistration(request,env,clock=new Date()) {
     }
     const {events,weekStart}=await ensureWeekend(db,clock);
     if(action==='/lookup') {
-      const choices=await rows(db,'SELECT c.event_id,c.status,c.preferred_role,c.note FROM attendance_choices c JOIN events e ON e.game_id=c.game_id AND e.id=c.event_id WHERE c.game_id=? AND c.player_id=? AND e.week_start=?',GAME,data.playerId,weekStart);
+      const choices=await rows(db,'SELECT c.event_id,c.status,c.preferred_role,c.note,c.updated_at,c.updated_by FROM attendance_choices c JOIN events e ON e.game_id=c.game_id AND e.id=c.event_id WHERE c.game_id=? AND c.player_id=? AND e.week_start=?',GAME,data.playerId,weekStart);
+      const [currentNoteChoice]=choices.filter(choice=>choice.updated_by!=='organizer').sort((a,b)=>b.updated_at.localeCompare(a.updated_at));
+      const [previousNoteChoice]=currentNoteChoice?[]:await rows(db,'SELECT c.note FROM attendance_choices c JOIN events e ON e.game_id=c.game_id AND e.id=c.event_id WHERE c.game_id=? AND c.player_id=? AND e.week_start<? AND c.updated_by<>? ORDER BY e.week_start DESC,c.updated_at DESC,e.starts_at DESC LIMIT 1',GAME,data.playerId,weekStart,'organizer');
       const ruleSlots=organizerRule?await rows(db,'SELECT weekday,war_type FROM regular_slots WHERE game_id=? AND player_id=?',GAME,data.playerId):[];
       const ruleIsActive=!!organizerRule&&events.some(e=>regularRuleApplies(organizerRule,e));
       const defaults=organizerRule
@@ -71,7 +73,7 @@ export async function memberRegistration(request,env,clock=new Date()) {
       const preferredTeam=(organizerRule?.preferred_team||profile?.preferred_team||'');
       const organizerLoadouts=organizerRule?.default_loadout_id?[organizerRule.default_loadout_id]:[];
       // The old app stored "ANY"; the new API uses an empty value for it.
-      return json({revision:profile?.revision||0,regular:organizerRule?ruleIsActive:!!profile?.regular,regularSlots,selected,loadoutIds:(organizerRule?organizerLoadouts:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id))).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:choices[0]?.note||'',loadouts:owned,weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
+      return json({revision:profile?.revision||0,regular:organizerRule?ruleIsActive:!!profile?.regular,regularSlots,selected,loadoutIds:(organizerRule?organizerLoadouts:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id))).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:currentNoteChoice?.note??previousNoteChoice?.note??'',loadouts:owned,weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
     }
     if(action!=='/save')return json({error:'not_found'},404);
     const {selected,loadoutIds,note='',regular,revision}=data;
