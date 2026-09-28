@@ -23,6 +23,7 @@ jobs:
       - run: node --test guild-war-v2/registration-token.test.mjs
       - run: node --test guild-war-v2/organizer-auth.test.mjs
       - run: node --test guild-war-v2/read-api.test.mjs
+      - run: node --test guild-war-v2/read-api-regular-notes.test.mjs
       - run: node --test guild-war-v2/team-publication-api.test.mjs
       - run: node --test guild-war-v2/team-draft-api.test.mjs
       - run: node --test guild-war-v2/member-registration.test.mjs
