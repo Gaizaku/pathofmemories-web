@@ -15,6 +15,7 @@ INSERT INTO events VALUES ('wwm','one','2026-09-05T12:30:00Z','2026-09-05','2026
 INSERT INTO events VALUES ('wwm','old','2026-08-29T12:30:00Z','2026-08-29','2026-08-24','League','closed',30);
 INSERT INTO events VALUES ('other','two','2026-09-05T12:30:00Z','2026-09-05','2026-08-31','League','open',30);
 INSERT INTO attendance_choices VALUES ('wwm','one','P001','attending','DPS','ready',1,'2026-09-01T00:00:00Z','test');
+INSERT INTO attendance_choices VALUES ('wwm','one','P002','attending','Tank','inactive player',1,'2026-09-01T00:00:00Z','test');
 INSERT INTO attendance_loadouts VALUES ('wwm','one','P001','L001');`);
 
 db.exec("CREATE TABLE organizers (discord_user_id TEXT PRIMARY KEY, display_name TEXT, enabled INTEGER); CREATE TABLE organizer_sessions (session_hash TEXT PRIMARY KEY, discord_user_id TEXT, expires_at TEXT, created_at TEXT);");

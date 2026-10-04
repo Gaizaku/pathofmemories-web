@@ -57,9 +57,10 @@ async function loadCurrentSnapshot({db, env, game, eventId, organizerId, origin}
   if (!rosterResponse.ok) return null;
   const source = await rosterResponse.json();
   if (source.event?.status === "cancelled") return null;
-  const {publicationSnapshot} = await import("./team-publication-api.mjs");
+  const {normalizeAnnouncementBoard, publicationSnapshot} = await import("./team-publication-api.mjs");
   try {
-    return {organizerId, revision: draft.revision, snapshot: publicationSnapshot(JSON.parse(draft.board_json), source)};
+    const board = normalizeAnnouncementBoard(JSON.parse(draft.board_json), source);
+    return {organizerId, revision: draft.revision, snapshot: publicationSnapshot(board, source)};
   } catch {
     return null;
   }
