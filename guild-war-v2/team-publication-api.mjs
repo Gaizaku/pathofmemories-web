@@ -6,6 +6,9 @@ import {rememberDiscordAnnouncement} from "./discord-announcement-sync.mjs";
 
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
 const discordTeams = [["ATTACK_1","🔴 ทีมบุก 1"],["ATTACK_2","🔴 ทีมบุก 2"],["ATTACK_3","🔴 ทีมบุก 3"],["DEFENSE_1","🔵 ทีมกัน 1"],["DEFENSE_2","🔵 ทีมกัน 2"],["FOREST","🟢 ป่า"],["STANDBY","⚪ สำรอง"]];
+const teamIds = new Set(discordTeams.map(([team]) => team));
+const jungleIds = new Set(["ENEMY_TOP", "ENEMY_BOTTOM", "ALLY_TOP", "ALLY_BOTTOM"]);
+const towerIds = new Set(["TOP", "MID", "BOTTOM"]);
 const literal = value => String(value || "").replace(/@/g,"@\u200b").replace(/[\r\n]/g," ").slice(0,180);
 export function discordWebhookPayload(snapshot, publicationUrl) {
   return {username: "Path of Memories", embeds: [buildRoundEmbed(snapshot, publicationUrl, 1), buildTowerEmbed(snapshot)]};
@@ -16,6 +19,40 @@ async function sendDiscordWebhook(env,snapshot,publicationUrl) {
   if(webhook.protocol!=="https:"||!/(^|\.)discord(?:app)?\.com$/i.test(webhook.hostname)||!webhook.pathname.startsWith("/api/webhooks/"))return "failed";
   try {const response=await fetch(webhook,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(discordWebhookPayload(snapshot,publicationUrl))});return response.ok?"sent":"failed";}catch{return "failed";}
 }
+export function normalizeAnnouncementBoard(board, source) {
+  if (!board || typeof board !== "object" || Array.isArray(board) || !Array.isArray(source?.registrations)) throw new Error("invalid_board");
+  const normalized = {};
+  const teamCounts = {};
+  const towerCounts = {};
+  for (const player of source.registrations) {
+    const id = player?.player_id;
+    if (typeof id !== "string" || !/^[A-Za-z0-9-]{1,64}$/.test(id)) continue;
+    const placement = board[id];
+    if (!placement || typeof placement !== "object" || Array.isArray(placement) || !teamIds.has(placement.team)) continue;
+    if (placement.team !== "STANDBY" && (teamCounts[placement.team] || 0) >= 5) continue;
+
+    const loadouts = Array.isArray(player.loadouts) ? player.loadouts : [];
+    const selectedLoadout = loadouts.find(loadout => loadout.id === placement.loadout);
+    const fallbackLoadout = loadouts.find(loadout => typeof loadout.id === "string" && loadout.id.length <= 64);
+    const next = {team: placement.team, loadout: selectedLoadout ? placement.loadout : fallbackLoadout?.id || ""};
+    if (Number.isSafeInteger(placement.position) && placement.position >= 0 && placement.position <= 200) next.position = placement.position;
+
+    if (placement.team !== "STANDBY") {
+      if (jungleIds.has(placement.jungle)) next.jungle = placement.jungle;
+      if (towerIds.has(placement.tower) && (towerCounts[placement.tower] || 0) < 3) {
+        next.tower = placement.tower;
+        next.towerPosition = Number.isSafeInteger(placement.towerPosition) && placement.towerPosition >= 0 && placement.towerPosition <= 2
+          ? placement.towerPosition
+          : towerCounts[placement.tower] || 0;
+        towerCounts[placement.tower] = (towerCounts[placement.tower] || 0) + 1;
+      }
+      teamCounts[placement.team] = (teamCounts[placement.team] || 0) + 1;
+    }
+    normalized[id] = next;
+  }
+  return normalized;
+}
+
 export function publicationSnapshot(board, source) {
   if (!validDraft({revision: 0, board}) || !Object.keys(board).length) throw new Error("invalid_board");
   const counts = {};
@@ -64,7 +101,7 @@ async function teamAnnouncementApi(request, env, url, game) {
       const source = await rosterResponse.json();
       if (source.event.status === "cancelled") return json({error: "event_cancelled", eventId}, 409);
       let snapshot;
-      try { snapshot = publicationSnapshot(JSON.parse(draft.board_json), source); }
+      try { snapshot = publicationSnapshot(normalizeAnnouncementBoard(JSON.parse(draft.board_json), source), source); }
       catch { return json({error: "draft_invalid", eventId}, 409); }
       const publicationId = crypto.randomUUID();
       const publishedAt = new Date().toISOString();
