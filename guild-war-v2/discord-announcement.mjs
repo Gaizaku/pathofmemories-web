@@ -1,3 +1,4 @@
+import {ROUNDS} from './weekend.mjs';
 const discordTeams = [["ATTACK_1","🔴 ทีมบุก 1"],["ATTACK_2","🔴 ทีมบุก 2"],["ATTACK_3","🔴 ทีมบุก 3"],["DEFENSE_1","🔵 ทีมกัน 1"],["DEFENSE_2","🔵 ทีมกัน 2"],["FOREST","🟢 ป่า"],["STANDBY","⚪ สำรอง"]];
 const thaiWeekdays = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
 const eventIdPattern = /^[A-Za-z0-9-]{1,24}$/;
@@ -66,13 +67,16 @@ export function announcementCustomId(eventIds, selectedIndex) {
 
 export function parseAnnouncementCustomId(customId) {
   const parts = String(customId || "").split("|");
-  if (parts.length !== 3 || parts[0] !== "pom-war") return null;
+  if (parts.length !== 3 || parts[0] !== "pom-war" || !/^[0-3]$/.test(parts[2])) return null;
   const eventIds = parts[1].split(",");
   const selectedIndex = Number(parts[2]);
-  if (eventIds.length !== 4 || new Set(eventIds).size !== 4 || !eventIds.every(id => eventIdPattern.test(id))) return null;
-  if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex > 3) return null;
-  if (announcementCustomId(eventIds, selectedIndex).length > 100) return null;
+  if (!isValidAnnouncementEventIds(eventIds) || selectedIndex >= eventIds.length) return null;
   return {eventIds, selectedIndex};
+}
+
+function displayRoundNumber(round,index) {
+  const time=roundInfo(round.snapshot?.event?.startsAt,index+1).time.replace('.',':');
+  return ROUNDS.find(slot=>slot.time===time)?.number||index+1;
 }
 
 export function announcementComponents(rounds, selectedIndex) {
@@ -80,7 +84,7 @@ export function announcementComponents(rounds, selectedIndex) {
   const buttons = eventIds.map((eventId, index) => ({
     type: 2,
     style: index === selectedIndex ? 3 : 1,
-    label: "รอบ " + (index + 1),
+    label: "รอบ " + displayRoundNumber(rounds[index],index),
     custom_id: announcementCustomId(eventIds, index),
   }));
   const selected = rounds[selectedIndex];
@@ -98,7 +102,7 @@ export function buildAnnouncementPayload(rounds, selectedIndex = 0) {
   return {
     username: "Path of Memories",
     embeds: [
-      buildRoundEmbed(selected.snapshot, selected.publicationUrl, selectedIndex + 1),
+      buildRoundEmbed(selected.snapshot, selected.publicationUrl, displayRoundNumber(selected,selectedIndex)),
       buildTowerEmbed(selected.snapshot),
     ],
     components: announcementComponents(rounds, selectedIndex),
@@ -134,8 +138,8 @@ export async function loadPublishedRounds(db, game, eventIds, organizerId = "") 
 
 export function isValidAnnouncementEventIds(eventIds) {
   return Array.isArray(eventIds)
-    && eventIds.length === 4
-    && new Set(eventIds).size === 4
+    && eventIds.length >= 1 && eventIds.length <= 4
+    && new Set(eventIds).size === eventIds.length
     && eventIds.every(eventId => typeof eventId === "string" && eventIdPattern.test(eventId))
     && announcementCustomId(eventIds, 0).length <= 100;
 }

@@ -6,6 +6,7 @@ import { GuildWarPublication } from "./GuildWarPublication";
 import { GuildWarTeamBuilder } from "./GuildWarTeamBuilder";
 import { GuildWarPlayerManagement } from "./GuildWarPlayerManagement";
 import { GuildWarRegulars } from "./GuildWarRegulars";
+import { GuildWarSchedule } from "./GuildWarSchedule";
 
 type Language = "th" | "en";
 
@@ -43,6 +44,8 @@ const copy = {
     registrationSchedule: "เปิดลงทะเบียนทุกสัปดาห์ · เสาร์–อาทิตย์",
     registrationActionHint: "เลือกตัวละคร รอบ War และ Build ที่พร้อมเล่น",
     builderActionHint: "สำหรับผู้จัดทีม จัดตำแหน่ง และประกาศทีม",
+    warSchedule: "จัดการตารางวอร์",
+    warScheduleHint: "สำหรับผู้จัดทีม พักรอบชั่วคราวและเปิดกลับตามช่วงวันที่",
     openRegistrationPage: "ลงทะเบียน Guild War",
     backToGuildWar: "← กลับหน้า Guild War",
     managerNote: "เริ่มใช้งานได้โดยไม่ต้อง Login",
@@ -99,6 +102,8 @@ const copy = {
     registrationSchedule: "Weekly registration · Saturday–Sunday",
     registrationActionHint: "Choose your character, rounds, and ready Loadouts",
     builderActionHint: "For organizers to assign positions and publish teams",
+    warSchedule: "War schedule",
+    warScheduleHint: "For organizers to pause slots by date and restore them early",
     openRegistrationPage: "Guild War registration",
     backToGuildWar: "← Back to Guild War",
     managerNote: "No login is required to get started",
@@ -334,6 +339,9 @@ function GuildWarPage({ language, onLanguageChange }: { language: Language; onLa
         {organizer && <a className="manager-action" href="/games/where-winds-meet/guild-war/teams">
           <span>03</span><strong>{t.openBuilder}</strong><small>{t.builderActionHint} <ExternalMark /></small>
         </a>}
+        {organizer && <a className="manager-action" href="/games/where-winds-meet/guild-war/schedule">
+          <span>04</span><strong>{t.warSchedule}</strong><small>{t.warScheduleHint} <ExternalMark /></small>
+        </a>}
       </section>
       <p className="manager-note">✦ {t.managerNote}</p>
     </Shell>
@@ -530,6 +538,7 @@ export default function App() {
   if (path === "/games/where-winds-meet/guild-war/register") return <GuildWarRegistrationPage language={language} onLanguageChange={setLanguage} />;
   if (path === "/games/where-winds-meet/guild-war/regulars") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarRegulars language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war/teams") return <OrganizerOnlyTeamBuilderPage language={language} onLanguageChange={setLanguage} />;
+  if (path === "/games/where-winds-meet/guild-war/schedule") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarSchedule language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war/players") return <Shell language={language} onLanguageChange={setLanguage}><GuildWarPlayerManagement language={language} /></Shell>;
   if (path === "/games/where-winds-meet/guild-war") return <GuildWarPage language={language} onLanguageChange={setLanguage} />;
   return <HomePage language={language} onLanguageChange={setLanguage} />;

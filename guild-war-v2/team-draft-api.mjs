@@ -1,6 +1,7 @@
 import {activeOrganizer} from "./organizer-auth.mjs";
 import {readApi} from './read-api.mjs';
 import {scheduleDiscordAnnouncementSync} from './discord-announcement-sync.mjs';
+import {isEventPaused} from './weekend.mjs';
 const teams = ["ATTACK_1","ATTACK_2","ATTACK_3","DEFENSE_1","DEFENSE_2","FOREST","STANDBY"];
 const jungle = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
 const lanes = ["TOP","MID","BOTTOM"];
@@ -44,8 +45,9 @@ export async function teamDraftApi(request,env,executionContext){
    const preferredRole=typeof data?.preferredRole==="string"?data.preferredRole.trim():"";
    if(requestedPlayerId&&!/^[A-Za-z0-9-]{1,64}$/.test(requestedPlayerId))return json({error:"invalid_player"},400);
    if((!requestedPlayerId&&!name)||name.length>64||nickname.length>64||preferredRole&&!["Tank","Heal","DPS"].includes(preferredRole))return json({error:"invalid_player"},400);
-   const eventRow=await db.prepare("SELECT id,status FROM events WHERE game_id=? AND id=?").bind(game,event).first();
+   const eventRow=await db.prepare("SELECT id,status,starts_at,local_date FROM events WHERE game_id=? AND id=?").bind(game,event).first();
    if(!eventRow)return json({error:"event_not_found"},404);
+   if(await isEventPaused(db,game,eventRow))return json({error:'event_paused',eventId:event},409);
    if(eventRow.status!=="open")return json({error:"registration_closed"},409);
    if(requestedPlayerId){
     const existing=await db.prepare("SELECT p.id,p.character_name,p.nickname,COALESCE(m.preferred_team,'') AS preferred_team FROM players p LEFT JOIN member_preferences m ON m.game_id=p.game_id AND m.player_id=p.id WHERE p.game_id=? AND p.id=? AND p.active=1").bind(game,requestedPlayerId).first();

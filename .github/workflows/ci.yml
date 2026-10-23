@@ -28,4 +28,8 @@ jobs:
       - run: node --test guild-war-v2/team-publication-api.test.mjs
       - run: node --test guild-war-v2/team-draft-api.test.mjs
       - run: node --test guild-war-v2/member-registration.test.mjs
+      - run: node --test guild-war-v2/war-schedule.test.mjs
+      - run: node --test guild-war-v2/announcement-selection.test.mjs
+      - run: node --test guild-war-v2/registration-schedule.test.mjs
+      - run: node --test guild-war-v2/discord-announcement.test.mjs guild-war-v2/discord-announcement-sync.test.mjs
       - run: npx tsc -p tsconfig.app.json --noEmit

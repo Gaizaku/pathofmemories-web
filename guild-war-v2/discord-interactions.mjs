@@ -63,7 +63,7 @@ export async function discordInteractionApi(request, env) {
   if (!parsed) return interactionError("ปุ่มประกาศนี้หมดอายุหรือไม่ถูกต้อง");
   try {
     const organizerId = await findAnnouncementOwner(env.GUILD_WAR_DB, "where-winds-meet", interaction, parsed.eventIds);
-    if (!organizerId) return interactionError("ไม่พบข้อมูลของประกาศนี้แล้ว กรุณาประกาศ 4 รอบใหม่จากหน้า Team Summary");
+    if (!organizerId) return interactionError("ไม่พบข้อมูลของประกาศนี้แล้ว กรุณาประกาศรอบวอร์ใหม่จากหน้า Team Summary");
     const loaded = await loadPublishedRounds(env.GUILD_WAR_DB, "where-winds-meet", parsed.eventIds, organizerId);
     if (loaded.missing.length) return interactionError("ไม่พบข้อมูลประกาศของบางรอบแล้ว");
     const origin = (() => {
