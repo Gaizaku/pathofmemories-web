@@ -8,11 +8,14 @@ import {GAME,ensureWeekend,slotOf,validSlots} from './weekend.mjs';
 const clock=new Date('2026-09-08T10:00:00Z');
 function fixture(){
  const sql=new DatabaseSync(':memory:');
- for(const f of ['001_registration.sql','002_registration_claims.sql','009_weekend_registration.sql'])sql.exec(readFileSync(new URL(f,import.meta.url),'utf8'));
+ for(const f of ['001_registration.sql','002_registration_claims.sql','009_weekend_registration.sql','013_war_schedule.sql'])sql.exec(readFileSync(new URL(f,import.meta.url),'utf8'));
  sql.exec(`INSERT INTO games VALUES ('${GAME}','WWM'); INSERT INTO players (game_id,id,character_name,nickname) VALUES ('${GAME}','p1','Hero','Golf'); INSERT INTO weapons VALUES ('${GAME}','w1','Sword'),('${GAME}','w2','Spear'); INSERT INTO loadouts (game_id,id,player_id,role,main_weapon_id,sub_weapon_id) VALUES ('${GAME}','l1','p1','DPS','w1','w2');`);
  const db={prepare(query){return {bind(...args){return {all:async()=>({results:sql.prepare(query).all(...args)}),run:async()=>({meta:sql.prepare(query).run(...args)}),first:async()=>sql.prepare(query).get(...args)};}};},async batch(statements){sql.exec('BEGIN');try{const r=[];for(const s of statements)r.push(await s.run());sql.exec('COMMIT');return r;}catch(e){sql.exec('ROLLBACK');throw e;}}};
  const env={GUILD_WAR_DB:db};
- const post=(action,body,origin='https://example.com')=>memberRegistration(new Request('https://example.com/api/v2/games/'+GAME+'/member-registration/'+action,{method:'POST',headers:{Origin:origin},body:JSON.stringify(body)}),env,clock);
+ const post=async(action,body,origin='https://example.com')=>{
+  if(action==='save'&&!Object.hasOwn(body,'scheduleVersion'))body={...body,scheduleVersion:(await ensureWeekend(db,clock)).scheduleVersion};
+  return memberRegistration(new Request('https://example.com/api/v2/games/'+GAME+'/member-registration/'+action,{method:'POST',headers:{Origin:origin},body:JSON.stringify(body)}),env,clock);
+ };
  return {sql,db,env,post};
 }
 test('weekends contain exactly four rounds each; normalization preserves IDs and history',async()=>{
@@ -120,8 +123,8 @@ test('normalizes the old ANY role and team values while saving',async()=>{
 test('allows regular schedule edits after the current week closes',async()=>{
  const f=fixture(),late=new Date('2026-09-13T15:00:00Z');try{
   await ensureWeekend(f.db,clock);
-  const {events,weekStart}=await ensureWeekend(f.db,late);
-  const body={playerId:'p1',weekStart,selected:[],regularSlots:[events[0].id,events[4].id],loadoutIds:['l1'],preferredRole:'DPS',preferredTeam:'',note:'',regular:true,revision:0};
+  const {events,weekStart,scheduleVersion}=await ensureWeekend(f.db,late);
+  const body={playerId:'p1',weekStart,scheduleVersion,selected:[],regularSlots:[events[0].id,events[4].id],loadoutIds:['l1'],preferredRole:'DPS',preferredTeam:'',note:'',regular:true,revision:0};
   assert.equal((await memberRegistration(new Request('https://example.com/api/v2/games/'+GAME+'/member-registration/save',{method:'POST',headers:{Origin:'https://example.com'},body:JSON.stringify(body)}),f.env,late)).status,200);
  }finally{f.sql.close();}
 });

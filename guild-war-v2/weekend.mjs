@@ -1,3 +1,4 @@
+import {loadSchedulePauses,isSlotPaused} from './war-schedule.mjs';
 export const GAME = 'where-winds-meet';
 export const ROUNDS = [
   {number:1, time:'19:30', end:'', type:'League'},
@@ -41,7 +42,13 @@ export async function rows(db,sql,...args) {
 }
 // Reuse existing IDs so saved teams and registrations keep their references.
 // Only this week's future rounds are normalized; historical rows remain untouched.
-export async function ensureWeekend(db,now=new Date()) {
+export async function isEventPaused(db,game,event) {
+  if(game!==GAME)return false;
+  const date=event.local_date||new Date(new Date(event.starts_at).getTime()+7*3600000).toISOString().slice(0,10);
+  return isSlotPaused(await loadSchedulePauses(db,game,date,date),date,slotOf(event));
+}
+
+export async function ensureWeekend(db,now=new Date(),{includePaused=false}={}) {
   const week=weekOf(now),result=[];
   const existing=await rows(db,'SELECT * FROM events WHERE game_id=? AND week_start=? ORDER BY starts_at,id',GAME,week);
   const writes=[];
@@ -60,6 +67,11 @@ export async function ensureWeekend(db,now=new Date()) {
     }
   }
   if(writes.length)await db.batch(writes);
-  return {weekStart:week,events:result};
+  const dates=weekendDates(week),pauses=await loadSchedulePauses(db,GAME,dates[0],dates[1]);
+  // Keep all stored event rows; paused rounds are hidden only from active selection.
+  const events=result.map(event=>({...event,paused:isSlotPaused(pauses,event.local_date,event.slot)}));
+  const visibleEvents=events.filter(event=>!event.paused);
+  const scheduleVersion=visibleEvents.map(event=>event.id).sort().join(',');
+  return {weekStart:week,scheduleVersion,events:includePaused?events:visibleEvents};
 }
 export const validSlots = value => Array.isArray(value)&&value.length<=8&&new Set(value).size===value.length&&value.every(s=>/^(0|6):[1-4]$/.test(s));

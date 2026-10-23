@@ -3,6 +3,7 @@ import {validDraft} from "./team-draft-api.mjs";
 import {readApi} from "./read-api.mjs";
 import {buildRoundEmbed, buildTowerEmbed, sendDiscordRoundBundle, isValidAnnouncementEventIds, attachPublicationUrls} from "./discord-announcement.mjs";
 import {rememberDiscordAnnouncement} from "./discord-announcement-sync.mjs";
+import {isEventPaused} from "./weekend.mjs";
 
 const json = (body, status = 200) => Response.json(body, {status, headers: {"Cache-Control": "no-store"}});
 const discordTeams = [["ATTACK_1","🔴 ทีมบุก 1"],["ATTACK_2","🔴 ทีมบุก 2"],["ATTACK_3","🔴 ทีมบุก 3"],["DEFENSE_1","🔵 ทีมกัน 1"],["DEFENSE_2","🔵 ทีมกัน 2"],["FOREST","🟢 ป่า"],["STANDBY","⚪ สำรอง"]];
@@ -87,12 +88,12 @@ async function teamAnnouncementApi(request, env, url, game) {
   if (raw.length > 2000) return json({error: "too_large"}, 413);
   let data;
   try { data = JSON.parse(raw); } catch { return json({error: "invalid_request"}, 400); }
-  if (!isValidAnnouncementEventIds(data?.eventIds)) return json({error: "four_rounds_required"}, 400);
+  if (!isValidAnnouncementEventIds(data?.eventIds)) return json({error: "rounds_required"}, 400);
   try {
     const db = env.GUILD_WAR_DB;
     // Use the latest shared draft, matching the board shown to collaborators.
     // Never fall back to an older publication when a round has no current draft.
-    const currentRounds = [];
+    const selectedRounds = [];
     for (const eventId of data.eventIds) {
       const draft = await db.prepare("SELECT revision,board_json FROM team_drafts WHERE game_id=? AND event_id=? ORDER BY updated_at DESC,revision DESC,organizer_id DESC LIMIT 1").bind(game, eventId).first();
       if (!draft) return json({error: "draft_missing", eventId}, 409);
@@ -100,9 +101,15 @@ async function teamAnnouncementApi(request, env, url, game) {
       if (!rosterResponse.ok) return json({error: "roster_unavailable", eventId}, 503);
       const source = await rosterResponse.json();
       if (source.event.status === "cancelled") return json({error: "event_cancelled", eventId}, 409);
+      if (await isEventPaused(db, game, source.event)) return json({error: "event_paused", eventId}, 409);
       let snapshot;
       try { snapshot = publicationSnapshot(normalizeAnnouncementBoard(JSON.parse(draft.board_json), source), source); }
       catch { return json({error: "draft_invalid", eventId}, 409); }
+      selectedRounds.push({eventId, draft, snapshot});
+    }
+    // Validate every selected round before creating any bundle publications.
+    const currentRounds = [];
+    for (const {eventId, draft, snapshot} of selectedRounds) {
       const publicationId = crypto.randomUUID();
       const publishedAt = new Date().toISOString();
       await db.prepare("INSERT INTO team_publications (id,game_id,event_id,organizer_id,draft_revision,snapshot_json,published_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(game_id,event_id,organizer_id,draft_revision) DO UPDATE SET snapshot_json=excluded.snapshot_json,published_at=excluded.published_at").bind(publicationId, game, eventId, user.id, draft.revision, JSON.stringify(snapshot), publishedAt).run();
@@ -164,6 +171,7 @@ export async function teamPublicationApi(request, env) {
     if (!rosterResponse.ok) return json({error: "roster_unavailable"},503);
     const source = await rosterResponse.json();
     if (source.event.status === "cancelled") return json({error: "event_cancelled"},409);
+    if (await isEventPaused(db,game,source.event)) return json({error: "event_paused",eventId:event},409);
     let snapshot;
     try {snapshot = publicationSnapshot(JSON.parse(draft.board_json),source);}
     catch {return json({error: "review_board"},409);}

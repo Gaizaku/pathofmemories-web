@@ -8,6 +8,7 @@ import { regularsApi } from "../guild-war-v2/regulars-api.mjs";
 import { memberRegistration } from "../guild-war-v2/member-registration.mjs";
 import { playerManagementApi } from "../guild-war-v2/player-management-api.mjs";
 import {teamCollaborationApi} from "../guild-war-v2/team-collaboration-api.mjs";
+import {warScheduleApi} from "../guild-war-v2/war-schedule-api.mjs";
 export interface Env {
   GUILD_WAR_DB: D1Database;
   DISCORD_CLIENT_ID: string;
@@ -39,6 +40,9 @@ export default {
 
     const authResponse = await organizerAuthApi(request, env);
     if (authResponse) return authResponse;
+
+    const scheduleResponse = await warScheduleApi(request, env);
+    if (scheduleResponse) return scheduleResponse;
 
     const collaborationResponse = await teamCollaborationApi(request, env);
     if (collaborationResponse) return collaborationResponse;

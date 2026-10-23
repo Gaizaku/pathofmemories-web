@@ -5,7 +5,7 @@ import {readFileSync} from "node:fs";
 import {teamPublicationApi, publicationSnapshot, discordWebhookPayload} from "./team-publication-api.mjs";
 import {sha256} from "./discord-oauth.mjs";
 
-async function fixture() {
+async function fixture(game="game") {
  const sql = new DatabaseSync(":memory:");
  for (const name of ["001_registration.sql","004_organizer_auth.sql","005_team_drafts.sql","006_team_publications.sql"]) sql.exec(readFileSync(new URL(name,import.meta.url),"utf8"));
  const db={prepare(query){return {bind(...args){return {
@@ -13,14 +13,16 @@ async function fixture() {
   async all(){return {results:sql.prepare(query).all(...args)};},
   async run(){return {meta:sql.prepare(query).run(...args)};}
  };}};}};
- sql.exec(`INSERT INTO games VALUES ('game','Game');
- INSERT INTO players VALUES ('game','player','Hero','HeroNick',1,1);
- INSERT INTO events VALUES ('game','event','2026-09-06T12:00:00Z','2026-09-06','2026-08-31','League','open',30);
- INSERT INTO attendance_choices VALUES ('game','event','player','attending','Tank','PRIVATE NOTE',1,'now','PRIVATE ACTOR');
- INSERT INTO organizers VALUES ('organizer','Organizer',1,'now');`);
+ sql.prepare("INSERT INTO games VALUES (?,'Game')").run(game);
+ if(game==="where-winds-meet")for(const name of ["009_weekend_registration.sql","013_war_schedule.sql"])sql.exec(readFileSync(new URL(name,import.meta.url),"utf8"));
+ sql.prepare("INSERT INTO players VALUES (?,'player','Hero','HeroNick',1,1)").run(game);
+ const startsAt=game==="where-winds-meet"?"2026-10-24T12:30:00Z":"2026-09-06T12:00:00Z";
+ sql.prepare("INSERT INTO events VALUES (?,'event',?,?,?,'League','open',30)").run(game,startsAt,startsAt.slice(0,10),game==="where-winds-meet"?"2026-10-19":"2026-08-31");
+ sql.prepare("INSERT INTO attendance_choices VALUES (?,'event','player','attending','Tank','PRIVATE NOTE',1,'now','PRIVATE ACTOR')").run(game);
+ sql.exec("INSERT INTO organizers VALUES ('organizer','Organizer',1,'now')");
  sql.prepare("INSERT INTO organizer_sessions VALUES (?,?,?,?)").run(await sha256("session"),"organizer","2099-01-01","now");
- sql.prepare("INSERT INTO team_drafts VALUES (?,?,?,?,?,?)").run("game","event","organizer",1,JSON.stringify({player:{team:"ATTACK_1",loadout:"",tower:"TOP",jungle:"ALLY_TOP"}}),"now");
- const env={GUILD_WAR_DB:db},base="https://preview.example/api/v2/games/game/war/events/event/publications";
+ sql.prepare("INSERT INTO team_drafts VALUES (?,?,?,?,?,?)").run(game,"event","organizer",1,JSON.stringify({player:{team:"ATTACK_1",loadout:"",tower:"TOP",jungle:"ALLY_TOP"}}),"now");
+ const env={GUILD_WAR_DB:db},base=`https://preview.example/api/v2/games/${game}/war/events/event/publications`;
  const post=(revision=1,headers={})=>teamPublicationApi(new Request(base,{method:"POST",headers:{Origin:"https://preview.example",Cookie:"pom_organizer_session=session",...headers},body:JSON.stringify({revision})}),env);
  const get=(id)=>teamPublicationApi(new Request(base+"/"+id),env);
  return {sql,post,get,env,base};
@@ -93,4 +95,31 @@ test("public links are scoped to their game and event",async()=>{
   const wrong=f.base.replace("/game/","/other/")+"/"+id;
   assert.equal((await teamPublicationApi(new Request(wrong),f.env)).status,404);
  } finally {f.sql.close();}
+});
+
+test("rejects a new publication for a paused League event",async()=>{
+ const f=await fixture("where-winds-meet");
+ try {
+  const response=await f.post();
+  assert.equal(response.status,409);
+  assert.deepEqual(await response.json(),{error:"event_paused",eventId:"event"});
+  assert.equal(f.sql.prepare("SELECT count(*) AS count FROM team_publications").get().count,0);
+ }finally{f.sql.close();}
+});
+
+test("existing snapshots and retries stay available when a round is paused",async()=>{
+ const f=await fixture("where-winds-meet");
+ try {
+  f.sql.exec("UPDATE war_schedule_pauses SET disabled_at='2026-10-23'");
+  const published=await f.post();
+  assert.equal(published.status,200);
+  const {id}=await published.json();
+  f.sql.exec("UPDATE war_schedule_pauses SET disabled_at=NULL; UPDATE team_drafts SET revision=2");
+  assert.deepEqual(await (await f.post()).json(),{id,webhook:"already_published"});
+  assert.equal((await f.get(id)).status,200);
+  const response=await f.post(2);
+  assert.equal(response.status,409);
+  assert.deepEqual(await response.json(),{error:"event_paused",eventId:"event"});
+  assert.equal(f.sql.prepare("SELECT count(*) AS count FROM team_publications").get().count,1);
+ }finally{f.sql.close();}
 });

@@ -1,4 +1,4 @@
-import {attachPublicationUrls, buildAnnouncementPayload, loadPublishedRounds} from "./discord-announcement.mjs";
+import {attachPublicationUrls, buildAnnouncementPayload, isValidAnnouncementEventIds, loadPublishedRounds} from "./discord-announcement.mjs";
 import {readApi} from "./read-api.mjs";
 
 const discordIdPattern = /^\d{15,25}$/;
@@ -21,7 +21,7 @@ export function discordAnnouncementEditRequest({channelId, messageId, token, pay
 function parseEventIds(row) {
   try {
     const eventIds = JSON.parse(row.event_ids_json);
-    return Array.isArray(eventIds) && eventIds.length === 4 ? eventIds : [];
+    return isValidAnnouncementEventIds(eventIds) ? eventIds : [];
   } catch {
     return [];
   }

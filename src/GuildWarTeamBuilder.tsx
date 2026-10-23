@@ -1,12 +1,13 @@
 import {useEffect, useRef, useState} from "react";
 import {autoAssignUnassigned} from "./GuildWarAutoAssign";
 import {GuildWarRoundPicker} from "./GuildWarRoundPicker";
+import {announcementRoundsForDay} from "./GuildWarAnnouncementSelection";
 import {useGuildWarOverlay} from "./GuildWarOverlay";
 import "./GuildWarInteractions.css";
 type Player = {player_id:string; character_name:string; nickname?:string; preferred_team?:string; preferred_role?:string; note?:string; loadouts:{id:string;role:string;main_weapon_name:string;sub_weapon_name:string}[]};
 type DirectoryPlayer = {id:string; character_name:string; nickname?:string; loadouts:Player["loadouts"]};
 type DropTarget = {team:string; playerId?:string; tower?:string; center?:boolean};
-type Round = {id:string;starts_at:string;war_type:string};
+type Round = {id:string;starts_at:string;war_type:string;local_date?:string;round_number?:number};
 type Placement = {team:string; loadout:string; jungle?:string; tower?:string; position?:number; towerPosition?:number};
 type CollaborationMessage = {type?:string;board?:Record<string,Placement>|null;updatedByName?:string|null};
 const jungles = ["ENEMY_TOP","ENEMY_BOTTOM","ALLY_TOP","ALLY_BOTTOM"];
@@ -243,36 +244,37 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     finally{setPublishing(false);if(summaryWasOpen&&!summaryDialog.current?.open)summaryDialog.current?.showModal();}
   }
 
-  async function announceFourRounds() {
+  async function announceRounds() {
     const selected = announcementRounds.filter(id => rounds.some(item => item.id === id)).sort((left, right) => rounds.findIndex(item => item.id === left) - rounds.findIndex(item => item.id === right));
-    if (selected.length !== 4) {
-      setError(th ? "กรุณาเลือกให้ครบ 4 รอบ" : "Select exactly 4 rounds");
+    if (!selected.length || selected.length > 4) {
+      setError(th ? "กรุณาเลือก 1–4 รอบที่ต้องการประกาศ" : "Select 1–4 rounds to announce");
       return;
     }
-    if (!await confirm({title:th ? "ประกาศรอบวอร์ 4 รอบ" : "Announce four War rounds",message:th ? "ประกาศ 4 รอบที่เลือกเป็นข้อความ Discord เดียวพร้อมปุ่มเปลี่ยนรอบ?" : "Send the four selected rounds as one Discord message with round buttons?",confirmLabel:th ? "ประกาศ" : "Announce",cancelLabel:th ? "ยกเลิก" : "Cancel"})) return;
+    if (!await confirm({title:th ? `ประกาศรอบวอร์ ${selected.length} รอบ` : `Announce ${selected.length} War rounds`,message:th ? "ประกาศรอบที่เลือกเป็นข้อความ Discord เดียวพร้อมปุ่มเปลี่ยนรอบ?" : "Send the selected rounds as one Discord message with round buttons?",confirmLabel:th ? "ประกาศ" : "Announce",cancelLabel:th ? "ยกเลิก" : "Cancel"})) return;
     setAnnouncing(true);setError("");setCloudMessage("");
     try {
       const response = await fetch(base + "/war/announcements", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventIds:selected})});
       const result = await response.json();
       if (!response.ok) {
-        if (result.error === "publication_missing") throw new Error(th ? "กรุณาเปิดแต่ละรอบและกดบันทึกออนไลน์ให้ครบ 4 รอบก่อน จึงจะประกาศชุดนี้ได้" : "Publish all four round teams before sending the bundle");
+        if (result.error === "publication_missing") throw new Error(th ? "กรุณาตรวจฉบับร่างออนไลน์ของรอบที่เลือกแล้วลองประกาศอีกครั้ง" : "Review the selected online drafts and try again");
+        if (result.error === "event_paused") throw new Error(th ? "มีรอบที่ถูกพักไว้ กรุณา Refresh เพื่อโหลดตารางรอบล่าสุด" : "A selected round is paused. Refresh to load the latest schedule.");
         if (result.error === "draft_missing") throw new Error(th ? "ยังไม่มีฉบับร่างออนไลน์ของรอบหนึ่งในชุดนี้ กรุณาเปิดรอบนั้น จัดทีมและบันทึกก่อน" : "One selected round has no online draft. Open that round, arrange the team and save it first.");
         if (result.error === "draft_invalid") throw new Error(th ? "ฉบับร่างของรอบหนึ่งไม่ตรงกับรายชื่อปัจจุบัน กรุณา Refresh ตรวจทีม และบันทึกใหม่" : "A selected round draft no longer matches its roster. Refresh, review the team and save it again.");
         if (result.error === "roster_unavailable") throw new Error(th ? "โหลดรายชื่อของรอบหนึ่งไม่สำเร็จ กรุณาลองใหม่" : "Could not load one round's roster. Please retry.");
         if (result.error === "organizer_required") throw new Error(th ? "กรุณาเข้าสู่ระบบ Discord อีกครั้ง" : "Please sign in with Discord again");
-        throw new Error(th ? "ประกาศ 4 รอบไม่สำเร็จ" : "Could not announce the four rounds");
+        throw new Error(th ? "ประกาศรอบวอร์ไม่สำเร็จ" : "Could not announce the selected rounds");
       }
       setAnnouncementPanel(false);setAnnouncementRounds([]);
-      setCloudMessage(result.webhook === "sent" ? (th ? "ส่งประกาศ 4 รอบไป Discord แล้ว" : "Four-round announcement sent to Discord") : result.webhook === "unconfigured" ? (th ? "เตรียมประกาศแล้ว · ยังไม่ตั้งค่า Discord Webhook" : "Prepared · Discord Webhook is not configured") : (th ? "เตรียมประกาศแล้ว แต่ส่ง Discord ไม่สำเร็จ" : "Prepared, but Discord delivery failed"));
+      setCloudMessage(result.webhook === "sent" ? (th ? `ส่งประกาศ ${selected.length} รอบไป Discord แล้ว` : `${selected.length}-round announcement sent to Discord`) : result.webhook === "unconfigured" ? (th ? "เตรียมประกาศแล้ว · ยังไม่ตั้งค่า Discord Webhook" : "Prepared · Discord Webhook is not configured") : (th ? "เตรียมประกาศแล้ว แต่ส่ง Discord ไม่สำเร็จ" : "Prepared, but Discord delivery failed"));
     } catch (error) {
-      setError(error instanceof Error ? error.message : (th ? "ประกาศ 4 รอบไม่สำเร็จ" : "Could not announce the four rounds"));
+      setError(error instanceof Error ? error.message : (th ? "ประกาศรอบวอร์ไม่สำเร็จ" : "Could not announce the selected rounds"));
     } finally {
       setAnnouncing(false);
     }
   }
 
-  function openFourRoundAnnouncement() {
-    setAnnouncementRounds(rounds.slice(0, 4).map(item => item.id));
+  function openRoundAnnouncement() {
+    setAnnouncementRounds(announcementRoundsForDay(rounds,round));
     setAnnouncementPanel(true);
     summaryDialog.current?.close();
   }
@@ -559,7 +561,7 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     if(!info)return round;
     const date=new Date(info.starts_at),parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(date),hour=parts.find(part=>part.type==="hour")?.value||"",minute=parts.find(part=>part.type==="minute")?.value||"";
     const day=new Intl.DateTimeFormat(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",day:"numeric",month:"short",year:"numeric"}).format(date);
-    const number=rounds.findIndex(item=>item.id===info.id)+1;
+    const number=info.round_number??rounds.findIndex(item=>item.id===info.id)+1;
     return th?`รอบ ${number} (${info.war_type}) · ${hour}.${minute} · ${day}`:`Round ${number} (${info.war_type}) · ${hour}:${minute} · ${day}`;
   }
   function jungleLabel(jungle?:string){
@@ -582,12 +584,13 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
       <div className="gw-toolbar"><GuildWarRoundPicker rounds={rounds} selectedId={round} warningByRound={unassignedByRound} language={language} disabled={loading} onChange={setRound}/>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={autoAssign}>{th?"จัดอัตโนมัติ":"Auto assign"}</button>
       <button disabled={!organizer||loading||loadedRound!==round||copying} onClick={()=>setCopyPanel(value=>!value)}>{th?`คัดลอกไปรอบอื่น${copyRounds.length?` (${copyRounds.length})`:""}`:`Copy to other rounds${copyRounds.length?` (${copyRounds.length})`:""}`}</button>
-      <button disabled={!organizer||loading||loadedRound!==round||announcing} onClick={()=>setAnnouncementPanel(value=>!value)}>{th?"ประกาศ 4 รอบ":"Announce 4 rounds"}{announcementRounds.length ? " (" + announcementRounds.length + "/4)" : ""}</button>
+      <button disabled={!organizer||loading||loadedRound!==round||announcing} onClick={()=>announcementPanel?setAnnouncementPanel(false):openRoundAnnouncement()}>{th?"ประกาศรอบวอร์":"Announce War rounds"}{announcementRounds.length ? " (" + announcementRounds.length + ")" : ""}</button>
       <button disabled={!organizer||loading||loadedRound!==round} onClick={()=>summaryDialog.current?.showModal()}>Team Summary</button>
+      <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/schedule">{th?"ตั้งค่ารอบวอร์":"War schedule"}</a>
       <a className="gw-regular-link" href="/games/where-winds-meet/guild-war/players">{th?"จัดการรายชื่อ":"Manage players"}</a>
       <span className="gw-primary-actions"><button className="gw-save" disabled={!organizer||loading||loadedRound!==round} onClick={()=>void cloudDraft()}>{th?"บันทึก":"Save"}</button><button className="gw-clear-board" disabled={!organizer||loading} onClick={()=>void clearBoard()}>{th?"ล้างทีม":"Clear team"}</button></span></div></header>
     {copyPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"คัดลอกการจัดทีมไปยังรอบอื่น":"Copy team arrangement to other rounds"}</strong><p>{th?"เลือกรอบปลายทางได้หลายรอบพร้อมกัน รายชื่อที่ไม่ได้ลงในรอบนั้นจะถูกข้าม":"Choose multiple destination rounds. Players unavailable in a round will be skipped."}</p></div><button type="button" onClick={()=>setCopyPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.filter(item=>item.id!==round).map(item=>{const checked=copyRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={copying} onChange={()=>setCopyRounds(current=>checked?current.filter(id=>id!==item.id):[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setCopyRounds([])} disabled={!copyRounds.length||copying}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={!copyRounds.length||copying} onClick={()=>void copyBoardToRounds()}>{copying?(th?"กำลังคัดลอก…":"Copying…"):(th?`คัดลอกไป ${copyRounds.length} รอบ`:`Copy to ${copyRounds.length} rounds`)}</button></footer></section>}
-    {announcementPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"ประกาศรอบวอร์ 4 รอบ":"Announce four War rounds"}</strong><p>{th?"เลือก 4 รอบ ระบบจะสร้างประกาศจากฉบับร่างล่าสุดของแต่ละรอบ แล้วส่งเป็นข้อความ Discord เดียวพร้อมปุ่มเปลี่ยนรอบ":"Choose four published rounds to send as one Discord message with round buttons."}</p></div><button type="button" onClick={()=>setAnnouncementPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.map(item=>{const checked=announcementRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={announcing||(!checked&&announcementRounds.length>=4)} onChange={()=>setAnnouncementRounds(current=>checked?current.filter(id=>id!==item.id):current.length>=4?current:[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setAnnouncementRounds([])} disabled={!announcementRounds.length||announcing}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={announcementRounds.length!==4||announcing} onClick={()=>void announceFourRounds()}>{announcing?(th?"กำลังส่ง…":"Sending…"):(th?"ประกาศ 4 รอบ":"Announce four rounds")}</button></footer></section>}
+    {announcementPanel&&<section className="gw-copy-panel"><header><div><strong>{th?"ประกาศรอบวอร์":"Announce War rounds"}</strong><p>{th?"เลือก 1–4 รอบ ระบบจะส่งทีมล่าสุดเป็นข้อความ Discord เดียวพร้อมปุ่มเปลี่ยนรอบ":"Choose 1–4 rounds to announce their latest teams in one Discord message with round buttons."}</p></div><button type="button" onClick={()=>setAnnouncementPanel(false)}>{th?"ปิด":"Close"}</button></header><div className="gw-copy-rounds">{rounds.map(item=>{const checked=announcementRounds.includes(item.id);return <label key={item.id}><input type="checkbox" checked={checked} disabled={announcing||(!checked&&announcementRounds.length>=4)} onChange={()=>setAnnouncementRounds(current=>checked?current.filter(id=>id!==item.id):current.length>=4?current:[...current,item.id])}/><span>{new Date(item.starts_at).toLocaleString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",dateStyle:"medium",timeStyle:"short"})} · {item.war_type}</span></label>})}</div><footer><button type="button" onClick={()=>setAnnouncementRounds([])} disabled={!announcementRounds.length||announcing}>{th?"ล้างที่เลือก":"Clear selection"}</button><button type="button" className="gw-copy-confirm" disabled={!announcementRounds.length||announcementRounds.length>4||announcing} onClick={()=>void announceRounds()}>{announcing?(th?"กำลังส่ง…":"Sending…"):(th?`ประกาศ ${announcementRounds.length} รอบ`:`Announce ${announcementRounds.length} rounds`)}</button></footer></section>}
     <div className="gw-status">{organizer?organizer:<a href="/api/auth/discord/login?return=%2Fgames%2Fwhere-winds-meet%2Fguild-war%2Fteams">Discord Login</a>}{liveStatus==="connected"?" · Live":""} · {saved?(th?"ฉบับร่างบันทึกในเครื่อง · ยังไม่ประกาศ":"Local draft saved · Not published"):(th?"ฉบับร่างในเครื่อง":"Local draft")}</div>
     <section className="gw-quick-add">
       <header><div><strong>{th?"เพิ่มผู้เล่นด่วน":"Quick add player"}</strong><p>{th?"เพิ่มคนหน้างานเข้ารอบนี้ทันที ไม่ต้องรีโหลดหน้า":"Add an on-site player to this round without reloading the page"}</p></div><span>{roundInfo?.war_type||""}</span></header>
@@ -616,8 +619,8 @@ export function GuildWarTeamBuilder({language}:{language:"th"|"en"}) {
     {!loading&&playerNotes.length>0&&<section className="gw-player-notes"><header><div><h2>{th?"หมายเหตุถึงคนจัดทีม":"Notes for the organizer"}</h2><p>{th?"ข้อความจากผู้เล่นในรอบนี้":"Player messages for this round"}</p></div><span>{playerNotes.length}</span></header><div className="gw-player-notes-list">{playerNotes.map(player=><article key={player.player_id}><strong>{player.character_name}{player.nickname&&<small> ({player.nickname})</small>}</strong><p>{player.note}</p></article>)}</div></section>}
   </fieldset>
     <dialog ref={summaryDialog} className="gw-summary-dialog">
-      <header><div><h2 className="gw-summary-round-heading">{roundHeading(roundInfo)}</h2></div><div className="gw-summary-actions"><button className="gw-publish" disabled={cloudBusy||loading||!organizer||announcing||rounds.length<4||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={openFourRoundAnnouncement}>{th?"ประกาศ 4 รอบ":"Announce four rounds"}</button><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></div></header>
-<nav className="gw-summary-round-nav" aria-label={th?"เลือกรอบสำหรับดูสรุป":"Choose a round to view"}>{rounds.map((item,index)=><button type="button" key={item.id} className={item.id===round?"active":""} onClick={()=>setRound(item.id)}>{th?"รอบ "+(index+1):"Round "+(index+1)} · {item.war_type}</button>)}</nav>
+      <header><div><h2 className="gw-summary-round-heading">{roundHeading(roundInfo)}</h2></div><div className="gw-summary-actions"><button className="gw-publish" disabled={cloudBusy||loading||!organizer||announcing||!rounds.length||revision<1||savedBoard!==JSON.stringify(board)||Object.keys(board).length===0||warnings>0&&teams.some(t=>t!=="STANDBY"&&Object.values(board).filter(p=>p.team===t).length>5)} onClick={openRoundAnnouncement}>{th?"ประกาศรอบวอร์":"Announce War rounds"}</button><button onClick={()=>summaryDialog.current?.close()} autoFocus>{th?"กลับไปจัดทีม":"Back to builder"}</button></div></header>
+<nav className="gw-summary-round-nav" aria-label={th?"เลือกรอบสำหรับดูสรุป":"Choose a round to view"}>{rounds.map((item,index)=><button type="button" key={item.id} className={item.id===round?"active":""} onClick={()=>setRound(item.id)}>{new Date(item.starts_at).toLocaleDateString(th?"th-TH":"en-GB",{timeZone:"Asia/Bangkok",weekday:"short"})} · {th?"รอบ "+(item.round_number??index+1):"Round "+(item.round_number??index+1)} · {item.war_type}</button>)}</nav>
       <p className="gw-status">{th?"ฉบับร่าง · ยังไม่ประกาศ":"Draft · Not published"}</p>
       {warnings>0&&<p className="gw-error">{warnings} {th?"ทีมต้องตรวจสอบ":"team warnings"}</p>}
       <div className="gw-summary-grid">{teams.filter(team=>team!=="STANDBY").map(team=>{const members=ordered(team);return (<section key={team} className={"gw-summary-team "+teamClass(team)}>

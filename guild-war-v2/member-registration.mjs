@@ -55,13 +55,14 @@ export async function memberRegistration(request,env,clock=new Date()) {
       if(!result.meta.changes)return json({error:'loadout_not_found'},404);
       return json({id:data.loadoutId});
     }
-    const {events,weekStart}=await ensureWeekend(db,clock);
+    const {events:allEvents,weekStart,scheduleVersion}=await ensureWeekend(db,clock,{includePaused:true});
+    const events=allEvents.filter(event=>!event.paused);
     if(action==='/lookup') {
       const choices=await rows(db,'SELECT c.event_id,c.status,c.preferred_role,c.note,c.updated_at,c.updated_by FROM attendance_choices c JOIN events e ON e.game_id=c.game_id AND e.id=c.event_id WHERE c.game_id=? AND c.player_id=? AND e.week_start=?',GAME,data.playerId,weekStart);
       const [currentNoteChoice]=choices.filter(choice=>choice.updated_by!=='organizer').sort((a,b)=>b.updated_at.localeCompare(a.updated_at));
       const [previousNoteChoice]=currentNoteChoice?[]:await rows(db,'SELECT c.note FROM attendance_choices c JOIN events e ON e.game_id=c.game_id AND e.id=c.event_id WHERE c.game_id=? AND c.player_id=? AND e.week_start<? AND c.updated_by<>? ORDER BY e.week_start DESC,c.updated_at DESC,e.starts_at DESC LIMIT 1',GAME,data.playerId,weekStart,'organizer');
       const ruleSlots=organizerRule?await rows(db,'SELECT weekday,war_type FROM regular_slots WHERE game_id=? AND player_id=?',GAME,data.playerId):[];
-      const ruleIsActive=!!organizerRule&&events.some(e=>regularRuleApplies(organizerRule,e));
+      const ruleIsActive=!!organizerRule&&allEvents.some(e=>regularRuleApplies(organizerRule,e));
       const defaults=organizerRule
         ? events.filter(e=>ruleIsActive&&regularRuleApplies(organizerRule,e)&&ruleSlots.some(slot=>regularSlotMatches(e,slot))).map(e=>e.id)
         : (profile?.regular?JSON.parse(profile.slots_json):[]);
@@ -73,23 +74,30 @@ export async function memberRegistration(request,env,clock=new Date()) {
       const preferredTeam=(organizerRule?.preferred_team||profile?.preferred_team||'');
       const organizerLoadouts=organizerRule?.default_loadout_id?[organizerRule.default_loadout_id]:[];
       // The old app stored "ANY"; the new API uses an empty value for it.
-      return json({revision:profile?.revision||0,regular:organizerRule?ruleIsActive:!!profile?.regular,regularSlots,selected,loadoutIds:(organizerRule?organizerLoadouts:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id))).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:currentNoteChoice?.note??previousNoteChoice?.note??'',loadouts:owned,weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
+      return json({revision:profile?.revision||0,weekStart,scheduleVersion,events,regular:organizerRule?ruleIsActive:!!profile?.regular,regularSlots,selected,loadoutIds:(organizerRule?organizerLoadouts:(profile?JSON.parse(profile.loadouts_json):legacy.map(l=>l.loadout_id))).filter(id=>owned.some(l=>l.id===id)),preferredRole:['Tank','Heal','DPS'].includes(preferredRole)?preferredRole:'',preferredTeam:teams.includes(preferredTeam)?preferredTeam:'',note:currentNoteChoice?.note??previousNoteChoice?.note??'',loadouts:owned,weapons:await rows(db,'SELECT id,name FROM weapons WHERE game_id=? ORDER BY name',GAME)});
     }
     if(action!=='/save')return json({error:'not_found'},404);
     const {selected,loadoutIds,note='',regular,revision}=data;
     const preferredRole=data.preferredRole==='ANY'?'':(data.preferredRole||'');
     const preferredTeam=data.preferredTeam==='ANY'?'':(data.preferredTeam||'');
     const regularSlots=Array.isArray(data.regularSlots)?data.regularSlots:selected;
+    if([selected,regularSlots].some(selection=>Array.isArray(selection)&&selection.some(id=>allEvents.some(event=>event.id===id&&event.paused))))
+      return json({error:'schedule_changed'},409);
     // Legacy registrations may have a preferred role without a matching
     // loadout row (or may have had a loadout removed since registration).
     // Keep the role choice editable; loadout IDs themselves are still
     // strictly checked against the player's active loadouts.
     if(!Array.isArray(selected)||selected.length>8||new Set(selected).size!==selected.length||!selected.every(x=>events.some(e=>e.id===x))||!Array.isArray(regularSlots)||regularSlots.length>8||new Set(regularSlots).size!==regularSlots.length||!regularSlots.every(x=>events.some(e=>e.id===x))||!Array.isArray(loadoutIds)||loadoutIds.length>8||new Set(loadoutIds).size!==loadoutIds.length||!loadoutIds.every(x=>owned.some(l=>l.id===x))||!teams.includes(preferredTeam)||typeof regular!=='boolean'||!Number.isSafeInteger(revision)||revision<0||typeof note!=='string'||note.length>500||typeof preferredRole!=='string'||(preferredRole&&!['Tank','Heal','DPS'].includes(preferredRole)))return json({error:'invalid_request'},400);
     if(data.weekStart!==weekStart)return json({error:'week_changed'},409);
+    // A restored round was never shown in an older tab; require a current schedule before writing.
+    if(data.scheduleVersion!==scheduleVersion)return json({error:'schedule_changed'},409);
     const open=events.filter(e=>e.status==='open'&&new Date(e.starts_at)>clock);
     // Regular schedules may be updated for future weeks after this week's rounds close.
-    if(!open.length&&!regular)return json({error:'registration_closed'},409);
-    const slots=events.filter(e=>regularSlots.includes(e.id)).map(slotOf);
+    if(!open.length&&events.length&&!regular)return json({error:'registration_closed'},409);
+    const hiddenEvents=allEvents.filter(event=>event.paused);
+    const previousSlots=regular&&profile?.regular?JSON.parse(profile.slots_json):[];
+    const hiddenSlots=hiddenEvents.map(slotOf).filter(slot=>previousSlots.includes(slot));
+    const slots=[...new Set([...events.filter(e=>regularSlots.includes(e.id)).map(slotOf),...hiddenSlots])];
     if(!validSlots(slots))return json({error:'invalid_slots'},400);
     const operation=crypto.randomUUID(),now=new Date().toISOString(),token=createClaimToken();
     // Every write is guarded by the successful revision change inside one D1 batch.
@@ -106,7 +114,12 @@ export async function memberRegistration(request,env,clock=new Date()) {
       if(attending)for(const loadout of loadoutIds)statements.push(db.prepare('INSERT INTO attendance_loadouts (game_id,event_id,player_id,loadout_id) SELECT ?,?,?,? WHERE '+guard).bind(GAME,event.id,data.playerId,loadout,...guardArgs));
     }
     if(organizerRule) {
-      const recurringSlots=[...new Map(events.filter(e=>regularSlots.includes(e.id)).map(e=>[eventWeekday(e)+':'+regularWarType(e.war_type),{weekday:eventWeekday(e),warType:regularWarType(e.war_type)}])).values()];
+      const previousRecurring=regular&&Number(organizerRule.enabled)===1
+        ? await rows(db,'SELECT weekday,war_type FROM regular_slots WHERE game_id=? AND player_id=?',GAME,data.playerId):[];
+      const hiddenRecurring=previousRecurring.filter(slot=>hiddenEvents.some(event=>regularSlotMatches(event,slot)))
+        .map(slot=>({weekday:slot.weekday,warType:regularWarType(slot.war_type)}));
+      const visibleRecurring=events.filter(e=>regularSlots.includes(e.id)).map(e=>({weekday:eventWeekday(e),warType:regularWarType(e.war_type)}));
+      const recurringSlots=[...new Map([...visibleRecurring,...hiddenRecurring].map(slot=>[slot.weekday+':'+slot.warType,slot])).values()];
       statements.push(db.prepare('UPDATE regular_rules SET enabled=?,revision=revision+1 WHERE game_id=? AND player_id=? AND '+guard).bind(+regular,GAME,data.playerId,...guardArgs));
       statements.push(db.prepare('DELETE FROM regular_slots WHERE game_id=? AND player_id=? AND '+guard).bind(GAME,data.playerId,...guardArgs));
       for(const slot of recurringSlots)statements.push(db.prepare('INSERT INTO regular_slots (game_id,player_id,weekday,war_type) SELECT ?,?,?,? WHERE '+guard).bind(GAME,data.playerId,slot.weekday,slot.warType,...guardArgs));
