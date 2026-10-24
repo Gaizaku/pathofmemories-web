@@ -20,5 +20,7 @@ INSERT INTO weapons (game_id, id, name) VALUES
   ('where-winds-meet', 'W017', 'Everspring Umbrella'),
   ('where-winds-meet', 'W018', 'Unfettered Rope Dart'),
   ('where-winds-meet', 'W019', 'Skystrike Gauntlets'),
-  ('where-winds-meet', 'W020', 'Riven Twinblades')
+  ('where-winds-meet', 'W020', 'Riven Twinblades'),
+  ('where-winds-meet', 'W021', 'Willowbend Fan'),
+  ('where-winds-meet', 'W022', 'Museflow Waist Drum')
 ON CONFLICT (game_id, id) DO UPDATE SET name = excluded.name;
