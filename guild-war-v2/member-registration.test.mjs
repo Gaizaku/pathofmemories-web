@@ -128,3 +128,20 @@ test('allows regular schedule edits after the current week closes',async()=>{
   assert.equal((await memberRegistration(new Request('https://example.com/api/v2/games/'+GAME+'/member-registration/save',{method:'POST',headers:{Origin:'https://example.com'},body:JSON.stringify(body)}),f.env,late)).status,200);
  }finally{f.sql.close();}
 });
+
+test('catalog exposes the new fan and drum and saves both paired and mixed custom loadouts',async()=>{
+ const f=fixture();try{
+  const catalog=readFileSync(new URL('011_weapon_catalog.sql',import.meta.url),'utf8');
+  f.sql.exec(catalog);f.sql.exec(catalog);
+  const profile=await (await f.post('lookup',{playerId:'p1'})).json();
+  assert.deepEqual(profile.weapons.filter(weapon=>['Willowbend Fan','Museflow Waist Drum'].includes(weapon.name)).map(weapon=>[weapon.id,weapon.name]).sort(),[['W021','Willowbend Fan'],['W022','Museflow Waist Drum']]);
+  const pair=await f.post('loadout',{playerId:'p1',role:'Heal',mainWeapon:'W021',subWeapon:'W022'});
+  assert.equal(pair.status,201);
+  const mixed=await f.post('loadout',{playerId:'p1',role:'DPS',mainWeapon:'W022',subWeapon:'w1'});
+  assert.equal(mixed.status,201);
+  const builds=(await (await f.post('lookup',{playerId:'p1'})).json()).loadouts;
+  assert.ok(builds.some(build=>build.main_weapon_name==='Willowbend Fan'&&build.sub_weapon_name==='Museflow Waist Drum'));
+  assert.ok(builds.some(build=>build.main_weapon_name==='Museflow Waist Drum'&&build.sub_weapon_name==='Sword'));
+  assert.ok(builds.some(build=>build.id==='l1'&&build.main_weapon_name==='Sword'&&build.sub_weapon_name==='Spear'));
+ }finally{f.sql.close();}
+});
